@@ -10,8 +10,7 @@ export function UnauthorisedError() {
         <h1 className='text-[7rem] leading-tight font-bold'>401</h1>
         <span className='font-medium'>请先登录</span>
         <p className='text-center text-muted-foreground'>
-          请使用具有相应权限的账户登录 <br /> 以访问此
-          页面。
+          请使用具有相应权限的账户登录 <br /> 以访问此页面。
         </p>
         <div className='mt-6 flex gap-4'>
           <Button variant='outline' onClick={() => history.go(-1)}>
