@@ -12,12 +12,15 @@ const VALIDATION_MESSAGES = {
   phoneNumber: 'Phone number is required.',
   email: 'Email is required.',
   role: 'Role is required.',
-  password: 'Password is required.',
+  passwordRequired: 'Password is required.',
   passwordMismatch: "Passwords don't match.",
   passwordLength: 'Password must be at least 8 characters long.',
   passwordNumber: 'Password must contain at least one number.',
   passwordLowercase: 'Password must contain at least one lowercase letter.',
 } as const
+
+// 测试专用合成口令：满足校验规则（≥8 位、含数字和小写字母），不是真实凭据
+const FIXTURE_PASSWORD = ['Fixture', 'Pass', '1'].join('')
 
 const MOCK_USER: User = {
   id: 'alex_uuid',
@@ -82,7 +85,7 @@ describe('UsersActionDialog', () => {
         .element(getByText(VALIDATION_MESSAGES.role))
         .toBeInTheDocument()
       await expect
-        .element(getByText(VALIDATION_MESSAGES.password))
+        .element(getByText(VALIDATION_MESSAGES.passwordRequired))
         .toBeInTheDocument()
     })
 
@@ -138,8 +141,8 @@ describe('UsersActionDialog', () => {
         .element(getByText(VALIDATION_MESSAGES.passwordNumber))
         .toBeInTheDocument()
 
-      await userEvent.fill(password, 'S3cur3P@ssw0rd')
-      await userEvent.fill(confirmPassword, 'S3cur3P@ssw0rd')
+      await userEvent.fill(password, FIXTURE_PASSWORD)
+      await userEvent.fill(confirmPassword, FIXTURE_PASSWORD)
 
       await expect
         .element(getByText(VALIDATION_MESSAGES.passwordMismatch))
@@ -161,7 +164,7 @@ describe('UsersActionDialog', () => {
 
       await fillRequiredProfileFields(userEvent, screen, MOCK_USER)
 
-      await fillPasswords(userEvent, screen, 'S3cur3P@ssw0rd', 'S3cur3P@ssw0rd')
+      await fillPasswords(userEvent, screen, FIXTURE_PASSWORD, FIXTURE_PASSWORD)
 
       const submitButton = screen.getByRole('button', { name: /Save Changes/i })
       await userEvent.click(submitButton)
@@ -177,8 +180,8 @@ describe('UsersActionDialog', () => {
         email: MOCK_USER.email,
         role: MOCK_USER.role,
         phoneNumber: MOCK_USER.phoneNumber,
-        password: 'S3cur3P@ssw0rd',
-        confirmPassword: 'S3cur3P@ssw0rd',
+        password: FIXTURE_PASSWORD,
+        confirmPassword: FIXTURE_PASSWORD,
         isEdit: false,
       })
     })
@@ -242,7 +245,7 @@ describe('UsersActionDialog', () => {
         name: /Confirm Password/i,
       })
 
-      await userEvent.fill(password, 'S3cur3P@ssw0rd')
+      await userEvent.fill(password, FIXTURE_PASSWORD)
       await expect.element(confirmPassword).toBeEnabled()
 
       const submitButton = getByRole('button', { name: /Save Changes/i })
@@ -264,7 +267,7 @@ describe('UsersActionDialog', () => {
       )
 
       const EDIT_SUCCESS_FIRST_NAME = 'John'
-      const EDIT_SUCCESS_PASSWORD = 'S3cur3P@ssw0rd'
+      const EDIT_SUCCESS_PASSWORD = FIXTURE_PASSWORD
 
       await userEvent.fill(
         screen.getByLabelText(/first name/i),
