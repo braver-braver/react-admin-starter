@@ -27,7 +27,6 @@ export function DataTableBulkActions<TData>({
   const queryClient = useQueryClient()
 
   const selectedIds = selectedRows.map((row) => (row.original as User).id)
-  const selectedCount = selectedRows.length
 
   const afterSuccess = () => {
     table.resetRowSelection()
@@ -37,8 +36,8 @@ export function DataTableBulkActions<TData>({
   const statusMutation = useMutation({
     mutationFn: (status: 'active' | 'inactive') =>
       updateUsersStatus(selectedIds, status),
-    onSuccess: () => {
-      toast.success(`已批量更新 ${selectedCount} 个用户的状态。`)
+    onSuccess: ({ updatedCount }) => {
+      toast.success(`已批量更新 ${updatedCount} 个用户的状态。`)
       afterSuccess()
     },
     onError: (error) => {
@@ -50,8 +49,8 @@ export function DataTableBulkActions<TData>({
 
   const inviteMutation = useMutation({
     mutationFn: () => batchInviteUsers(selectedIds),
-    onSuccess: (count) => {
-      toast.success(`已向 ${count} 个用户发送邀请。`)
+    onSuccess: ({ invitedCount }) => {
+      toast.success(`已向 ${invitedCount} 个用户发送邀请。`)
       afterSuccess()
     },
     onError: (error) => {

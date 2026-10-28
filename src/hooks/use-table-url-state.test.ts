@@ -411,4 +411,45 @@ describe('sorting', () => {
       sortOrder: 'desc',
     })
   })
+
+  it('resynchronizes column filters when browser history changes the URL', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result, rerender } = await renderHook(
+      ({ search }: { search: Record<string, unknown> }) =>
+        useTableUrlState({
+          search,
+          navigate,
+          globalFilter: { enabled: false },
+          columnFilters: [
+            { columnId: 'action', searchKey: 'action', type: 'array' },
+          ],
+        }),
+      { initialProps: { search: { action: ['auth.sign_in'] } } }
+    )
+
+    expect(result.current.columnFilters).toEqual([
+      { id: 'action', value: ['auth.sign_in'] },
+    ])
+
+    rerender({ search: { action: ['user.deleted'] } })
+    await vi.waitFor(() =>
+      expect(result.current.columnFilters).toEqual([
+        { id: 'action', value: ['user.deleted'] },
+      ])
+    )
+  })
+
+  it('resynchronizes the global filter when URL search changes', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result, rerender } = await renderHook(
+      ({ search }: { search: Record<string, unknown> }) =>
+        useTableUrlState({ search, navigate }),
+      { initialProps: { search: { filter: 'before' } } }
+    )
+
+    expect(result.current.globalFilter).toBe('before')
+    rerender({ search: { filter: 'after' } })
+    await vi.waitFor(() => expect(result.current.globalFilter).toBe('after'))
+  })
+
 })

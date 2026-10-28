@@ -32,7 +32,7 @@ export function UsersMultiDeleteDialog<TData>({
   const mutation = useMutation({
     mutationFn: () =>
       batchDeleteUsers(selectedRows.map((row) => (row.original as User).id)),
-    onSuccess: (deletedCount) => {
+    onSuccess: ({ deletedCount }) => {
       toast.success(`已删除 ${deletedCount} 个用户。`)
       setValue('')
       table.resetRowSelection()

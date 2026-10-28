@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -21,6 +22,7 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Permission } from '@/components/permission'
 import { roles } from '../data/data'
+import { type User } from '../data/schema'
 import { usersQueryOptions } from '../queries'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { usersColumns as columns } from './users-columns'
@@ -34,6 +36,10 @@ type DataTableProps = {
  * 服务端驱动的用户列表：分页、筛选、排序全部由 URL 状态触发、
  * /api/users 计算；TanStack Table 只负责渲染当前页。
  */
+export function getUserRowId(user: User) {
+  return user.id
+}
+
 export function UsersTable({ search, navigate }: DataTableProps) {
   const user = useAuthStore((state) => state.auth.user)
   // Local UI-only states
@@ -70,7 +76,7 @@ export function UsersTable({ search, navigate }: DataTableProps) {
     (filter) => filter.id === 'username'
   )?.value
 
-  const { data, isPending, isPlaceholderData } = useQuery(
+  const { data, isPending, isPlaceholderData, isError, refetch } = useQuery(
     usersQueryOptions({
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
@@ -91,6 +97,7 @@ export function UsersTable({ search, navigate }: DataTableProps) {
   const table = useReactTable({
     data: data?.items ?? [],
     columns,
+    getRowId: getUserRowId,
     state: {
       sorting,
       pagination,
@@ -148,6 +155,17 @@ export function UsersTable({ search, navigate }: DataTableProps) {
           },
         ]}
       />
+      {isError && (
+        <div
+          role='alert'
+          className='flex items-center justify-between gap-3 rounded-md border border-destructive/50 p-3 text-sm'
+        >
+          <span>用户列表加载失败，请检查网络或服务状态。</span>
+          <Button variant='outline' size='sm' onClick={() => void refetch()}>
+            重试
+          </Button>
+        </div>
+      )}
       <div
         className={cn(
           'overflow-hidden rounded-md border',
@@ -212,7 +230,7 @@ export function UsersTable({ search, navigate }: DataTableProps) {
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  {isPending ? '加载中…' : '暂无数据'}
+                  {isPending ? '加载中…' : isError ? '加载失败' : '暂无数据'}
                 </TableCell>
               </TableRow>
             )}

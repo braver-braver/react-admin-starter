@@ -50,7 +50,7 @@ describe('UsersMultiDeleteDialog', () => {
   })
 
   it('batch-deletes selected rows via the API', async () => {
-    batchDeleteUsersMock.mockResolvedValueOnce(2)
+    batchDeleteUsersMock.mockResolvedValueOnce({ deletedCount: 2 })
     const { table, resetRowSelection } = createTableMock(2, [
       { id: 'usr-0001' },
       { id: 'usr-0002' },

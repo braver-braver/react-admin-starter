@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -54,7 +55,7 @@ export function AuditTable({ search, navigate }: AuditTableProps) {
     (filter) => filter.id === 'action'
   )?.value
 
-  const { data } = useQuery(
+  const { data, isPending, isError, refetch } = useQuery(
     auditQueryOptions({
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
@@ -115,6 +116,17 @@ export function AuditTable({ search, navigate }: AuditTableProps) {
           </button>
         ) : null}
       </div>
+      {isError && (
+        <div
+          role='alert'
+          className='flex items-center justify-between gap-3 rounded-md border border-destructive/50 p-3 text-sm'
+        >
+          <span>审计记录加载失败，请检查网络或服务状态。</span>
+          <Button variant='outline' size='sm' onClick={() => void refetch()}>
+            重试
+          </Button>
+        </div>
+      )}
       <div className='overflow-hidden rounded-md border'>
         <Table>
           <TableHeader>
@@ -157,7 +169,7 @@ export function AuditTable({ search, navigate }: AuditTableProps) {
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  暂无审计记录
+                  {isPending ? '加载中…' : isError ? '加载失败' : '暂无审计记录'}
                 </TableCell>
               </TableRow>
             )}
