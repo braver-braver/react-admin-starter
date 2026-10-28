@@ -54,8 +54,8 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error('登录状态已过期')
           useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          queryClient.clear()
+          router.navigate({ to: '/sign-in' })
         }
         if (error.response?.status === 500) {
           toast.error('服务器内部错误')
@@ -65,7 +65,7 @@ const queryClient = new QueryClient({
           }
         }
         if (error.response?.status === 403) {
-          // router.navigate("/forbidden", { replace: true });
+          toast.error('没有执行该操作的权限')
         }
       }
     },
@@ -94,19 +94,36 @@ document
   .querySelector('meta[name="description"]')
   ?.setAttribute('content', appConfig.description)
 
-// Render the app
-const rootElement = document.getElementById('root')!
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <DirectionProvider>
-            <RouterProvider router={router} />
-          </DirectionProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </StrictMode>
-  )
+/**
+ * 开发环境启动 MSW mock API。
+ * 条件动态导入保证 msw 及 handlers 不会进入生产构建；
+ * 设置 VITE_ENABLE_MSW=false 可在开发时直连真实后端。
+ */
+async function prepareMockApi(): Promise<void> {
+  if (!import.meta.env.DEV) return
+  if (import.meta.env.VITE_ENABLE_MSW === 'false') return
+  const { worker } = await import('@/mocks/browser')
+  // bypass：Vite 开发服务器还有 HMR 等非 API 请求，避免误报
+  await worker.start({ onUnhandledFrame: 'bypass', quiet: true })
 }
+
+function renderApp() {
+  const rootElement = document.getElementById('root')!
+  if (!rootElement.innerHTML) {
+    const root = ReactDOM.createRoot(rootElement)
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <DirectionProvider>
+              <RouterProvider router={router} />
+            </DirectionProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </StrictMode>
+    )
+  }
+}
+
+// mock API 就绪后再渲染，保证首屏的会话请求即被拦截
+prepareMockApi().then(renderApp)

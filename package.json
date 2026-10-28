@@ -82,6 +82,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
     "knip": "^6.4.1",
+    "msw": "^3.0.3",
     "playwright": "1.59.1",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
@@ -91,5 +92,10 @@
     "vitest": "^4.1.4",
     "vitest-browser-react": "^2.2.0"
   },
-  "packageManager": "pnpm@10.19.0"
+  "packageManager": "pnpm@10.19.0",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
 }
