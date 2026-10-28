@@ -374,3 +374,41 @@ describe('useTableUrlState', () => {
     })
   })
 })
+
+describe('sorting', () => {
+  it('derives a single sort column from search', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result } = await renderHook(() =>
+      useTableUrlState({
+        search: { sortBy: 'email', sortOrder: 'desc' },
+        navigate,
+        sorting: { defaultSort: [{ id: 'username', desc: false }] },
+      })
+    )
+
+    expect(result.current.sorting).toEqual([{ id: 'email', desc: true }])
+  })
+
+  it('falls back to the default sort and resets the page on change', async () => {
+    const navigate = vi.fn() as Mock<NavigateFn>
+    const { result, act } = await renderHook(() =>
+      useTableUrlState({
+        search: { page: 2 },
+        navigate,
+        sorting: { defaultSort: [{ id: 'username', desc: false }] },
+      })
+    )
+
+    expect(result.current.sorting).toEqual([{ id: 'username', desc: false }])
+
+    await act(() => {
+      result.current.onSortingChange?.([{ id: 'createdAt', desc: true }])
+    })
+
+    expect(applyLastSearchFn(navigate, { page: 2 })).toMatchObject({
+      page: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    })
+  })
+})

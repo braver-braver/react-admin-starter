@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MailPlus, Send } from 'lucide-react'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Loader2, MailPlus, Send } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,14 +25,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
+import { inviteUser } from '../api'
 import { roles } from '../data/data'
+import { usersQueryKey } from '../queries'
 
 const formSchema = z.object({
   email: z.email({
-    error: (iss) =>
-      iss.input === '' ? 'Please enter an email to invite.' : undefined,
+    error: (iss) => (iss.input === '' ? '请输入受邀邮箱。' : undefined),
   }),
-  role: z.string().min(1, 'Role is required.'),
+  role: z.string().min(1, '请选择角色。'),
   desc: z.string().optional(),
 })
 
@@ -50,12 +52,26 @@ export function UsersInviteDialog({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '', role: '', desc: '' },
   })
+  const queryClient = useQueryClient()
 
-  const onSubmit = (values: UserInviteForm) => {
-    form.reset()
-    showSubmittedData(values)
-    onOpenChange(false)
-  }
+  const mutation = useMutation({
+    mutationFn: (values: UserInviteForm) =>
+      inviteUser({
+        email: values.email,
+        role: values.role,
+        desc: values.desc || undefined,
+      }),
+    onSuccess: () => {
+      toast.success('邀请已发送。')
+      void queryClient.invalidateQueries({ queryKey: usersQueryKey })
+      onOpenChange(false)
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : '邀请失败，请稍后重试。'
+      )
+    },
+  })
 
   return (
     <Dialog
@@ -68,17 +84,16 @@ export function UsersInviteDialog({
       <DialogContent className='sm:max-w-md'>
         <DialogHeader className='text-start'>
           <DialogTitle className='flex items-center gap-2'>
-            <MailPlus /> Invite User
+            <MailPlus /> 邀请用户
           </DialogTitle>
           <DialogDescription>
-            Invite new user to join your team by sending them an email
-            invitation. Assign a role to define their access level.
+            向新成员发送邮件邀请，加入后按所选角色获得对应权限。
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
             id='user-invite-form'
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
             className='space-y-4'
           >
             <FormField
@@ -86,11 +101,11 @@ export function UsersInviteDialog({
               name='email'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>邮箱</FormLabel>
                   <FormControl>
                     <Input
                       type='email'
-                      placeholder='eg: john.doe@gmail.com'
+                      placeholder='例如：zhang.wei@example.com'
                       {...field}
                     />
                   </FormControl>
@@ -103,11 +118,11 @@ export function UsersInviteDialog({
               name='role'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabel>角色</FormLabel>
                   <SelectDropdown
                     defaultValue={field.value}
                     onValueChange={field.onChange}
-                    placeholder='Select a role'
+                    placeholder='请选择角色'
                     items={roles.map(({ label, value }) => ({
                       label,
                       value,
@@ -121,12 +136,12 @@ export function UsersInviteDialog({
               control={form.control}
               name='desc'
               render={({ field }) => (
-                <FormItem className=''>
-                  <FormLabel>Description (optional)</FormLabel>
+                <FormItem>
+                  <FormLabel>备注（可选）</FormLabel>
                   <FormControl>
                     <Textarea
                       className='resize-none'
-                      placeholder='Add a personal note to your invitation (optional)'
+                      placeholder='随邀请附上一句话（可选）'
                       {...field}
                     />
                   </FormControl>
@@ -138,10 +153,19 @@ export function UsersInviteDialog({
         </Form>
         <DialogFooter className='gap-y-2'>
           <DialogClose asChild>
-            <Button variant='outline'>Cancel</Button>
+            <Button variant='outline'>取消</Button>
           </DialogClose>
-          <Button type='submit' form='user-invite-form'>
-            Invite <Send />
+          <Button
+            type='submit'
+            form='user-invite-form'
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? (
+              <Loader2 className='animate-spin' />
+            ) : (
+              <Send />
+            )}
+            发送邀请
           </Button>
         </DialogFooter>
       </DialogContent>

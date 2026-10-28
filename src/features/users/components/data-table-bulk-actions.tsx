@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type Table } from '@tanstack/react-table'
 import { Trash2, UserX, UserCheck, Mail } from 'lucide-react'
 import { toast } from 'sonner'
-import { sleep } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -10,7 +10,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
+import { batchInviteUsers, updateUsersStatus } from '../api'
 import { type User } from '../data/schema'
+import { usersQueryKey } from '../queries'
 import { UsersMultiDeleteDialog } from './users-multi-delete-dialog'
 
 type DataTableBulkActionsProps<TData> = {
@@ -22,32 +24,44 @@ export function DataTableBulkActions<TData>({
 }: DataTableBulkActionsProps<TData>) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const selectedRows = table.getFilteredSelectedRowModel().rows
+  const queryClient = useQueryClient()
 
-  const handleBulkStatusChange = (status: 'active' | 'inactive') => {
-    const selectedUsers = selectedRows.map((row) => row.original as User)
-    toast.promise(sleep(2000), {
-      loading: `${status === 'active' ? 'Activating' : 'Deactivating'} users...`,
-      success: () => {
-        table.resetRowSelection()
-        return `${status === 'active' ? 'Activated' : 'Deactivated'} ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}`
-      },
-      error: `Error ${status === 'active' ? 'activating' : 'deactivating'} users`,
-    })
+  const selectedIds = selectedRows.map((row) => (row.original as User).id)
+  const selectedCount = selectedRows.length
+
+  const afterSuccess = () => {
     table.resetRowSelection()
+    void queryClient.invalidateQueries({ queryKey: usersQueryKey })
   }
 
-  const handleBulkInvite = () => {
-    const selectedUsers = selectedRows.map((row) => row.original as User)
-    toast.promise(sleep(2000), {
-      loading: 'Inviting users...',
-      success: () => {
-        table.resetRowSelection()
-        return `Invited ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}`
-      },
-      error: 'Error inviting users',
-    })
-    table.resetRowSelection()
-  }
+  const statusMutation = useMutation({
+    mutationFn: (status: 'active' | 'inactive') =>
+      updateUsersStatus(selectedIds, status),
+    onSuccess: () => {
+      toast.success(`已批量更新 ${selectedCount} 个用户的状态。`)
+      afterSuccess()
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : '操作失败，请稍后重试。'
+      )
+    },
+  })
+
+  const inviteMutation = useMutation({
+    mutationFn: () => batchInviteUsers(selectedIds),
+    onSuccess: (count) => {
+      toast.success(`已向 ${count} 个用户发送邀请。`)
+      afterSuccess()
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : '操作失败，请稍后重试。'
+      )
+    },
+  })
+
+  const pending = statusMutation.isPending || inviteMutation.isPending
 
   return (
     <>
@@ -57,18 +71,16 @@ export function DataTableBulkActions<TData>({
             <Button
               variant='outline'
               size='icon'
-              onClick={handleBulkInvite}
+              disabled={pending}
+              onClick={() => inviteMutation.mutate()}
               className='size-8'
-              aria-label='Invite selected users'
-              title='Invite selected users'
+              aria-label='向所选用户发送邀请'
+              title='向所选用户发送邀请'
             >
               <Mail />
-              <span className='sr-only'>Invite selected users</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Invite selected users</p>
-          </TooltipContent>
+          <TooltipContent>向所选用户发送邀请</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -76,18 +88,16 @@ export function DataTableBulkActions<TData>({
             <Button
               variant='outline'
               size='icon'
-              onClick={() => handleBulkStatusChange('active')}
+              disabled={pending}
+              onClick={() => statusMutation.mutate('active')}
               className='size-8'
-              aria-label='Activate selected users'
-              title='Activate selected users'
+              aria-label='启用所选用户'
+              title='启用所选用户'
             >
               <UserCheck />
-              <span className='sr-only'>Activate selected users</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Activate selected users</p>
-          </TooltipContent>
+          <TooltipContent>启用所选用户</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -95,18 +105,16 @@ export function DataTableBulkActions<TData>({
             <Button
               variant='outline'
               size='icon'
-              onClick={() => handleBulkStatusChange('inactive')}
+              disabled={pending}
+              onClick={() => statusMutation.mutate('inactive')}
               className='size-8'
-              aria-label='Deactivate selected users'
-              title='Deactivate selected users'
+              aria-label='停用所选用户'
+              title='停用所选用户'
             >
               <UserX />
-              <span className='sr-only'>Deactivate selected users</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Deactivate selected users</p>
-          </TooltipContent>
+          <TooltipContent>停用所选用户</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -116,16 +124,13 @@ export function DataTableBulkActions<TData>({
               size='icon'
               onClick={() => setShowDeleteConfirm(true)}
               className='size-8'
-              aria-label='Delete selected users'
-              title='Delete selected users'
+              aria-label='删除所选用户'
+              title='删除所选用户'
             >
               <Trash2 />
-              <span className='sr-only'>Delete selected users</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Delete selected users</p>
-          </TooltipContent>
+          <TooltipContent>删除所选用户</TooltipContent>
         </Tooltip>
       </BulkActionsToolbar>
 
