@@ -239,6 +239,170 @@ describe('system authorization kernel', () => {
       changeSystem('accounts', account.id, fields(account), admin(), false, -1)
     ).rejects.toMatchObject({ status: 401 })
   })
+
+  async function limitedRoleManager() {
+    const { role, account } = await operator('department')
+    const manager = await changeSystem(
+      'roles',
+      undefined,
+      {
+        name: '角色维护员',
+        code: 'role_maintainer',
+        enabled: true,
+        permissionIds: ['system:roles:write'],
+        menuIds: ['dashboard'],
+        scope: 'all',
+        departmentIds: [],
+      },
+      admin()
+    )
+    if (!('id' in manager) || account.resource !== 'accounts')
+      throw new Error('Missing records')
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...fields(account), roleIds: [role.id, manager.id] },
+      admin()
+    )
+    return { role, account, limited: principal(account.id)! }
+  }
+
+  it.each([
+    { scope: 'all' as const, departmentIds: [] },
+    { scope: 'descendants' as const, departmentIds: [] },
+    { scope: 'custom' as const, departmentIds: ['sales'] },
+  ])(
+    'refuses role scope escalation to $scope even with global role management',
+    async ({ scope, departmentIds }) => {
+      const { role, account, limited } = await limitedRoleManager()
+      expect(limited.dataScopes?.['system:roles:write']?.all).toBe(true)
+      expect(limited.dataScopes?.['users:read']?.all).toBe(false)
+      await expect(
+        changeSystem(
+          'roles',
+          role.id,
+          { ...fields(role), scope, departmentIds },
+          limited
+        )
+      ).rejects.toMatchObject({ status: 403 })
+      await expect(
+        changeSystem(
+          'roles',
+          undefined,
+          { ...roleBody(scope), code: 'forbidden_role', departmentIds },
+          limited
+        )
+      ).rejects.toMatchObject({ status: 403 })
+      expect(principal(account.id)!.dataScopes?.['users:read']?.all).toBe(false)
+      expect(
+        canAccessData(
+          principal(account.id)!,
+          { departmentId: 'sales' },
+          'users:read'
+        )
+      ).toBe(false)
+    }
+  )
+
+  it('cannot add a page route by editing a role without owning that route', async () => {
+    const { role, account } = await limitedRoleManager()
+    await changeSystem(
+      'roles',
+      role.id,
+      { ...fields(role), permissionIds: ['users:read', 'users:write', 'audit:read'] },
+      admin()
+    )
+    const limited = principal(account.id)!
+    expect(limited.permissions).toContain('audit:read')
+    expect(limited.routes).not.toContain('/audit')
+    const changed = systemStore().records.find(
+      (item) => item.resource === 'roles' && item.id === role.id
+    )!
+    await expect(
+      changeSystem(
+        'roles',
+        role.id,
+        { ...fields(changed), menuIds: ['users', 'audit'] },
+        limited
+      )
+    ).rejects.toMatchObject({ status: 403 })
+    expect(principal(account.id)!.routes).not.toContain('/audit')
+  })
+
+  it('does not allow a self-scoped account editor to move their own department', async () => {
+    const { role, account } = await operator('self')
+    await changeSystem(
+      'roles',
+      role.id,
+      { ...fields(role), permissionIds: ['users:read', 'users:write', 'system:accounts:write'] },
+      admin()
+    )
+    const limited = principal(account.id)!
+    expect(limited.dataScopes?.['system:accounts:write']?.self).toBe(true)
+    await expect(
+      changeSystem(
+        'accounts',
+        account.id,
+        { ...fields(account), departmentId: 'sales' },
+        limited
+      )
+    ).rejects.toMatchObject({ status: 403 })
+    expect(accountById(account.id)?.departmentId).toBe('operations')
+  })
+
+  it('does not allow self-assigning a role to expand authorized routes', async () => {
+    const selfEditor = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('self'),
+        code: 'self_editor',
+        permissionIds: ['users:read', 'system:accounts:write'],
+        menuIds: ['dashboard'],
+      },
+      admin()
+    )
+    const pageAccess = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('self'),
+        code: 'page_access',
+        permissionIds: ['users:read'],
+        menuIds: ['users'],
+      },
+      admin()
+    )
+    if (!('id' in selfEditor) || !('id' in pageAccess))
+      throw new Error('Missing roles')
+    const account = await changeSystem(
+      'accounts',
+      undefined,
+      {
+        name: '自助账号',
+        email: 'self@example.com',
+        password: 'SelfEditor123!',
+        enabled: true,
+        departmentId: 'operations',
+        roleIds: [selfEditor.id],
+      },
+      admin()
+    )
+    if (!('id' in account)) throw new Error('Missing account')
+    const limited = principal(account.id)!
+    expect(limited.permissions).toContain('users:read')
+    expect(limited.routes).not.toContain('/users')
+    await expect(
+      changeSystem(
+        'accounts',
+        account.id,
+        { ...fields(account), roleIds: [selfEditor.id, pageAccess.id] },
+        limited
+      )
+    ).rejects.toMatchObject({ status: 403 })
+    expect(principal(account.id)!.routes).not.toContain('/users')
+  })
+
   it('serializes concurrent writes, preserves state on errors and never returns credential material', async () => {
     const make = (suffix: string) =>
       changeSystem(

@@ -508,6 +508,101 @@ describe('system and department API enforcement', () => {
       ).status
     ).toBe(403)
   })
+
+  it('rejects role scope escalation through the HTTP API', async () => {
+    const { role, account } = await operator()
+    const maintainer = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'role_maintainer',
+        permissionIds: ['system:roles:write'],
+        menuIds: ['dashboard'],
+        scope: 'all',
+      },
+      admin()
+    )
+    if (!('id' in maintainer) || account.resource !== 'accounts')
+      throw new Error('Missing records')
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...publicFields(account), roleIds: [role.id, maintainer.id] },
+      admin()
+    )
+    const signedIn = await (
+      await login('dept@example.com', 'Operator123!')
+    ).json()
+    const response = await fetch('/api/system/roles/' + role.id, {
+      method: 'PUT',
+      headers: writeHeaders(signedIn.data.csrfToken),
+      body: JSON.stringify({ ...publicFields(role), scope: 'all' }),
+    })
+    expect(response.status).toBe(403)
+    expect(principal(account.id)?.dataScopes?.['users:read']?.all).toBe(false)
+  })
+
+  it('returns only resource-authorized system reference options', async () => {
+    const accountsOnly = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'accounts_reader',
+        permissionIds: ['system:accounts:read'],
+        menuIds: ['system-accounts'],
+        scope: 'all',
+      },
+      admin()
+    )
+    const departmentOnly = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'department_reader',
+        permissionIds: ['system:departments:read'],
+        menuIds: ['system-departments'],
+        scope: 'department',
+      },
+      admin()
+    )
+    if (!('id' in accountsOnly) || !('id' in departmentOnly))
+      throw new Error('Missing roles')
+    for (const [email, roleId] of [
+      ['accounts-reader@example.com', accountsOnly.id],
+      ['department-reader@example.com', departmentOnly.id],
+    ]) {
+      await changeSystem(
+        'accounts',
+        undefined,
+        {
+          name: '范围测试',
+          email,
+          password: 'Options123!',
+          enabled: true,
+          departmentId: 'operations',
+          roleIds: [roleId],
+        },
+        admin()
+      )
+    }
+    await login('accounts-reader@example.com', 'Options123!')
+    const accountOptions = await fetch('/api/system/options')
+    expect(accountOptions.status).toBe(200)
+    expect((await accountOptions.json()).data.items).toEqual([])
+    await login('department-reader@example.com', 'Options123!')
+    const deptOptions = await fetch('/api/system/options')
+    expect(deptOptions.status).toBe(200)
+    const records = (await deptOptions.json()).data.items as Array<{
+      resource: string
+      id: string
+    }>
+    expect(records.map((record) => record.resource)).toEqual(['departments'])
+    expect(records.map((record) => record.id)).toEqual(['operations'])
+  })
+
   it('revokes disabled and reset-password sessions permanently, with no credential fields in account responses', async () => {
     const { account } = await operator()
     await login('dept@example.com', 'Operator123!')
