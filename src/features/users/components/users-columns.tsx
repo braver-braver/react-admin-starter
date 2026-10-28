@@ -11,6 +11,13 @@ import { DataTableRowActions } from './data-table-row-actions'
 
 export const usersColumns: ColumnDef<User>[] = [
   {
+    accessorKey: 'departmentName',
+    header: '所属部门',
+    cell: ({ row }) =>
+      row.original.departmentName ?? row.original.departmentId ?? '—',
+    enableSorting: false,
+  },
+  {
     id: 'select',
     header: ({ table }) => (
       <Checkbox
@@ -28,6 +35,7 @@ export const usersColumns: ColumnDef<User>[] = [
     },
     cell: ({ row }) => (
       <Checkbox
+        disabled={!row.getCanSelect()}
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label='选择此行'

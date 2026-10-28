@@ -6,6 +6,10 @@ import { loadSession, safeRedirect } from './session'
 export async function requireSession(href: string, permission?: Permission) {
   try {
     const session = await loadSession()
+    const pathname =
+      new URL(href, window.location.origin).pathname.replace(/\/+$/, '') || '/'
+    if (pathname !== '/' && !session.user.routes?.includes(pathname))
+      throw redirect({ to: '/403' })
     if (permission && !can(session.user, permission))
       throw redirect({ to: '/403' })
     return { session }

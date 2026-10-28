@@ -1,6 +1,8 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { type Row } from '@tanstack/react-table'
 import { Trash2, UserPen } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
+import { canAccessData } from '@/lib/data-scope'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,7 +21,9 @@ type DataTableRowActionsProps = {
 }
 
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
+  const user = useAuthStore((state) => state.auth.user)
   const { setOpen, setCurrentRow } = useUsers()
+  if (!canAccessData(user, row.original, 'users:write')) return null
   return (
     <Permission permission='users:write'>
       <DropdownMenu modal={false}>

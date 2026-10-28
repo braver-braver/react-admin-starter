@@ -8,12 +8,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { useNavigation } from '@/features/system/navigation'
 import { AppTitle } from './app-title'
 import { sidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 
 export function AppSidebar() {
+  const navGroups = useNavigation()
   const { collapsible, variant } = useLayout()
   const account = useAuthStore((state) => state.auth.user)
   const user = account
@@ -26,7 +28,7 @@ export function AppSidebar() {
         <AppTitle />
       </SidebarHeader>
       <SidebarContent>
-        {sidebarData.navGroups.map((group) => (
+        {navGroups.map((group) => (
           <NavGroup
             key={group.title}
             {...group}

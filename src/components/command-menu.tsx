@@ -14,10 +14,11 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { sidebarData } from './layout/data/sidebar-data'
+import { useNavigation } from '@/features/system/navigation'
 import { ScrollArea } from './ui/scroll-area'
 
 export function CommandMenu() {
+  const navGroups = useNavigation()
   const user = useAuthStore((state) => state.auth.user)
   const navigate = useNavigate()
   const { setTheme } = useTheme()
@@ -46,7 +47,7 @@ export function CommandMenu() {
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
           <CommandEmpty>没有匹配的结果。</CommandEmpty>
-          {sidebarData.navGroups.map((group) => (
+          {navGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items
                 .filter(

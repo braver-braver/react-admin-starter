@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { worker } from './browser'
+import {
+  accountById,
+  changeSystem,
+  principal,
+  resetSystemStore,
+  systemStore,
+} from './data/system'
 import { resetMockSessions } from './handlers'
 
 const requestedWith = { 'X-Requested-With': 'ReactAdminStarter' }
@@ -19,6 +26,7 @@ beforeAll(async () => {
 beforeEach(() => {
   worker.resetHandlers()
   resetMockSessions()
+  resetSystemStore()
 })
 
 afterAll(async () => {
@@ -31,19 +39,22 @@ describe('development auth handlers', () => {
     const loginResponse = await login()
     expect(loginResponse.status).toBe(200)
     const loginBody = await loginResponse.json()
-    expect(loginBody).toEqual({
+    expect(loginBody).toMatchObject({
       data: {
         user: {
           id: 'demo-admin',
           email: 'admin@example.com',
           name: '演示管理员',
           roles: ['admin'],
-          permissions: [
+          permissions: expect.arrayContaining([
             'users:read',
             'users:write',
             'permissions:read',
             'audit:read',
-          ],
+            'system:accounts:write',
+          ]),
+          routes: expect.arrayContaining(['/system/accounts']),
+          dataScope: { all: true },
         },
         csrfToken: expect.any(String),
       },
@@ -398,5 +409,270 @@ describe('audit handlers', () => {
     }
     expect(body.data.items).toHaveLength(5)
     expect(body.data.meta.pageSize).toBe(5)
+  })
+})
+
+describe('system and department API enforcement', () => {
+  const admin = () => principal('demo-admin')!
+  const rolePayload = {
+    name: '运营经办',
+    code: 'department_operator',
+    enabled: true,
+    permissionIds: ['users:read', 'users:write'],
+    menuIds: ['users'],
+    scope: 'department',
+    departmentIds: [],
+  }
+  const publicFields = (record: {
+    id: string
+    resource: string
+    protected: boolean
+  }) => {
+    const {
+      id: _id,
+      resource: _resource,
+      protected: _protected,
+      ...body
+    } = record
+    return body
+  }
+  async function operator() {
+    const role = await changeSystem('roles', undefined, rolePayload, admin())
+    if (!('id' in role)) throw new Error('Missing role')
+    const account = await changeSystem(
+      'accounts',
+      undefined,
+      {
+        name: '部门经办',
+        email: 'dept@example.com',
+        enabled: true,
+        departmentId: 'operations',
+        roleIds: [role.id],
+        password: 'Operator123!',
+      },
+      admin()
+    )
+    if (!('id' in account)) throw new Error('Missing account')
+    return { role, account }
+  }
+  it('filters before pagination/counts and rejects out-of-scope single and mixed batch writes atomically', async () => {
+    await operator()
+    const signedIn = await (
+      await login('dept@example.com', 'Operator123!')
+    ).json()
+    const listed = await (await fetch('/api/users?pageSize=100')).json()
+    expect(listed.data.meta.total).toBeGreaterThan(0)
+    expect(
+      listed.data.items.every(
+        (item: { departmentId: string }) => item.departmentId === 'operations'
+      )
+    ).toBe(true)
+    const all = await import('./data/users')
+    const inScope = all.usersStore.find(
+      (item) => item.departmentId === 'operations'
+    )!
+    const outside = all.usersStore.find(
+      (item) => item.departmentId === 'sales'
+    )!
+    const previous = inScope.status
+    expect(
+      (
+        await fetch(`/api/users/${outside.id}`, {
+          method: 'DELETE',
+          headers: writeHeaders(signedIn.data.csrfToken),
+        })
+      ).status
+    ).toBe(403)
+    expect(
+      (
+        await fetch('/api/users/status', {
+          method: 'PATCH',
+          headers: writeHeaders(signedIn.data.csrfToken),
+          body: JSON.stringify({
+            ids: [inScope.id, outside.id],
+            status: 'inactive',
+          }),
+        })
+      ).status
+    ).toBe(403)
+    expect(inScope.status).toBe(previous)
+    expect(all.usersStore.some((item) => item.id === outside.id)).toBe(true)
+    expect((await fetch('/api/system/accounts')).status).toBe(403)
+    expect(
+      (
+        await fetch('/api/system/roles', {
+          method: 'POST',
+          headers: writeHeaders(signedIn.data.csrfToken),
+          body: JSON.stringify(rolePayload),
+        })
+      ).status
+    ).toBe(403)
+  })
+
+  it('rejects role scope escalation through the HTTP API', async () => {
+    const { role, account } = await operator()
+    const maintainer = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'role_maintainer',
+        permissionIds: ['system:roles:write'],
+        menuIds: ['dashboard'],
+        scope: 'all',
+      },
+      admin()
+    )
+    if (!('id' in maintainer) || account.resource !== 'accounts')
+      throw new Error('Missing records')
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...publicFields(account), roleIds: [role.id, maintainer.id] },
+      admin()
+    )
+    const signedIn = await (
+      await login('dept@example.com', 'Operator123!')
+    ).json()
+    const response = await fetch('/api/system/roles/' + role.id, {
+      method: 'PUT',
+      headers: writeHeaders(signedIn.data.csrfToken),
+      body: JSON.stringify({ ...publicFields(role), scope: 'all' }),
+    })
+    expect(response.status).toBe(403)
+    expect(principal(account.id)?.dataScopes?.['users:read']?.all).toBe(false)
+  })
+
+  it('returns only resource-authorized system reference options', async () => {
+    const accountsOnly = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'accounts_reader',
+        permissionIds: ['system:accounts:read'],
+        menuIds: ['system-accounts'],
+        scope: 'all',
+      },
+      admin()
+    )
+    const departmentOnly = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...rolePayload,
+        code: 'department_reader',
+        permissionIds: ['system:departments:read'],
+        menuIds: ['system-departments'],
+        scope: 'department',
+      },
+      admin()
+    )
+    if (!('id' in accountsOnly) || !('id' in departmentOnly))
+      throw new Error('Missing roles')
+    for (const [email, roleId] of [
+      ['accounts-reader@example.com', accountsOnly.id],
+      ['department-reader@example.com', departmentOnly.id],
+    ]) {
+      await changeSystem(
+        'accounts',
+        undefined,
+        {
+          name: '范围测试',
+          email,
+          password: 'Options123!',
+          enabled: true,
+          departmentId: 'operations',
+          roleIds: [roleId],
+        },
+        admin()
+      )
+    }
+    await login('accounts-reader@example.com', 'Options123!')
+    const accountOptions = await fetch('/api/system/options')
+    expect(accountOptions.status).toBe(200)
+    expect((await accountOptions.json()).data.items).toEqual([])
+    await login('department-reader@example.com', 'Options123!')
+    const deptOptions = await fetch('/api/system/options')
+    expect(deptOptions.status).toBe(200)
+    const records = (await deptOptions.json()).data.items as Array<{
+      resource: string
+      id: string
+    }>
+    expect(records.map((record) => record.resource)).toEqual(['departments'])
+    expect(records.map((record) => record.id)).toEqual(['operations'])
+  })
+
+  it('revokes disabled and reset-password sessions permanently, with no credential fields in account responses', async () => {
+    const { account } = await operator()
+    await login('dept@example.com', 'Operator123!')
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...publicFields(account), enabled: false },
+      admin()
+    )
+    expect((await fetch('/api/auth/session')).status).toBe(401)
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...publicFields(account), enabled: true },
+      admin()
+    )
+    expect((await fetch('/api/auth/session')).status).toBe(401)
+    expect((await login('dept@example.com', 'Operator123!')).status).toBe(200)
+    await changeSystem(
+      'accounts',
+      account.id,
+      { ...publicFields(account), password: 'NewPassword123!' },
+      admin()
+    )
+    expect((await fetch('/api/auth/session')).status).toBe(401)
+    expect((await login('dept@example.com', 'Operator123!')).status).toBe(401)
+    expect((await login('dept@example.com', 'NewPassword123!')).status).toBe(
+      200
+    )
+    await login()
+    const accountList = await (await fetch('/api/system/accounts')).text()
+    expect(accountList).not.toContain('NewPassword123!')
+    expect(accountList).not.toContain('hash')
+    expect(accountList).not.toContain('credential')
+  })
+  it('requires CSRF and derives menus, direct route grants and API permissions from the live role', async () => {
+    const { role, account } = await operator()
+    await login()
+    expect(
+      (
+        await fetch('/api/system/roles', {
+          method: 'POST',
+          headers: requestedWith,
+          body: JSON.stringify(rolePayload),
+        })
+      ).status
+    ).toBe(403)
+    await login('dept@example.com', 'Operator123!')
+    const nav = await (await fetch('/api/auth/navigation')).json()
+    expect(
+      nav.data.some((item: { routeId: string }) => item.routeId === 'users')
+    ).toBe(true)
+    expect(
+      nav.data.some(
+        (item: { routeId: string }) => item.routeId === 'system-accounts'
+      )
+    ).toBe(false)
+    await changeSystem(
+      'roles',
+      role.id,
+      { ...publicFields(role), permissionIds: [], menuIds: [] },
+      admin()
+    )
+    const session = await (await fetch('/api/auth/session')).json()
+    expect(session.data.user.routes).not.toContain('/users')
+    expect(session.data.user.permissions).not.toContain('users:read')
+    expect((await fetch('/api/users')).status).toBe(403)
+    expect(systemStore().records.some((item) => item.id === account.id)).toBe(
+      true
+    )
+    expect(accountById(account.id)?.roleIds).toContain(role.id)
   })
 })

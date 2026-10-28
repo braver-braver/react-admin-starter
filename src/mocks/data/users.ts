@@ -8,6 +8,8 @@ import { type UserRole, type UserStatus } from '@/features/users/data/schema'
  */
 export type MockUser = {
   id: string
+  departmentId: string
+  createdBy: string
   firstName: string
   lastName: string
   username: string
@@ -95,6 +97,8 @@ function seedUsers(): MockUser[] {
     const createdAt = faker.date.past({ years: 1 })
     users.push({
       id: `usr-${String(index + 1).padStart(4, '0')}`,
+      departmentId: ['operations', 'support', 'sales'][index % 3],
+      createdBy: index % 2 === 0 ? 'demo-admin' : 'demo-viewer',
       firstName,
       lastName,
       username,

@@ -3,6 +3,7 @@ import {
   type AuditAction,
   auditActionValues,
 } from '@/features/audit/data/schema'
+import { systemStore } from './system'
 import { usersStore } from './users'
 
 /**
@@ -18,6 +19,8 @@ export type MockAuditLog = {
   target: string
   detail: string
   ip: string
+  departmentId?: string
+  createdBy?: string
 }
 
 export const auditLogsStore: MockAuditLog[] = []
@@ -58,6 +61,8 @@ function seedAuditLogs(): void {
       createdAt: new Date(now - index * 3.7 * 60 * 60 * 1000).toISOString(),
       actorName: `${actor.lastName}${actor.firstName}`,
       actorEmail: actor.email,
+      departmentId: actor.departmentId,
+      createdBy: actor.id,
       action,
       target: `${target.username}（${target.email}）`,
       detail: detailFor(action, index),
@@ -73,7 +78,14 @@ let nextLogId = auditLogsStore.length + 1
 export function appendAuditLog(
   entry: Omit<MockAuditLog, 'id' | 'createdAt'> & { createdAt?: string }
 ): MockAuditLog {
+  const account = systemStore().records.find(
+    (record) =>
+      record.resource === 'accounts' && record.email === entry.actorEmail
+  )
   const log: MockAuditLog = {
+    departmentId:
+      account?.resource === 'accounts' ? account.departmentId : undefined,
+    createdBy: account?.id,
     id: `log-${String(nextLogId++).padStart(4, '0')}`,
     createdAt: entry.createdAt ?? new Date().toISOString(),
     ...entry,

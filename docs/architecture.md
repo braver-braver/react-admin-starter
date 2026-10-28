@@ -9,6 +9,7 @@ React application → feature API functions → shared HTTP client → MSW devel
 No backend runtime is required for local demo mode. GoFrame, Gin and other backends are future consumers of the API contract, not dependencies of the starter.
 
 ## Modules
+- System: accounts, roles, capability catalog, server-issued navigation/routes, departments and per-capability data scopes. See [system management](system-management.md).
 - Foundation: layout, sidebar, themes, branding, simplified Chinese UI.
 - Shared: HTTP errors, cookie sessions, RBAC helpers, URL-synced server-driven DataTable state, validated forms, upload primitives.
 - Demos: users (server-side CRUD with RBAC), permissions, audit logs (read-only, `audit:read`).

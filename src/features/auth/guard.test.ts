@@ -11,6 +11,7 @@ const session = {
     name: 'Test User',
     roles: ['reader'],
     permissions: ['users:read'],
+    routes: ['/', '/users'],
   },
   csrfToken: 'csrf-token',
 }
