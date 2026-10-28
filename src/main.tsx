@@ -1,12 +1,17 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
+import {
+  RouterProvider,
+  createRouter,
+  createHashHistory,
+} from '@tanstack/react-router'
 import { appConfig } from '@/config/app'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { ApiError, invalidateApiRequests, setAuthErrorHandler } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
+import { DemoBanner } from '@/components/demo-banner'
 import { clearSession, safeRedirect } from '@/features/auth/session'
 import { DirectionProvider } from './context/direction-provider'
 import { ThemeProvider } from './context/theme-provider'
@@ -35,6 +40,7 @@ const queryClient = new QueryClient({
 // Create a new router instance
 const router = createRouter({
   routeTree,
+  history: __DEMO_BUILD__ ? createHashHistory() : undefined,
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
@@ -72,9 +78,19 @@ setAuthErrorHandler((error) => {
 })
 
 async function start() {
-  if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== 'false') {
+  if (
+    __DEMO_BUILD__ ||
+    (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== 'false')
+  ) {
     const { worker } = await import('./mocks/browser')
-    await worker.start({ onUnhandledRequest: 'bypass', quiet: true })
+    await worker.start({
+      onUnhandledRequest: 'bypass',
+      quiet: true,
+      serviceWorker: {
+        url: `${import.meta.env.BASE_URL}mockServiceWorker.js`,
+        options: { scope: import.meta.env.BASE_URL },
+      },
+    })
   }
   renderApp()
 }
@@ -95,6 +111,7 @@ function renderApp() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <DirectionProvider>
+              <DemoBanner />
               <RouterProvider router={router} />
             </DirectionProvider>
           </ThemeProvider>

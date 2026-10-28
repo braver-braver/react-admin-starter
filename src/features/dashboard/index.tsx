@@ -74,8 +74,8 @@ export function Dashboard() {
           </Card>
         </div>
         <p className='mt-6 text-sm text-muted-foreground'>
-          {import.meta.env.DEV
-            ? '当前使用开发环境 MSW 会话和权限示例。用户 CRUD 仍为交互演示，不会保存。'
+          {__DEMO_BUILD__ || import.meta.env.DEV
+            ? '当前使用 MSW 演示会话、权限与用户 CRUD。修改仅保存在浏览器运行期间，刷新后重置。'
             : '会话与权限由服务端返回。客户端权限控制仅用于界面展示，服务端必须独立鉴权。'}
         </p>
       </Main>

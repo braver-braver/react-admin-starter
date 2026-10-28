@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   verify:
@@ -36,6 +35,10 @@ jobs:
         run: pnpm build
       - name: Full application E2E smoke and accessibility baseline
         run: pnpm test:e2e
+      - name: Pages snapshot assembly tests
+        run: pnpm test:pages
+      - name: Static demo and cross-version browser smoke
+        run: pnpm test:demo
       - name: Upload E2E failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

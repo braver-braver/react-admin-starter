@@ -12,7 +12,8 @@ import { UserAuthForm } from './components/user-auth-form'
 export function SignIn() {
   const { redirect } = useSearch({ from: '/(auth)/sign-in' })
   const mocksEnabled =
-    import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== 'false'
+    __DEMO_BUILD__ ||
+    (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCKS !== 'false')
   return (
     <AuthLayout>
       <Card className='max-w-sm gap-4'>
@@ -20,7 +21,7 @@ export function SignIn() {
           <CardTitle className='text-lg tracking-tight'>登录管理端</CardTitle>
           <CardDescription>
             {mocksEnabled
-              ? '开发演示：使用下方账户体验不同权限。'
+              ? '演示环境：使用下方账户体验不同权限。'
               : '请输入账户信息，登录已接入的认证服务。'}
           </CardDescription>
         </CardHeader>
@@ -32,7 +33,9 @@ export function SignIn() {
               <p>只读用户：viewer@example.com</p>
               <p>受限访客：guest@example.com</p>
               <p>演示密码：Demo1234!</p>
-              <p>仅用于本地开发，刷新可恢复当前标签页的模拟会话。</p>
+              <p>
+                仅供演示，数据保存在当前浏览器；请勿输入真实密码或个人信息。
+              </p>
             </div>
           )}
         </CardContent>

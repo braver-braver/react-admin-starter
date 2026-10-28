@@ -33,4 +33,6 @@ function inspect(directory) {
 }
 inspect(dist)
 if (!inspected) throw new Error('Production output is empty')
-console.log(`Production boundary verified: ${inspected} files; no mock worker, handlers or demo credentials.`)
+console.log(
+  `Production boundary verified: ${inspected} files; no mock worker, handlers or demo credentials.`
+)

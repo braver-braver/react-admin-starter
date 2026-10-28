@@ -2,6 +2,7 @@ import { HttpResponse, http } from 'msw'
 import {
   apiError,
   currentSession,
+  mockBase,
   requireCsrf,
   requirePermission,
 } from './auth'
@@ -10,7 +11,7 @@ import {
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 
 export const uploadsHandlers = [
-  http.post('/api/uploads', async ({ request, cookies }) => {
+  http.post(`${mockBase}api/uploads`, async ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =

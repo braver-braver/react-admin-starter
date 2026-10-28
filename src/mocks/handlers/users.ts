@@ -9,6 +9,7 @@ import {
 import {
   apiError,
   currentSession,
+  mockBase,
   requireCsrf,
   requirePermission,
 } from './auth'
@@ -174,7 +175,7 @@ function readIds(body: unknown): string[] {
 }
 
 export const usersHandlers = [
-  http.get('/api/users', ({ request, cookies }) => {
+  http.get(`${mockBase}api/users`, ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied = requirePermission(session, 'users:read')
@@ -185,7 +186,7 @@ export const usersHandlers = [
     })
   }),
 
-  http.post('/api/users', async ({ request, cookies }) => {
+  http.post(`${mockBase}api/users`, async ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -219,7 +220,7 @@ export const usersHandlers = [
     return HttpResponse.json({ data: created }, { status: 201 })
   }),
 
-  http.put('/api/users/:id', async ({ request, params, cookies }) => {
+  http.put(`${mockBase}api/users/:id`, async ({ request, params, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -250,7 +251,7 @@ export const usersHandlers = [
     return HttpResponse.json({ data: existing })
   }),
 
-  http.delete('/api/users/:id', ({ request, params, cookies }) => {
+  http.delete(`${mockBase}api/users/:id`, ({ request, params, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -271,32 +272,36 @@ export const usersHandlers = [
     return HttpResponse.json({ data: { success: true } })
   }),
 
-  http.post('/api/users/batch-delete', async ({ request, cookies }) => {
-    const session = currentSession(cookies)
-    if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
-    const denied =
-      requirePermission(session, 'users:write') ?? requireCsrf(request, session)
-    if (denied) return denied
+  http.post(
+    `${mockBase}api/users/batch-delete`,
+    async ({ request, cookies }) => {
+      const session = currentSession(cookies)
+      if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
+      const denied =
+        requirePermission(session, 'users:write') ??
+        requireCsrf(request, session)
+      if (denied) return denied
 
-    const ids = new Set(readIds(await readJson(request)))
-    const removed: MockUser[] = []
-    for (let index = usersStore.length - 1; index >= 0; index -= 1) {
-      if (ids.has(usersStore[index].id))
-        removed.push(usersStore.splice(index, 1)[0])
+      const ids = new Set(readIds(await readJson(request)))
+      const removed: MockUser[] = []
+      for (let index = usersStore.length - 1; index >= 0; index -= 1) {
+        if (ids.has(usersStore[index].id))
+          removed.push(usersStore.splice(index, 1)[0])
+      }
+      appendAuditLog({
+        ...actorOf(session),
+        action: 'user.batch_deleted',
+        target: `${removed.length} 个用户`,
+        detail: removed.length
+          ? `批量删除 ${removed.length} 个用户`
+          : '未匹配到用户',
+        ip: '127.0.0.1',
+      })
+      return HttpResponse.json({ data: { deletedCount: removed.length } })
     }
-    appendAuditLog({
-      ...actorOf(session),
-      action: 'user.batch_deleted',
-      target: `${removed.length} 个用户`,
-      detail: removed.length
-        ? `批量删除 ${removed.length} 个用户`
-        : '未匹配到用户',
-      ip: '127.0.0.1',
-    })
-    return HttpResponse.json({ data: { deletedCount: removed.length } })
-  }),
+  ),
 
-  http.patch('/api/users/status', async ({ request, cookies }) => {
+  http.patch(`${mockBase}api/users/status`, async ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -329,7 +334,7 @@ export const usersHandlers = [
     return HttpResponse.json({ data: { updatedCount } })
   }),
 
-  http.post('/api/users/invite', async ({ request, cookies }) => {
+  http.post(`${mockBase}api/users/invite`, async ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -376,28 +381,32 @@ export const usersHandlers = [
     return HttpResponse.json({ data: invited }, { status: 201 })
   }),
 
-  http.post('/api/users/invite-batch', async ({ request, cookies }) => {
-    const session = currentSession(cookies)
-    if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
-    const denied =
-      requirePermission(session, 'users:write') ?? requireCsrf(request, session)
-    if (denied) return denied
+  http.post(
+    `${mockBase}api/users/invite-batch`,
+    async ({ request, cookies }) => {
+      const session = currentSession(cookies)
+      if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
+      const denied =
+        requirePermission(session, 'users:write') ??
+        requireCsrf(request, session)
+      if (denied) return denied
 
-    const ids = new Set(readIds(await readJson(request)))
-    let invitedCount = 0
-    for (const user of usersStore) {
-      if (!ids.has(user.id) || user.status === 'invited') continue
-      user.status = 'invited'
-      user.updatedAt = new Date().toISOString()
-      invitedCount += 1
+      const ids = new Set(readIds(await readJson(request)))
+      let invitedCount = 0
+      for (const user of usersStore) {
+        if (!ids.has(user.id) || user.status === 'invited') continue
+        user.status = 'invited'
+        user.updatedAt = new Date().toISOString()
+        invitedCount += 1
+      }
+      appendAuditLog({
+        ...actorOf(session),
+        action: 'user.batch_invited',
+        target: `${invitedCount} 个用户`,
+        detail: `批量邀请 ${invitedCount} 个用户`,
+        ip: '127.0.0.1',
+      })
+      return HttpResponse.json({ data: { invitedCount } })
     }
-    appendAuditLog({
-      ...actorOf(session),
-      action: 'user.batch_invited',
-      target: `${invitedCount} 个用户`,
-      detail: `批量邀请 ${invitedCount} 个用户`,
-      ip: '127.0.0.1',
-    })
-    return HttpResponse.json({ data: { invitedCount } })
-  }),
+  ),
 ]

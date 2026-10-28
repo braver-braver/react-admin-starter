@@ -40,7 +40,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
-See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for the shared string catalog and `Intl` formatting conventions.
+See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
 
 ## Design principles
 
@@ -71,3 +71,14 @@ pnpm test:e2e
 可访问性基线检查主要内容地标、页面标题、表单与图标按钮名称、跳过导航、Tab/Shift+Tab 焦点约束、Escape 关闭与焦点恢复。它不是完整 WCAG 审计，不覆盖屏幕阅读器实机体验、色彩对比度或所有业务表单。
 
 CI 中 `Full application E2E smoke and accessibility baseline` 与组件测试分开显示，任何断言失败都会导致非零退出。失败时保存 7 天的 HTML 报告、截图与 trace；本地产物位于 `playwright-report/` 和 `test-results/`（不提交）。可用 `pnpm exec playwright show-report` 或 `pnpm exec playwright show-trace <trace.zip>` 查看。断言使用语义选择器和自动等待，不依赖固定延时、像素截图或动态用户日期。
+
+## 静态演示与版本预览
+
+普通生产构建使用 `pnpm build`，始终排除演示账户与 MSW。仅用于公开展示的静态演示使用 `pnpm build:demo`，通过版本路径与生产 API 隔离。
+
+```sh
+pnpm test:pages
+pnpm test:demo
+```
+
+GitHub Pages 需要仓库管理员启用后才会部署；历史快照遵循不可覆写的 Release 版本约束。详见 [部署与恢复](docs/pages-demo.md)。

@@ -11,7 +11,7 @@ Build a lightweight, reusable, Chinese-first React admin starter independent of 
 - Use Mock Service Worker for demos and tests; production must not contain mock authentication bypass.
 - Use a small API adapter, typed contracts and clear error handling. Do not hardcode GoFrame-specific response semantics in shared UI.
 - Auth API uses same-origin Cookie sessions and Zod-validated response envelopes; see docs/auth-and-api.md and docs/api.openapi.yaml. Keep both contracts in sync.
-- Serve the MSW worker only through Vite development middleware; never copy it to public/ or production artifacts.
+- Serve MSW through Vite development middleware or the explicit build:demo static artifact. Never copy it to public/ or ordinary production artifacts. Demo output uses hash routing, scoped worker/API/session paths and a visible versioned demo banner; keep production checks independent.
 - Server-side authorization remains mandatory; client-side route and button guards are UX only.
 - Prefer server-side pagination, filtering and sorting for administrative tables.
 - Do not add a dependency when existing libraries or platform APIs suffice.
