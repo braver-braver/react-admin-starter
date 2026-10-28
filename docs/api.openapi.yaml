@@ -456,7 +456,7 @@ paths:
   /system/options:
     get:
       operationId: "systemReferenceOptions"
-      description: "Requires a system management capability. Reference metadata only; no accounts or credentials."
+      description: "Requires a system resource read capability; only authorized reference resources and department scopes are returned. No accounts or credentials."
       responses:
         200:
           description: "Success"

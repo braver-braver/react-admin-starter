@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, RefreshCw, LockKeyhole } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { can } from '@/lib/permissions'
+import { canAccessData } from '@/lib/data-scope'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -177,6 +178,11 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
       await refreshed()
     },
   })
+  const canWriteRecord = (record: SystemRecord) =>
+    writable &&
+    !record.protected &&
+    (record.resource !== 'accounts' ||
+      canAccessData(user, record, 'system:accounts:write'))
   const records = query.data?.items ?? []
   const all = options.data?.items ?? []
   const label = (id: string) => all.find((item) => item.id === id)?.name ?? id
@@ -373,16 +379,12 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
                         variant='ghost'
                         size='sm'
                         onClick={() => setEditor(record)}
-                        aria-label={`${writable && !record.protected ? '编辑' : '查看'}${record.name}`}
+                        aria-label={`${canWriteRecord(record) ? '编辑' : '查看'}${record.name}`}
                       >
                         <Pencil className='size-3.5' />
-                        {writable && !record.protected ? '编辑' : '查看'}
+                        {canWriteRecord(record) ? '编辑' : '查看'}
                       </Button>
-                      {writable &&
-                        (resource !== 'accounts' ||
-                          user?.dataScopes?.['system:accounts:write']?.all ||
-                          !!user?.dataScopes?.['system:accounts:write']
-                            ?.departments.length) && (
+                      {canWriteRecord(record) && (
                           <Button
                             variant='ghost'
                             size='icon'
@@ -429,7 +431,7 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
             resource={resource}
             record={editor === 'new' ? undefined : editor}
             options={all}
-            readOnly={!writable || (editor !== 'new' && editor.protected)}
+            readOnly={!writable || (editor !== 'new' && !canWriteRecord(editor))}
             onClose={() => setEditor(null)}
             onSaved={refreshed}
           />

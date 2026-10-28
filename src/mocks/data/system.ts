@@ -383,6 +383,32 @@ export function principal(
     )
   return user
 }
+function assertDelegation(
+  actor: AuthUser,
+  recipient: AuthUser,
+  db: Store
+) {
+  for (const permission of recipient.permissions) {
+    if (!actor.permissions.includes(permission))
+      deny('不能授予自己未持有的权限。')
+    const own = actor.dataScopes?.[permission]
+    const granted = recipient.dataScopes?.[permission]
+    if (
+      !own ||
+      !granted ||
+      (!own.all &&
+        (granted.all ||
+          granted.departments.some(
+            (department) => !own.departments.includes(department)
+          ) ||
+          (granted.self && !(own.self && actor.id === recipient.id))))
+    )
+      deny('不能授予超出自身的数据范围。')
+  }
+  if (recipient.routes?.some((route) => !actor.routes?.includes(route)))
+    deny('不能授予自己无权访问的页面。')
+}
+
 function references(ids: string[], kind: SystemResource, db: Store) {
   if (
     ids.some(
@@ -478,6 +504,12 @@ async function applyChange(
         if (!id && !input.password) invalid('创建登录用户必须设置初始密码。')
         const { password, ...publicInput } = input
         record = { ...common, resource, ...publicInput }
+        if (
+          existing?.resource === 'accounts' &&
+          existing.departmentId !== record.departmentId &&
+          !actor.dataScopes?.['system:accounts:write']?.all
+        )
+          deny('调整登录账号所属部门需要全部账号管理范围。')
         if (!canAccessData(actor, record, 'system:accounts:write'))
           deny('账号部门超出当前数据范围。')
         const candidate = principal(record.id, {
@@ -493,28 +525,7 @@ async function applyChange(
             { ...record, enabled: true },
           ],
         })
-        if (
-          candidate?.permissions.some(
-            (permission) => !actor.permissions.includes(permission)
-          )
-        )
-          deny('不能授予自己未持有的权限。')
-        if (candidate) {
-          for (const permission of candidate.permissions) {
-            const granted = candidate.dataScopes?.[permission]
-            const own = actor.dataScopes?.[permission]
-            if (
-              !own ||
-              (!own.all &&
-                (granted?.all ||
-                  granted?.departments.some(
-                    (department) => !own.departments.includes(department)
-                  ) ||
-                  (granted?.self && !(own.self && actor.id === record.id))))
-            )
-              deny('不能授予超出自身的数据范围。')
-          }
-        }
+        if (candidate) assertDelegation(actor, candidate, db)
         if (
           existing?.resource === 'accounts' &&
           existing.enabled !== input.enabled &&
@@ -539,6 +550,38 @@ async function applyChange(
         if (codes.some((permission) => !actor.permissions.includes(permission)))
           deny('不能授予自己未持有的权限。')
         record = { ...common, resource, ...input }
+        const candidateDb: Store = {
+          ...db,
+          records: [
+            ...db.records.filter((item) => item !== existing),
+            record,
+          ],
+        }
+        // A newly-created role must not expand the actor's own capability
+        // bounds even before it is assigned to an account.
+        const representative = accountById(actor.id, candidateDb)
+        if (representative) {
+          const hypothetical = principal(actor.id, {
+            ...candidateDb,
+            records: candidateDb.records.map((item) =>
+              item.resource === 'accounts' && item.id === actor.id
+                ? { ...item, roleIds: [...item.roleIds, record.id] }
+                : item
+            ),
+          })
+          if (hypothetical) assertDelegation(actor, hypothetical, candidateDb)
+        }
+        // A shared role can change privileges for every existing assignee.
+        // Validate their resulting grants, not merely the role's codes.
+        for (const account of recordsOf(db, 'accounts')) {
+          if (
+            account.resource !== 'accounts' ||
+            !account.roleIds.includes(record.id)
+          )
+            continue
+          const recipient = principal(account.id, candidateDb)
+          if (recipient) assertDelegation(actor, recipient, candidateDb)
+        }
         break
       }
       case 'permissions': {

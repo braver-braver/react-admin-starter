@@ -27,21 +27,17 @@ export const systemHandlers = [
   http.get(`${mockBase}api/system/options`, ({ cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
-    if (!session.user.permissions.some((code) => code.startsWith('system:')))
+    if (!session.user.permissions.some((code) => /^system:(accounts|roles|permissions|menus|departments):read$/.test(code)))
       return apiError(403, 'FORBIDDEN', '没有查看系统配置的权限。')
     const items = systemStore().records.filter(
       (record) =>
         record.resource !== 'accounts' &&
+        session.user.permissions.includes(`system:${record.resource}:read`) &&
         (record.resource !== 'departments' ||
-          record.id === session.user.departmentId ||
-          session.user.permissions.some(
-            (permission) =>
-              permission.startsWith('system:') &&
-              canAccessData(
-                session.user,
-                { departmentId: record.id },
-                permission
-              )
+          canAccessData(
+            session.user,
+            { departmentId: record.id },
+            'system:departments:read'
           ))
     )
     return HttpResponse.json({ data: { items } })

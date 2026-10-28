@@ -44,7 +44,7 @@ pnpm dev
 | POST | /api/auth/logout | `{success:true}` | 校验 CSRF、吊销会话、清除 Cookie |
 | GET | /api/auth/permissions | `{roles,permissions}` | 需要 permissions:read；否则 403 |
 | GET | /api/auth/navigation | Menu[] | 返回当前账号启用且授权的菜单；停用菜单同时撤销路由访问 |
-| GET | /api/system/options | SystemRecord[] | 需要任意 system:*:read；返回角色/权限/菜单/部门选项（按数据范围过滤） |
+| GET | /api/system/options | SystemRecord[] | 需要至少一个 system:{resource}:read；只返回对应资源已授权的角色/权限/菜单/部门记录（部门进一步按范围过滤） |
 | GET | /api/system/{resource} | `{items,total,page,pageSize}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
 | POST | /api/system/{resource} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；校验引用、层级与越权后创建 |
 | PUT | /api/system/{resource}/{id} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；保护记录返回 409 |
