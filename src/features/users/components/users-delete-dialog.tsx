@@ -1,13 +1,14 @@
-'use client'
-
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle } from 'lucide-react'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { deleteUser } from '../api'
 import { type User } from '../data/schema'
+import { usersQueryKey } from '../queries'
 
 type UserDeleteDialogProps = {
   open: boolean
@@ -21,12 +22,25 @@ export function UsersDeleteDialog({
   currentRow,
 }: UserDeleteDialogProps) {
   const [value, setValue] = useState('')
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: () => deleteUser(currentRow.id),
+    onSuccess: () => {
+      toast.success(`用户 ${currentRow.username} 已删除。`)
+      void queryClient.invalidateQueries({ queryKey: usersQueryKey })
+      onOpenChange(false)
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : '删除失败，请稍后重试。'
+      )
+    },
+  })
 
   const handleDelete = () => {
     if (value.trim() !== currentRow.username) return
-
-    onOpenChange(false)
-    showSubmittedData(currentRow, 'The following user has been deleted:')
+    mutation.mutate()
   }
 
   return (
@@ -34,14 +48,14 @@ export function UsersDeleteDialog({
       open={open}
       onOpenChange={onOpenChange}
       form='users-delete-form'
-      disabled={value.trim() !== currentRow.username}
+      disabled={value.trim() !== currentRow.username || mutation.isPending}
       title={
         <span className='text-destructive'>
           <AlertTriangle
             className='me-1 inline-block stroke-destructive'
             size={18}
           />{' '}
-          Delete User
+          删除用户
         </span>
       }
       desc={
@@ -54,35 +68,30 @@ export function UsersDeleteDialog({
           className='space-y-4'
         >
           <p className='mb-2'>
-            Are you sure you want to delete{' '}
-            <span className='font-bold'>{currentRow.username}</span>?
-            <br />
-            This action will permanently remove the user with the role of{' '}
-            <span className='font-bold'>
-              {currentRow.role.toUpperCase()}
-            </span>{' '}
-            from the system. This cannot be undone.
+            确认删除用户{' '}
+            <span className='font-bold'>{currentRow.username}</span>
+            ？<br />
+            该用户的角色为 <span className='font-bold'>{currentRow.role}</span>
+            ，删除后无法恢复。
           </p>
 
           <Label className='my-2'>
-            Username:
+            用户名：
             <Input
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder='Enter username to confirm deletion.'
+              placeholder='输入用户名以确认删除'
               autoFocus
             />
           </Label>
 
           <Alert variant='destructive'>
-            <AlertTitle>Warning!</AlertTitle>
-            <AlertDescription>
-              Please be careful, this operation can not be rolled back.
-            </AlertDescription>
+            <AlertTitle>警告</AlertTitle>
+            <AlertDescription>此操作不可撤销，请谨慎确认。</AlertDescription>
           </Alert>
         </form>
       }
-      confirmText='Delete'
+      confirmText='删除'
       destructive
     />
   )

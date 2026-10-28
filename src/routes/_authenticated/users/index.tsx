@@ -25,6 +25,9 @@ const usersSearchSchema = z.object({
     .catch([]),
   // Per-column text filter (example for username)
   username: z.string().optional().catch(''),
+  // Server-side sorting
+  sortBy: z.string().optional().catch('username'),
+  sortOrder: z.enum(['asc', 'desc']).optional().catch('asc'),
 })
 
 export const Route = createFileRoute('/_authenticated/users/')({

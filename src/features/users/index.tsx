@@ -10,7 +10,6 @@ import { UsersDialogs } from './components/users-dialogs'
 import { UsersPrimaryButtons } from './components/users-primary-buttons'
 import { UsersProvider } from './components/users-provider'
 import { UsersTable } from './components/users-table'
-import { users } from './data/users'
 
 const route = getRouteApi('/_authenticated/users/')
 
@@ -32,12 +31,12 @@ export function Users() {
           <div>
             <h2 className='text-2xl font-bold tracking-tight'>用户管理示例</h2>
             <p className='text-muted-foreground'>
-              展示用户表格、筛选和操作交互；当前使用模拟数据。
+              服务端分页、筛选与排序的通用 CRUD 模式，数据来自 Mock API。
             </p>
           </div>
           <UsersPrimaryButtons />
         </div>
-        <UsersTable data={users} search={search} navigate={navigate} />
+        <UsersTable search={search} navigate={navigate} />
       </Main>
 
       <Permission permission='users:write'>

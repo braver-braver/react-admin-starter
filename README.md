@@ -2,7 +2,7 @@
 
 A lightweight, Chinese-first, reusable React admin application based on [shadcn-admin](https://github.com/satnaing/shadcn-admin).
 
-> **Status:** v0.1 Foundation. The shell is Chinese-first and the upstream demos are reduced to a minimal dashboard and user-table example. **MSW-backed session and RBAC examples are available in development; production requires a real same-origin auth API.**
+> **Status:** v0.2. The shell is Chinese-first. Development builds ship MSW-backed cookie sessions, RBAC, server-driven user CRUD, image upload and audit-log examples; production requires a real same-origin auth API with server-side authorization.\*\*
 
 ## Tech stack
 
@@ -35,7 +35,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 - [x] Import the pinned upstream source, assets and license
 - [x] v0.1: Remove unrelated demo routes, localize navigation and expose app branding
 - [x] v0.2: Development-only MSW APIs, authentication and RBAC reference implementation
-- [ ] v0.2: Reusable server-side CRUD, uploads and audit-log examples
+- [x] v0.2: Reusable server-side CRUD, uploads and audit-log examples
 - [ ] v1.0: Stable API contract, documentation and template-quality release
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).

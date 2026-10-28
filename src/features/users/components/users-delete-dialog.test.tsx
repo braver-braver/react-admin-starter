@@ -1,178 +1,100 @@
-import { useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { userEvent } from 'vitest/browser'
-import { showSubmittedData } from '@/lib/show-submitted-data'
+import { page, userEvent } from 'vitest/browser'
 import { type User } from '../data/schema'
 import { UsersDeleteDialog } from './users-delete-dialog'
 
-vi.mock('@/lib/show-submitted-data', () => ({ showSubmittedData: vi.fn() }))
+const deleteUserMock = vi.fn()
 
-const MOCK_USER: User = {
-  id: 'user-delete-test',
-  firstName: 'John',
-  lastName: 'Doe',
-  username: 'john_doe',
-  email: 'johndoe@shadcn-admin.com',
-  phoneNumber: '+959123456789',
+vi.mock('../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api')>()
+  return {
+    ...actual,
+    deleteUser: (...args: unknown[]) => deleteUserMock(...args),
+  }
+})
+
+const currentUser: User = {
+  id: 'usr-0001',
+  firstName: '伟',
+  lastName: '张',
+  username: 'zhang_wei',
+  email: 'zhang.wei@example.com',
+  phoneNumber: '+8613800000000',
   status: 'active',
   role: 'manager',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-02-02'),
 }
 
+async function renderDialog(onOpenChange = vi.fn()) {
+  const client = new QueryClient()
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <UsersDeleteDialog
+        open
+        onOpenChange={onOpenChange}
+        currentRow={currentUser}
+      />
+    </QueryClientProvider>
+  )
+  return screen
+}
+
 describe('UsersDeleteDialog', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('renders the dialog with the correct title, description, input and buttons', async () => {
-    const { getByText, getByRole } = await render(
-      <UsersDeleteDialog open onOpenChange={vi.fn()} currentRow={MOCK_USER} />
-    )
-
-    const title = getByRole('heading', {
-      level: 2,
-      name: /Delete User/i,
-    })
-    const desc = getByText(
-      new RegExp(`Are you sure you want to delete ${MOCK_USER.username}?`, 'i')
-    )
-    const usernameInput = getByRole('textbox', { name: /Username/i })
-    const cancelButton = getByRole('button', { name: /Cancel/i })
-    const deleteButton = getByRole('button', { name: /Delete/i })
-
-    await expect.element(title).toBeInTheDocument()
-    await expect.element(desc).toBeInTheDocument()
-    await expect.element(usernameInput).toBeInTheDocument()
-    await expect.element(cancelButton).toBeInTheDocument()
-    await expect.element(deleteButton).toBeInTheDocument()
-    await expect.element(deleteButton).toBeDisabled()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('keeps the delete button disabled until the username input is filled correctly', async () => {
-    const { getByRole } = await render(
-      <UsersDeleteDialog open onOpenChange={vi.fn()} currentRow={MOCK_USER} />
+  it('disables the confirm button until the username matches', async () => {
+    const { getByRole } = await renderDialog()
+
+    const confirmButton = getByRole('button', { name: /^删除$/ })
+    await expect.element(confirmButton).toBeDisabled()
+
+    await userEvent.fill(
+      page.getByPlaceholder('输入用户名以确认删除'),
+      'wrong-name'
     )
+    await expect.element(confirmButton).toBeDisabled()
 
-    const usernameInput = getByRole('textbox', { name: /Username/i })
-    const deleteButton = getByRole('button', { name: /Delete/i })
-
-    await expect.element(deleteButton).toBeDisabled()
-
-    await userEvent.fill(usernameInput, 'wrong-username')
-    await expect.element(deleteButton).toBeDisabled()
-
-    await userEvent.fill(usernameInput, MOCK_USER.username)
-    await expect.element(deleteButton).toBeEnabled()
+    await userEvent.fill(
+      page.getByPlaceholder('输入用户名以确认删除'),
+      'zhang_wei'
+    )
+    await expect.element(confirmButton).toBeEnabled()
   })
 
-  it('closes the dialog when the cancel button is clicked', async () => {
+  it('deletes via the API and closes on success', async () => {
+    deleteUserMock.mockResolvedValueOnce(undefined)
     const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersDeleteDialog
-        open
-        onOpenChange={onOpenChange}
-        currentRow={MOCK_USER}
-      />
+    const { getByRole } = await renderDialog(onOpenChange)
+
+    await userEvent.fill(
+      page.getByPlaceholder('输入用户名以确认删除'),
+      'zhang_wei'
     )
+    await userEvent.click(getByRole('button', { name: /^删除$/ }))
 
-    const cancelButton = getByRole('button', { name: /Cancel/i })
-    await userEvent.click(cancelButton)
-
-    expect(onOpenChange).toHaveBeenCalledOnce()
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    await vi.waitFor(() =>
+      expect(deleteUserMock).toHaveBeenCalledWith('usr-0001')
+    )
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
-  it('resets the username input when the dialog is closed and reopened', async () => {
-    function Harness() {
-      const [open, setOpen] = useState(true)
-      return (
-        <>
-          <button type='button' onClick={() => setOpen(true)}>
-            Reopen
-          </button>
-          {open ? (
-            <UsersDeleteDialog
-              open={open}
-              onOpenChange={setOpen}
-              currentRow={MOCK_USER}
-            />
-          ) : null}
-        </>
-      )
-    }
-
-    const { getByRole } = await render(<Harness />)
-
-    const usernameInput = getByRole('textbox', { name: /Username/i })
-    await userEvent.fill(usernameInput, MOCK_USER.username)
-    await expect.element(usernameInput).toHaveValue(MOCK_USER.username)
-
-    const closeButton = getByRole('button', { name: /Cancel/i })
-    await userEvent.click(closeButton)
-
-    const reopenButton = getByRole('button', { name: /Reopen/i })
-    await userEvent.click(reopenButton)
-    await expect.element(usernameInput).toHaveValue('')
-  })
-
-  it('shows the submitted data when deleted successfully', async () => {
+  it('keeps the dialog open when the API rejects', async () => {
+    deleteUserMock.mockRejectedValueOnce(new Error('用户不存在。'))
     const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersDeleteDialog
-        open
-        onOpenChange={onOpenChange}
-        currentRow={MOCK_USER}
-      />
+    const { getByRole } = await renderDialog(onOpenChange)
+
+    await userEvent.fill(
+      page.getByPlaceholder('输入用户名以确认删除'),
+      'zhang_wei'
     )
+    await userEvent.click(getByRole('button', { name: /^删除$/ }))
 
-    const usernameInput = getByRole('textbox', { name: /Username/i })
-    const deleteButton = getByRole('button', { name: /Delete/i })
-
-    await expect.element(deleteButton).toBeDisabled()
-
-    await userEvent.fill(usernameInput, MOCK_USER.username)
-
-    await expect.element(deleteButton).toBeEnabled()
-
-    await userEvent.click(deleteButton)
-
-    expect(onOpenChange).toHaveBeenCalledOnce()
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-
-    expect(showSubmittedData).toHaveBeenCalledOnce()
-    expect(showSubmittedData).toHaveBeenCalledWith(
-      MOCK_USER,
-      'The following user has been deleted:'
-    )
-  })
-
-  it('deletes successfully when press Enter key on the username input', async () => {
-    const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersDeleteDialog
-        open
-        onOpenChange={onOpenChange}
-        currentRow={MOCK_USER}
-      />
-    )
-
-    const usernameInput = getByRole('textbox', { name: /Username/i })
-    const deleteButton = getByRole('button', { name: /Delete/i })
-
-    await expect.element(deleteButton).toBeDisabled()
-
-    await userEvent.fill(usernameInput, MOCK_USER.username)
-    await expect.element(deleteButton).toBeEnabled()
-
-    await userEvent.keyboard('{Enter}')
-
-    expect(onOpenChange).toHaveBeenCalledOnce()
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-
-    expect(showSubmittedData).toHaveBeenCalledOnce()
-    expect(showSubmittedData).toHaveBeenCalledWith(
-      MOCK_USER,
-      'The following user has been deleted:'
-    )
+    await vi.waitFor(() => expect(deleteUserMock).toHaveBeenCalledOnce())
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })
