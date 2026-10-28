@@ -431,7 +431,9 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
             resource={resource}
             record={editor === 'new' ? undefined : editor}
             options={all}
-            readOnly={!writable || (editor !== 'new' && !canWriteRecord(editor))}
+            readOnly={
+              !writable || (editor !== 'new' && !canWriteRecord(editor))
+            }
             onClose={() => setEditor(null)}
             onSaved={refreshed}
           />
