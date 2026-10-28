@@ -459,14 +459,18 @@ describe('system authorization kernel', () => {
         actor
       )
     ).rejects.toMatchObject({ status: 403 })
-    expect(principal(account.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    expect(
+      principal(account.id)!.dataScopes?.['users:read']?.departments
+    ).not.toContain('sales')
     await changeSystem(
       'departments',
       sales.id,
       { ...fields(sales), parentId: 'operations' },
       admin()
     )
-    expect(principal(account.id)!.dataScopes?.['users:read']?.departments).toContain('sales')
+    expect(
+      principal(account.id)!.dataScopes?.['users:read']?.departments
+    ).toContain('sales')
   })
 
   it('blocks organizational changes that expand another account data scope beyond the editor', async () => {
@@ -523,7 +527,9 @@ describe('system authorization kernel', () => {
     )!
     const actor = principal(actorRecord.id)!
     expect(actor.permissions).not.toContain('users:read')
-    expect(principal(readerRecord.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    expect(
+      principal(readerRecord.id)!.dataScopes?.['users:read']?.departments
+    ).not.toContain('sales')
     const sales = systemStore().records.find(
       (item) => item.resource === 'departments' && item.id === 'sales'
     )!
@@ -535,7 +541,9 @@ describe('system authorization kernel', () => {
         actor
       )
     ).rejects.toMatchObject({ status: 403 })
-    expect(principal(readerRecord.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    expect(
+      principal(readerRecord.id)!.dataScopes?.['users:read']?.departments
+    ).not.toContain('sales')
   })
 
   it('serializes concurrent writes, preserves state on errors and never returns credential material', async () => {
