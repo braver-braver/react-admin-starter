@@ -27,6 +27,16 @@ jobs:
         run: pnpm lint
       - name: Check formatting
         run: pnpm format:check
+      - name: Capture Prettier diagnostics for integration
+        if: failure()
+        run: |
+          pnpm exec prettier --write README.md scripts/check-production.mjs scripts/pages.test.mjs src/mocks/handlers/users.ts
+          for file in README.md scripts/check-production.mjs scripts/pages.test.mjs src/mocks/handlers/users.ts; do
+            echo "PREFMT_BEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "PREFMT_END:$file"
+          done
       - name: Install Playwright browser
         run: pnpm test:browser:install
       - name: Test
