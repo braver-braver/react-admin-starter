@@ -51,7 +51,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
           <CollapsibleTrigger
             type='button'
             aria-label={`切换${title}分组`}
-            className='w-full justify-between cursor-pointer hover:bg-sidebar-accent'
+            className='w-full cursor-pointer hover:bg-sidebar-accent'
           >
             <span>{title}</span>
             <ChevronRight
@@ -70,11 +70,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
               if (state === 'collapsed' && !isMobile)
                 return (
-                  <SidebarMenuCollapsedDropdown
-                    key={key}
-                    item={item}
-                    href={href}
-                  />
+                  <SidebarMenuCollapsedDropdown key={key} item={item} href={href} />
                 )
 
               return <SidebarMenuCollapsible key={key} item={item} href={href} />
