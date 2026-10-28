@@ -1,1 +1,0 @@
-import{f as e}from"./createLucideIcon-DBoVOEWs.js";import{n as t}from"./users-DB4u8lml.js";function n({permission:n,children:r}){return t(e(e=>e.auth.user),n)?r:null}export{n as t};
