@@ -18,6 +18,9 @@ export type UserRole = z.infer<typeof userRoleSchema>
 
 export const userSchema = z.object({
   id: z.string(),
+  departmentId: z.string().optional(),
+  departmentName: z.string().optional(),
+  createdBy: z.string().optional(),
   firstName: z.string(),
   lastName: z.string(),
   username: z.string(),
@@ -55,6 +58,7 @@ export type UsersListParams = {
 
 /** 新建/编辑用户的可写字段；编辑时 password 可省略 */
 export type UserWritePayload = {
+  departmentId?: string
   firstName: string
   lastName: string
   username: string

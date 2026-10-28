@@ -3,6 +3,8 @@ import { render, type RenderResult } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { useAuthStore } from '@/stores/auth-store'
 import { SearchProvider } from '@/context/search-provider'
+import { sidebarData } from '@/components/layout/data/sidebar-data'
+import { NavigationContext } from '@/features/system/navigation'
 
 const COMMAND_MENU_PLACEHOLDER = '输入命令或搜索页面…'
 
@@ -26,7 +28,11 @@ vi.mock('@/context/theme-provider', () => ({
 type ShortcutModifier = 'Control' | 'Meta'
 
 async function renderWithSearchProvider() {
-  return await render(<SearchProvider>{null}</SearchProvider>)
+  return await render(
+    <NavigationContext value={sidebarData.navGroups}>
+      <SearchProvider>{null}</SearchProvider>
+    </NavigationContext>
+  )
 }
 
 /**

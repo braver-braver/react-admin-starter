@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useAuthStore } from '@/stores/auth-store'
+import { canAccessData } from '@/lib/data-scope'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
@@ -107,8 +108,11 @@ export function UsersTable({ search, navigate }: DataTableProps) {
         ? columnVisibility
         : { ...columnVisibility, select: false, actions: false },
     },
-    enableRowSelection:
-      can(user, 'users:write') && !isPlaceholderData && !isError,
+    enableRowSelection: (row) =>
+      can(user, 'users:write') &&
+      canAccessData(user, row.original, 'users:write') &&
+      !isPlaceholderData &&
+      !isError,
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
