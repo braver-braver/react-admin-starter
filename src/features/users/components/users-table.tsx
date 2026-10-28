@@ -11,6 +11,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { useAuthStore } from '@/stores/auth-store'
+import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { type NavigateFn, useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -22,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
+import { Permission } from '@/components/permission'
 import { roles } from '../data/data'
 import { type User } from '../data/schema'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -34,6 +37,7 @@ type DataTableProps = {
 }
 
 export function UsersTable({ data, search, navigate }: DataTableProps) {
+  const user = useAuthStore((state) => state.auth.user)
   // Local UI-only states
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -72,9 +76,11 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
       pagination,
       rowSelection,
       columnFilters,
-      columnVisibility,
+      columnVisibility: can(user, 'users:write')
+        ? columnVisibility
+        : { ...columnVisibility, select: false, actions: false },
     },
-    enableRowSelection: true,
+    enableRowSelection: can(user, 'users:write'),
     onPaginationChange,
     onColumnFiltersChange,
     onRowSelectionChange: setRowSelection,
@@ -188,7 +194,9 @@ export function UsersTable({ data, search, navigate }: DataTableProps) {
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
-      <DataTableBulkActions table={table} />
+      <Permission permission='users:write'>
+        <DataTableBulkActions table={table} />
+      </Permission>
     </div>
   )
 }

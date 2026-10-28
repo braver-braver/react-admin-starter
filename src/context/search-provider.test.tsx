@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, type RenderResult } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
+import { useAuthStore } from '@/stores/auth-store'
 import { SearchProvider } from '@/context/search-provider'
 
 const COMMAND_MENU_PLACEHOLDER = '输入命令或搜索页面…'
@@ -58,6 +59,16 @@ async function openCommandPalette(
 describe('SearchProvider and CommandMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAuthStore.getState().auth.setSession({
+      user: {
+        id: 'admin',
+        email: 'admin@example.com',
+        name: '管理员',
+        roles: ['admin'],
+        permissions: ['users:read', 'users:write', 'permissions:read'],
+      },
+      csrfToken: 'csrf',
+    })
   })
 
   it('renders the command palette when the palette is open', async () => {
@@ -115,6 +126,24 @@ describe('SearchProvider and CommandMenu', () => {
     await expect
       .element(screen.getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
       .not.toBeInTheDocument()
+  })
+
+  it('hides unauthorized routes from search for a guest', async () => {
+    useAuthStore.getState().auth.setSession({
+      user: {
+        id: 'guest',
+        email: 'guest@example.com',
+        name: '访客',
+        roles: ['guest'],
+        permissions: [],
+      },
+      csrfToken: 'csrf',
+    })
+    const screen = await renderWithSearchProvider()
+    await openCommandPalette(screen)
+    await expect.element(screen.getByText('用户管理')).not.toBeInTheDocument()
+    await expect.element(screen.getByText('权限示例')).not.toBeInTheDocument()
+    await expect.element(screen.getByText('工作台')).toBeInTheDocument()
   })
 
   it('navigates to the dashboard from the command palette', async () => {

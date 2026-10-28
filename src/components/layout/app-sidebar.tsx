@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth-store'
+import { can } from '@/lib/permissions'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -16,7 +17,7 @@ export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const account = useAuthStore((state) => state.auth.user)
   const user = account
-    ? { name: account.email.split('@')[0], email: account.email, avatar: '' }
+    ? { name: account.name, email: account.email, avatar: '' }
     : sidebarData.user
 
   return (
@@ -26,7 +27,13 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {sidebarData.navGroups.map((group) => (
-          <NavGroup key={group.title} {...group} />
+          <NavGroup
+            key={group.title}
+            {...group}
+            items={group.items.filter(
+              (item) => !item.permission || can(account, item.permission)
+            )}
+          />
         ))}
       </SidebarContent>
       <SidebarFooter>

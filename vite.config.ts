@@ -5,10 +5,31 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { playwright } from '@vitest/browser-playwright'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    {
+      name: 'development-msw-worker',
+      apply: 'serve',
+      configureServer(server) {
+        const require = createRequire(import.meta.url)
+        const workerPath = path.join(
+          path.dirname(require.resolve('msw/package.json')),
+          'lib/mockServiceWorker.js'
+        )
+        server.middlewares.use(
+          '/mockServiceWorker.js',
+          (_request, response) => {
+            response.setHeader('Content-Type', 'text/javascript')
+            response.setHeader('Cache-Control', 'no-store')
+            response.end(readFileSync(workerPath))
+          }
+        )
+      },
+    },
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,

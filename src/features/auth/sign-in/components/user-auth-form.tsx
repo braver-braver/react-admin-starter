@@ -1,12 +1,10 @@
-import { useState } from 'react'
-import { z } from 'zod'
+import { type z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { cn, sleep } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -18,13 +16,10 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
+import { loginSchema } from '@/features/auth/schema'
+import { signIn, safeRedirect } from '@/features/auth/session'
 
-const formSchema = z.object({
-  email: z.email({
-    error: (issue) => (issue.input === '' ? '请输入邮箱。' : undefined),
-  }),
-  password: z.string().min(1, '请输入密码。').min(7, '密码至少需要 7 位。'),
-})
+const formSchema = loginSchema
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
@@ -35,41 +30,25 @@ export function UserAuthForm({
   redirectTo,
   ...props
 }: UserAuthFormProps) {
-  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
-  const { auth } = useAuthStore()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '', password: '' },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    if (import.meta.env.PROD) {
-      toast.error('演示登录仅在开发环境可用，请接入真实认证服务。')
-      return
-    }
+  const isLoading = form.formState.isSubmitting
 
-    setIsLoading(true)
-    toast.promise(sleep(150), {
-      loading: '正在进入演示模式…',
-      success: () => {
-        setIsLoading(false)
-        auth.setUser({
-          accountNo: 'DEMO',
-          email: data.email,
-          role: ['demo'],
-          exp: Date.now() + 60 * 60 * 1000,
-        })
-        auth.setAccessToken('mock-access-token')
-        navigate({ to: redirectTo || '/', replace: true })
-        return '已进入演示模式'
-      },
-      error: () => {
-        setIsLoading(false)
-        return '演示登录失败'
-      },
-    })
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    try {
+      await signIn(data)
+      toast.success('登录成功')
+      await navigate({ to: safeRedirect(redirectTo), replace: true })
+    } catch (error) {
+      form.setError('root', {
+        message: error instanceof Error ? error.message : '登录失败，请重试。',
+      })
+    }
   }
 
   return (
@@ -86,7 +65,11 @@ export function UserAuthForm({
             <FormItem>
               <FormLabel>邮箱</FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <Input
+                  placeholder='name@example.com'
+                  autoComplete='username'
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -99,15 +82,24 @@ export function UserAuthForm({
             <FormItem>
               <FormLabel>密码</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='至少 7 位字符' {...field} />
+                <PasswordInput
+                  placeholder='请输入密码'
+                  autoComplete='current-password'
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading || import.meta.env.PROD}>
+        {form.formState.errors.root && (
+          <p role='alert' className='text-sm text-destructive'>
+            {form.formState.errors.root.message}
+          </p>
+        )}
+        <Button className='mt-2' disabled={isLoading}>
           {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
-          演示登录
+          登录
         </Button>
       </form>
     </Form>

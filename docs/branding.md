@@ -8,4 +8,4 @@ The shell is Chinese-first (`zh-CN`). In v0.1 the dashboard, menus, login illust
 
 ## Scope
 
-This starter currently has **no real authentication backend**. The development-only sign-in demonstrates UI transitions and is disabled for production builds, where direct admin routes also redirect to sign-in. The `/_authenticated` layout is not a security boundary; real authentication and RBAC will arrive in issue #3. Never expose private data or deploy the demo as a secure administrative system.
+Development uses MSW-backed session and RBAC examples. Production excludes mock handlers and requires a real same-origin API before admin routes can load. Client guards are UX controls; backend authentication and authorization remain mandatory. See [API and authentication](auth-and-api.md).

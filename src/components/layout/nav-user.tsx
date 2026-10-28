@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { Permission } from '@/components/permission'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 
 type NavUserProps = {
@@ -43,7 +44,9 @@ export function NavUser({ user }: NavUserProps) {
                   {user.avatar && (
                     <AvatarImage src={user.avatar} alt={user.name} />
                   )}
-                  <AvatarFallback className='rounded-lg'>演</AvatarFallback>
+                  <AvatarFallback className='rounded-lg'>
+                    {user.name.slice(0, 1)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <span className='truncate font-semibold'>{user.name}</span>
@@ -58,13 +61,15 @@ export function NavUser({ user }: NavUserProps) {
               align='end'
               sideOffset={4}
             >
-              <DropdownMenuLabel>演示账户</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to='/users'>
-                  <Users />
-                  用户管理示例
-                </Link>
-              </DropdownMenuItem>
+              <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+              <Permission permission='users:read'>
+                <DropdownMenuItem asChild>
+                  <Link to='/users'>
+                    <Users />
+                    用户管理示例
+                  </Link>
+                </DropdownMenuItem>
+              </Permission>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant='destructive'
