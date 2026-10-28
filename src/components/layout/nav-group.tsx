@@ -70,10 +70,16 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
               if (state === 'collapsed' && !isMobile)
                 return (
-                  <SidebarMenuCollapsedDropdown key={key} item={item} href={href} />
+                  <SidebarMenuCollapsedDropdown
+                    key={key}
+                    item={item}
+                    href={href}
+                  />
                 )
 
-              return <SidebarMenuCollapsible key={key} item={item} href={href} />
+              return (
+                <SidebarMenuCollapsible key={key} item={item} href={href} />
+              )
             })}
           </SidebarMenu>
         </CollapsibleContent>
