@@ -3,6 +3,7 @@ import { getCookie } from '@/lib/cookies'
 import { type Permission } from '@/lib/permissions'
 import { type AuthUser, loginSchema } from '@/features/auth/schema'
 import { appendAuditLog } from '../data/audit'
+import { passwordHash, principal, systemStore } from '../data/system'
 
 /**
  * 演示用会话：随机会话 ID 放在 Cookie，会话库放在当前标签页的 sessionStorage。
@@ -12,6 +13,7 @@ export type MockSession = {
   user: AuthUser
   csrfToken: string
   expiresAt: number
+  credentialVersion?: number
 }
 
 export const mockBase = import.meta.env.BASE_URL
@@ -25,35 +27,6 @@ export const COOKIE_NAME =
     : `mock_session_${encodeURIComponent(mockBase)}`
 export const DEMO_PASSWORD = 'Demo1234!'
 const SESSION_LIFETIME_MS = 60 * 60 * 1000
-
-const demoUsers: Record<string, AuthUser> = {
-  'admin@example.com': {
-    id: 'demo-admin',
-    email: 'admin@example.com',
-    name: '演示管理员',
-    roles: ['admin'],
-    permissions: [
-      'users:read',
-      'users:write',
-      'permissions:read',
-      'audit:read',
-    ],
-  },
-  'viewer@example.com': {
-    id: 'demo-viewer',
-    email: 'viewer@example.com',
-    name: '演示只读用户',
-    roles: ['viewer'],
-    permissions: ['users:read', 'permissions:read'],
-  },
-  'guest@example.com': {
-    id: 'demo-guest',
-    email: 'guest@example.com',
-    name: '演示受限用户',
-    roles: ['guest'],
-    permissions: [],
-  },
-}
 
 function readSessions(): Record<string, MockSession> {
   try {
@@ -79,7 +52,15 @@ function getSession(id: string | undefined): MockSession | undefined {
     writeSessions(sessions)
     return undefined
   }
-  return session
+  const user = principal(session.user.id)
+  const version = systemStore().credentials[session.user.id]?.version
+  if (
+    !user ||
+    version === undefined ||
+    (session.credentialVersion ?? 0) !== version
+  )
+    return undefined
+  return { ...session, user }
 }
 
 export function apiError(
@@ -172,14 +153,27 @@ export const authHandlers = [
         '请输入有效的邮箱和密码。'
       )
 
-    const user = demoUsers[parsed.data.email.toLowerCase()]
-    if (!user || parsed.data.password !== DEMO_PASSWORD) {
+    const account = systemStore().records.find(
+      (entry) =>
+        entry.resource === 'accounts' &&
+        entry.email === parsed.data.email.toLowerCase()
+    )
+    const user = account ? principal(account.id) : undefined
+    const credentials = account
+      ? systemStore().credentials[account.id]
+      : undefined
+    if (
+      !user ||
+      !credentials ||
+      (await passwordHash(parsed.data.password)) !== credentials.hash
+    ) {
       return apiError(401, 'INVALID_CREDENTIALS', '邮箱或密码错误。')
     }
 
     const sessionId = crypto.randomUUID()
     const session: MockSession = {
       user,
+      credentialVersion: credentials.version,
       csrfToken: crypto.randomUUID(),
       expiresAt: Date.now() + SESSION_LIFETIME_MS,
     }

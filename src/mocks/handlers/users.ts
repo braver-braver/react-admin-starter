@@ -1,5 +1,7 @@
 import { HttpResponse, http } from 'msw'
+import { type AuthUser } from '@/features/auth/schema'
 import { appendAuditLog } from '../data/audit'
+import { canAccessData, systemStore } from '../data/system'
 import {
   createUserId,
   findUserByEmailOrUsername,
@@ -75,8 +77,9 @@ function sortValue(user: MockUser, key: string): string {
   return String(value ?? '')
 }
 
-function applyUsersQuery(query: UsersQuery) {
+function applyUsersQuery(query: UsersQuery, actor: AuthUser) {
   const filtered = usersStore.filter((user) => {
+    if (!canAccessData(actor, user)) return false
     if (query.username) {
       const haystack = [
         user.username,
@@ -108,7 +111,14 @@ function applyUsersQuery(query: UsersQuery) {
   const start = (page - 1) * query.pageSize
 
   return {
-    items: filtered.slice(start, start + query.pageSize),
+    items: filtered.slice(start, start + query.pageSize).map((user) => ({
+      ...user,
+      departmentName:
+        systemStore().records.find(
+          (entry) =>
+            entry.resource === 'departments' && entry.id === user.departmentId
+        )?.name ?? user.departmentId,
+    })),
     meta: { page, pageSize: query.pageSize, total, totalPageCount },
   }
 }
@@ -122,6 +132,7 @@ type UserWriteBody = {
   role?: unknown
   password?: unknown
   avatarUrl?: unknown
+  departmentId?: unknown
 }
 
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -131,6 +142,7 @@ function readUserBody(body: UserWriteBody | null) {
   const text = (value: unknown) =>
     typeof value === 'string' ? value.trim() : ''
   return {
+    departmentId: text(body?.departmentId) || undefined,
     firstName: text(body?.firstName),
     lastName: text(body?.lastName),
     username: text(body?.username),
@@ -174,6 +186,16 @@ function readIds(body: unknown): string[] {
     : []
 }
 
+function writableDepartment(actor: AuthUser, departmentId: string) {
+  const scope = actor.dataScopes?.['users:write']
+  return !!(
+    scope &&
+    (scope.all ||
+      scope.departments.includes(departmentId) ||
+      (scope.self && actor.departmentId === departmentId))
+  )
+}
+
 export const usersHandlers = [
   http.get(`${mockBase}api/users`, ({ request, cookies }) => {
     const session = currentSession(cookies)
@@ -182,7 +204,7 @@ export const usersHandlers = [
     if (denied) return denied
 
     return HttpResponse.json({
-      data: applyUsersQuery(parseUsersQuery(request)),
+      data: applyUsersQuery(parseUsersQuery(request), session.user),
     })
   }),
 
@@ -203,12 +225,25 @@ export const usersHandlers = [
     const now = new Date().toISOString()
     const created: MockUser = {
       id: createUserId(),
+      createdBy: session.user.id,
       ...fields,
+      departmentId: fields.departmentId ?? session.user.departmentId ?? '',
       role: fields.role as MockUser['role'],
       status: 'active',
       createdAt: now,
       updatedAt: now,
     }
+    if (
+      !canAccessData(session.user, created, 'users:write') ||
+      !writableDepartment(session.user, created.departmentId) ||
+      !systemStore().records.some(
+        (record) =>
+          record.resource === 'departments' &&
+          record.enabled &&
+          record.id === created.departmentId
+      )
+    )
+      return apiError(403, 'DATA_SCOPE_DENIED', '所属部门超出范围或不可用。')
     usersStore.unshift(created)
     appendAuditLog({
       ...actorOf(session),
@@ -229,6 +264,8 @@ export const usersHandlers = [
 
     const existing = usersStore.find((user) => user.id === params.id)
     if (!existing) return apiError(404, 'USER_NOT_FOUND', '用户不存在。')
+    if (!canAccessData(session.user, existing, 'users:write'))
+      return apiError(403, 'DATA_SCOPE_DENIED', '数据超出当前范围。')
 
     const fields = readUserBody(await readJson(request))
     const invalid = validateUserFields(fields)
@@ -237,7 +274,28 @@ export const usersHandlers = [
       return apiError(422, 'DUPLICATE_USER', '邮箱或用户名已存在。')
     }
 
+    const departmentId = fields.departmentId ?? existing.departmentId
+    if (
+      departmentId !== existing.departmentId &&
+      !writableDepartment(session.user, departmentId)
+    )
+      return apiError(403, 'DATA_SCOPE_DENIED', '不能移到范围外的部门。')
+    if (
+      !canAccessData(
+        session.user,
+        { ...existing, departmentId },
+        'users:write'
+      ) ||
+      !systemStore().records.some(
+        (record) =>
+          record.resource === 'departments' &&
+          record.enabled &&
+          record.id === departmentId
+      )
+    )
+      return apiError(403, 'DATA_SCOPE_DENIED', '所属部门超出范围或不可用。')
     Object.assign(existing, fields, {
+      departmentId,
       role: fields.role as MockUser['role'],
       updatedAt: new Date().toISOString(),
     })
@@ -261,6 +319,8 @@ export const usersHandlers = [
     const index = usersStore.findIndex((user) => user.id === params.id)
     if (index < 0) return apiError(404, 'USER_NOT_FOUND', '用户不存在。')
 
+    if (!canAccessData(session.user, usersStore[index], 'users:write'))
+      return apiError(403, 'DATA_SCOPE_DENIED', '数据超出当前范围。')
     const [removed] = usersStore.splice(index, 1)
     appendAuditLog({
       ...actorOf(session),
@@ -283,6 +343,18 @@ export const usersHandlers = [
       if (denied) return denied
 
       const ids = new Set(readIds(await readJson(request)))
+      if (
+        usersStore.some(
+          (user) =>
+            ids.has(user.id) &&
+            !canAccessData(session.user, user, 'users:write')
+        )
+      )
+        return apiError(
+          403,
+          'DATA_SCOPE_DENIED',
+          '批量操作包含范围外数据，未执行任何更改。'
+        )
       const removed: MockUser[] = []
       for (let index = usersStore.length - 1; index >= 0; index -= 1) {
         if (ids.has(usersStore[index].id))
@@ -317,6 +389,17 @@ export const usersHandlers = [
       return apiError(422, 'INVALID_STATUS', '状态只允许启用或停用。')
     }
     const ids = new Set(readIds(body))
+    if (
+      usersStore.some(
+        (user) =>
+          ids.has(user.id) && !canAccessData(session.user, user, 'users:write')
+      )
+    )
+      return apiError(
+        403,
+        'DATA_SCOPE_DENIED',
+        '批量操作包含范围外数据，未执行任何更改。'
+      )
     let updatedCount = 0
     for (const user of usersStore) {
       if (!ids.has(user.id)) continue
@@ -360,6 +443,8 @@ export const usersHandlers = [
     const now = new Date().toISOString()
     const invited: MockUser = {
       id: createUserId(),
+      departmentId: session.user.departmentId ?? '',
+      createdBy: session.user.id,
       firstName: '待',
       lastName: '邀请',
       username,
@@ -370,6 +455,8 @@ export const usersHandlers = [
       createdAt: now,
       updatedAt: now,
     }
+    if (!canAccessData(session.user, invited, 'users:write'))
+      return apiError(403, 'DATA_SCOPE_DENIED', '所属部门超出当前范围。')
     usersStore.unshift(invited)
     appendAuditLog({
       ...actorOf(session),
@@ -392,6 +479,18 @@ export const usersHandlers = [
       if (denied) return denied
 
       const ids = new Set(readIds(await readJson(request)))
+      if (
+        usersStore.some(
+          (user) =>
+            ids.has(user.id) &&
+            !canAccessData(session.user, user, 'users:write')
+        )
+      )
+        return apiError(
+          403,
+          'DATA_SCOPE_DENIED',
+          '批量操作包含范围外数据，未执行任何更改。'
+        )
       let invitedCount = 0
       for (const user of usersStore) {
         if (!ids.has(user.id) || user.status === 'invited') continue

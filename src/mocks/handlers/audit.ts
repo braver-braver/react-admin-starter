@@ -1,5 +1,6 @@
 import { HttpResponse, http } from 'msw'
 import { auditLogsStore } from '../data/audit'
+import { canAccessData } from '../data/system'
 import { apiError, currentSession, mockBase, requirePermission } from './auth'
 
 function parseListQuery(request: Request) {
@@ -26,9 +27,12 @@ export const auditHandlers = [
     if (denied) return denied
 
     const query = parseListQuery(request)
+    const scopedLogs = auditLogsStore.filter((log) =>
+      canAccessData(session.user, log, 'audit:read')
+    )
     const filtered = query.action.length
-      ? auditLogsStore.filter((log) => query.action.includes(log.action))
-      : auditLogsStore
+      ? scopedLogs.filter((log) => query.action.includes(log.action))
+      : scopedLogs
     const total = filtered.length
     const totalPageCount = Math.max(1, Math.ceil(total / query.pageSize))
     const page = Math.min(Math.max(1, query.page), totalPageCount)

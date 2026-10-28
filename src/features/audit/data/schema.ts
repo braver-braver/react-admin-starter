@@ -11,6 +11,7 @@ export const auditActionValues = [
   'user.status_changed',
   'user.invited',
   'user.batch_invited',
+  'system.changed',
 ] as const
 
 export const auditActionSchema = z.enum(auditActionValues)
@@ -26,6 +27,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'user.status_changed': '变更状态',
   'user.invited': '邀请用户',
   'user.batch_invited': '批量邀请',
+  'system.changed': '系统配置变更',
 }
 
 export const auditLogSchema = z.object({

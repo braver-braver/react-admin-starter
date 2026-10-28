@@ -11,6 +11,25 @@ export const authUserSchema = z.object({
   name: z.string().min(1),
   roles: z.array(z.string()),
   permissions: z.array(z.string()),
+  dataScopes: z
+    .record(
+      z.string(),
+      z.object({
+        all: z.boolean(),
+        self: z.boolean(),
+        departments: z.array(z.string()),
+      })
+    )
+    .optional(),
+  routes: z.array(z.string()).optional(),
+  departmentId: z.string().optional(),
+  dataScope: z
+    .object({
+      all: z.boolean(),
+      self: z.boolean(),
+      departments: z.array(z.string()),
+    })
+    .optional(),
 })
 export const sessionSchema = z.object({
   user: authUserSchema,
