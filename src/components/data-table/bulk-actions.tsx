@@ -41,7 +41,7 @@ export function DataTableBulkActions<TData>({
   // Announce selection changes to screen readers
   useEffect(() => {
     if (selectedCount > 0) {
-      const message = `${selectedCount} ${entityName}${selectedCount > 1 ? 's' : ''} selected. Bulk actions toolbar is available.`
+      const message = `已选择 ${selectedCount} 个${entityName}，批量操作工具栏已就绪。`
 
       // Use queueMicrotask to defer state update and avoid cascading renders
       queueMicrotask(() => {
@@ -139,7 +139,7 @@ export function DataTableBulkActions<TData>({
       <div
         ref={toolbarRef}
         role='toolbar'
-        aria-label={`Bulk actions for ${selectedCount} selected ${entityName}${selectedCount > 1 ? 's' : ''}`}
+        aria-label={`对已选中 ${selectedCount} 个${entityName}执行批量操作`}
         aria-describedby='bulk-actions-description'
         tabIndex={-1}
         onKeyDown={handleKeyDown}
@@ -189,15 +189,14 @@ export function DataTableBulkActions<TData>({
             <Badge
               variant='default'
               className='min-w-8 rounded-lg'
-              aria-label={`${selectedCount} selected`}
+              aria-label={`已选择 ${selectedCount} 个${entityName}`}
             >
               {selectedCount}
             </Badge>{' '}
             <span className='hidden sm:inline'>
               {entityName}
-              {selectedCount > 1 ? 's' : ''}
             </span>{' '}
-            selected
+            已选择
           </div>
 
           <Separator
