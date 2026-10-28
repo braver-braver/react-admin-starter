@@ -415,9 +415,9 @@ describe('sorting', () => {
   it('syncs column filters after browser Back/Forward', async () => {
     const navigate = vi.fn() as Mock<NavigateFn>
     const { result, rerender } = await renderHook(
-      ({ search }: { search: Record<string, unknown> }) =>
+      ({ search }: { search?: Record<string, unknown> } = {}) =>
         useTableUrlState({
-          search,
+          search: search ?? {},
           navigate,
           globalFilter: { enabled: false },
           columnFilters: [
@@ -442,8 +442,8 @@ describe('sorting', () => {
   it('resynchronizes the global filter when URL search changes', async () => {
     const navigate = vi.fn() as Mock<NavigateFn>
     const { result, rerender } = await renderHook(
-      ({ search }: { search: Record<string, unknown> }) =>
-        useTableUrlState({ search, navigate }),
+      ({ search }: { search?: Record<string, unknown> } = {}) =>
+        useTableUrlState({ search: search ?? {}, navigate }),
       { initialProps: { search: { filter: 'before' } } }
     )
 
