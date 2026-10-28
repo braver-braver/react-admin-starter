@@ -385,17 +385,17 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
                         {canWriteRecord(record) ? '编辑' : '查看'}
                       </Button>
                       {canWriteRecord(record) && (
-                          <Button
-                            variant='ghost'
-                            size='icon'
-                            className='text-destructive'
-                            disabled={record.protected}
-                            aria-label={`删除${record.name}`}
-                            onClick={() => setDeleting(record)}
-                          >
-                            <Trash2 className='size-4' />
-                          </Button>
-                        )}
+                        <Button
+                          variant='ghost'
+                          size='icon'
+                          className='text-destructive'
+                          disabled={record.protected}
+                          aria-label={`删除${record.name}`}
+                          onClick={() => setDeleting(record)}
+                        >
+                          <Trash2 className='size-4' />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
