@@ -23,7 +23,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testMatch: 'app.e2e.ts',
+      testMatch: ['app.e2e.ts', 'system.e2e.ts'],
       use: {
         baseURL: 'http://127.0.0.1:5190',
         viewport: { width: 1440, height: 900 },
@@ -31,7 +31,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testMatch: 'app.e2e.ts',
+      testMatch: ['app.e2e.ts', 'system.e2e.ts'],
       use: {
         baseURL: 'http://127.0.0.1:5190',
         viewport: { width: 390, height: 844 },

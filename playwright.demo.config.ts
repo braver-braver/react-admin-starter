@@ -3,7 +3,7 @@ import { defineConfig } from 'playwright/test'
 const base = process.env.DEMO_SERVE_BASE ?? '/react-admin-starter/'
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'demo.e2e.ts',
+  testMatch: ['demo.e2e.ts', 'system.e2e.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
