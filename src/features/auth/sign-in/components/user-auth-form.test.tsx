@@ -1,130 +1,86 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, type RenderResult } from 'vitest-browser-react'
-import { type Locator, userEvent } from 'vitest/browser'
+import { render } from 'vitest-browser-react'
+import { userEvent } from 'vitest/browser'
 import { UserAuthForm } from './user-auth-form'
 
-const FORM_MESSAGES = {
-  emailEmpty: '请输入邮箱。',
-  passwordEmpty: '请输入密码。',
-  passwordShort: '密码至少需要 7 位。',
-} as const
-
-const navigate = vi.fn()
-const setUserMock = vi.fn()
-const setAccessTokenMock = vi.fn()
-
-vi.mock('@/stores/auth-store', () => ({
-  useAuthStore: () => ({
-    auth: {
-      setUser: setUserMock,
-      setAccessToken: setAccessTokenMock,
-    },
-  }),
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), signIn: vi.fn() }))
+vi.mock('@tanstack/react-router', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-router')>()),
+  useNavigate: () => mocks.navigate,
+}))
+vi.mock('@/features/auth/session', async (original) => ({
+  ...(await original<typeof import('@/features/auth/session')>()),
+  signIn: mocks.signIn,
 }))
 
-vi.mock('@tanstack/react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return {
-    ...actual,
-    useNavigate: () => navigate,
-    Link: ({
-      children,
-      to,
-      className,
-      ...rest
-    }: {
-      children?: React.ReactNode
-      to: string
-      className?: string
-    }) => (
-      <a href={to} className={className} {...rest}>
-        {children}
-      </a>
-    ),
-  }
+async function submit(redirectTo?: string) {
+  const screen = await render(<UserAuthForm redirectTo={redirectTo} />)
+  await userEvent.fill(
+    screen.getByRole('textbox', { name: '邮箱' }),
+    'admin@example.com'
+  )
+  await userEvent.fill(
+    screen.getByLabelText('密码', { exact: true }),
+    'Demo1234!'
+  )
+  await userEvent.click(
+    screen.getByRole('button', { name: '登录', exact: true })
+  )
+  return screen
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.signIn.mockResolvedValue({})
 })
 
-vi.mock('@/lib/utils', async (orig) => ({
-  ...(await orig()),
-  sleep: vi.fn(() => Promise.resolve()),
-}))
-
-describe('UserAuthForm', () => {
-  describe('Rendering without redirectTo', () => {
-    let screen: RenderResult
-    let emailInput: Locator
-    let passwordInput: Locator
-    let signInButton: Locator
-
-    beforeEach(async () => {
-      vi.clearAllMocks()
-      screen = await render(<UserAuthForm />)
-      emailInput = screen.getByRole('textbox', { name: /^邮箱$/ })
-      passwordInput = screen.getByLabelText(/^密码$/)
-      signInButton = screen.getByRole('button', { name: /^演示登录$/ })
-    })
-
-    it('renders fields and submit button', async () => {
-      await expect.element(emailInput).toBeInTheDocument()
-      await expect.element(passwordInput).toBeInTheDocument()
-      await expect.element(signInButton).toBeInTheDocument()
-    })
-
-    it('shows validation messages when submitting empty form', async () => {
-      await userEvent.click(signInButton)
-
-      await expect
-        .element(screen.getByText(FORM_MESSAGES.emailEmpty))
-        .toBeInTheDocument()
-      await expect
-        .element(screen.getByText(FORM_MESSAGES.passwordEmpty))
-        .toBeInTheDocument()
-    })
-
-    it('authenticates and navigates to default route on success', async () => {
-      await userEvent.fill(emailInput, 'a@b.com')
-      await userEvent.fill(passwordInput, '1234567')
-
-      await userEvent.click(signInButton)
-
-      await vi.waitFor(() => expect(setUserMock).toHaveBeenCalledOnce())
-      expect(setUserMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'a@b.com',
-          accountNo: expect.any(String),
-          role: expect.any(Array),
-          exp: expect.any(Number),
-        })
-      )
-      expect(setAccessTokenMock).toHaveBeenCalledOnce()
-      expect(setAccessTokenMock).toHaveBeenCalledWith('mock-access-token')
-
-      await vi.waitFor(() =>
-        expect(navigate).toHaveBeenCalledWith({ to: '/', replace: true })
-      )
-    })
-  })
-
-  it('navigates to redirectTo when provided', async () => {
-    vi.clearAllMocks()
-
-    const { getByRole, getByLabelText } = await render(
-      <UserAuthForm redirectTo='/users' />
+describe('API login form', () => {
+  it('validates required fields before calling the API', async () => {
+    const screen = await render(<UserAuthForm />)
+    await userEvent.click(
+      screen.getByRole('button', { name: '登录', exact: true })
     )
-
-    await userEvent.fill(getByRole('textbox', { name: /邮箱/ }), 'a@b.com')
-    await userEvent.fill(getByLabelText('密码'), '1234567')
-
-    await userEvent.click(getByRole('button', { name: /演示登录/ }))
-
-    await vi.waitFor(() => expect(setUserMock).toHaveBeenCalledOnce())
-    expect(setAccessTokenMock).toHaveBeenCalledOnce()
-
+    await expect.element(screen.getByText('请输入邮箱。')).toBeInTheDocument()
+    await expect.element(screen.getByText('请输入密码。')).toBeInTheDocument()
+    expect(mocks.signIn).not.toHaveBeenCalled()
+  })
+  it('calls authentication and preserves a safe return path', async () => {
+    await submit('/users?username=alice')
     await vi.waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({
-        to: '/users',
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/users?username=alice',
         replace: true,
       })
     )
+    expect(mocks.signIn).toHaveBeenCalledWith({
+      email: 'admin@example.com',
+      password: 'Demo1234!',
+    })
+  })
+  it('rejects an external return path', async () => {
+    await submit('https://evil.example/')
+    await vi.waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: '/', replace: true })
+    )
+  })
+  it('shows API rejection and never navigates', async () => {
+    mocks.signIn.mockRejectedValue(new Error('邮箱或密码错误。'))
+    const screen = await submit()
+    await expect
+      .element(screen.getByRole('alert'))
+      .toHaveTextContent('邮箱或密码错误。')
+    expect(mocks.navigate).not.toHaveBeenCalled()
+    await expect
+      .element(screen.getByRole('button', { name: '登录', exact: true }))
+      .toBeEnabled()
+  })
+  it('allows a configured real API to authenticate in production', async () => {
+    vi.stubEnv('PROD', true)
+    try {
+      await submit()
+      await vi.waitFor(() => expect(mocks.signIn).toHaveBeenCalledOnce())
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })

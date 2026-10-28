@@ -25,13 +25,17 @@ export function ProfileDropdown() {
         <DropdownMenuTrigger asChild>
           <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
             <Avatar className='h-8 w-8'>
-              <AvatarFallback>演</AvatarFallback>
+              <AvatarFallback>
+                {account?.name.slice(0, 1) ?? '用'}
+              </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className='w-56' align='end'>
           <DropdownMenuLabel>
-            <span className='block text-sm font-medium'>演示账户</span>
+            <span className='block text-sm font-medium'>
+              {account?.name ?? '当前账户'}
+            </span>
             <span className='block truncate text-xs text-muted-foreground'>
               {email}
             </span>

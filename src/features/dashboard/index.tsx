@@ -11,6 +11,7 @@ import {
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
+import { Permission } from '@/components/permission'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
@@ -51,12 +52,14 @@ export function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link
-                to='/users'
-                className='inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline'
-              >
-                查看示例 <ArrowUpRight className='size-4' />
-              </Link>
+              <Permission permission='users:read'>
+                <Link
+                  to='/users'
+                  className='inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline'
+                >
+                  查看示例 <ArrowUpRight className='size-4' />
+                </Link>
+              </Permission>
             </CardContent>
           </Card>
           <Card>
@@ -71,8 +74,9 @@ export function Dashboard() {
           </Card>
         </div>
         <p className='mt-6 text-sm text-muted-foreground'>
-          当前为 UI 演示版本，用户数据和登录状态均非真实后端认证；后续将引入 MSW
-          与 API 契约。
+          {import.meta.env.DEV
+            ? '当前使用开发环境 MSW 会话和权限示例。用户 CRUD 仍为交互演示，不会保存。'
+            : '会话与权限由服务端返回。客户端权限控制仅用于界面展示，服务端必须独立鉴权。'}
         </p>
       </Main>
     </>

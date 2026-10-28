@@ -1,0 +1,154 @@
+openapi: 3.1.0
+info:
+  title: React Admin Starter Auth API
+  version: 0.2.0
+  description: Same-origin cookie sessions. Development MSW is a demonstration only.
+servers:
+  - url: /api
+security:
+  - sessionCookie: []
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 1 }
+      responses:
+        '200':
+          $ref: '#/components/responses/Session'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /auth/session:
+    get:
+      operationId: getSession
+      responses:
+        '200':
+          $ref: '#/components/responses/Session'
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/logout:
+    post:
+      operationId: logout
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Session revoked. Server expires the session cookie.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [success]
+                    properties:
+                      success: { const: true }
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /auth/permissions:
+    get:
+      operationId: getPermissions
+      description: Requires permissions:read. The server checks this permission.
+      responses:
+        '200':
+          description: Current roles and permissions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Permissions'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Production server session, HttpOnly and Secure. MSW uses mock_session only in development.
+  parameters:
+    RequestedWith:
+      name: X-Requested-With
+      in: header
+      required: true
+      schema: { type: string, const: ReactAdminStarter }
+  schemas:
+    Permissions:
+      type: object
+      required: [roles, permissions]
+      properties:
+        roles:
+          type: array
+          items: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+    User:
+      allOf:
+        - $ref: '#/components/schemas/Permissions'
+        - type: object
+          required: [id, email, name]
+          properties:
+            id: { type: string, minLength: 1 }
+            email: { type: string, format: email }
+            name: { type: string, minLength: 1 }
+    Session:
+      type: object
+      required: [user, csrfToken]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        csrfToken: { type: string, minLength: 1 }
+  responses:
+    Session:
+      description: Validated session. Login sets a rotated session cookie; all session responses use Cache-Control no-store.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Session'
+    Error:
+      description: Request rejected. HTTP status carries authentication or authorization failure.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }

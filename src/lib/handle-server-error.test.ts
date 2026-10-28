@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from './api'
 import { handleServerError } from './handle-server-error'
 
 const toastError = vi.hoisted(() => vi.fn())
@@ -63,16 +64,20 @@ describe('handleServerError', () => {
     expect(toastError).toHaveBeenCalledWith('Something went wrong!')
   })
 
-  it('logs the error to the console in development', () => {
+  it('does not log raw error objects that can contain credentials', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     const err = new Error('logged')
 
     handleServerError(err)
 
-    expect(log).toHaveBeenCalledTimes(1)
-    expect(log).toHaveBeenCalledWith(err)
+    expect(log).not.toHaveBeenCalled()
 
     log.mockRestore()
+  })
+
+  it('displays the validated API error message', () => {
+    handleServerError(new ApiError(400, 'INVALID_REQUEST', '请求参数无效'))
+    expect(toastError).toHaveBeenCalledWith('请求参数无效')
   })
 
   it('does not log the error to the console in production', () => {

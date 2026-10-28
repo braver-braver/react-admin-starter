@@ -1,76 +1,46 @@
-import { clearCookies } from '@/test-utils/cookies'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useAuthStore } from './auth-store'
 
-async function importAuthStore() {
-  const { useAuthStore } = await import('./auth-store')
-  return useAuthStore
+const session = {
+  user: {
+    id: 'user-1',
+    email: 'user@example.com',
+    name: 'Test User',
+    roles: ['admin'],
+    permissions: ['users:read'],
+  },
+  csrfToken: 'csrf-1',
 }
 
-const sampleUser = {
-  accountNo: 'ACC-1',
-  email: 'user@example.com',
-  role: ['user'],
-  exp: 1_700_000_000,
-}
+describe('in-memory auth store', () => {
+  beforeEach(() => useAuthStore.getState().auth.reset())
 
-describe('useAuthStore', () => {
-  beforeEach(() => {
-    clearCookies()
-    vi.resetModules()
+  it('starts with no session or browser-readable token', () => {
+    const { auth } = useAuthStore.getState()
+    expect(auth.user).toBeNull()
+    expect(auth.csrfToken).toBe('')
+    expect(auth).not.toHaveProperty('accessToken')
+    expect(document.cookie).not.toContain('mock-access-token')
   })
 
-  it('starts with an empty access token when nothing is persisted', async () => {
-    const useAuthStore = await importAuthStore()
+  it('stores a server-confirmed session and advances its revision', () => {
+    const previous = useAuthStore.getState().auth.revision
+    useAuthStore.getState().auth.setSession(session)
 
-    expect(useAuthStore.getState().auth.accessToken).toBe('')
-    expect(useAuthStore.getState().auth.user).toBeNull()
+    const { auth } = useAuthStore.getState()
+    expect(auth.user).toEqual(session.user)
+    expect(auth.csrfToken).toBe('csrf-1')
+    expect(auth.revision).toBe(previous + 1)
   })
 
-  it('persists access token so a new store instance reads it back', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('session-token')
-
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe(
-      'session-token'
-    )
-  })
-
-  it('clears persisted access token when resetAccessToken is used', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('to-clear')
-    useAuthStore.getState().auth.resetAccessToken()
-
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
-  })
-
-  it('updates the signed-in user via setUser', async () => {
-    const useAuthStore = await importAuthStore()
-
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
-
-    expect(useAuthStore.getState().auth.user).toEqual(sampleUser)
-  })
-
-  it('reset clears user and access token and drops persistence', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('will-be-cleared')
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
-
+  it('clears identity and CSRF token and advances its revision', () => {
+    useAuthStore.getState().auth.setSession(session)
+    const previous = useAuthStore.getState().auth.revision
     useAuthStore.getState().auth.reset()
 
-    expect(useAuthStore.getState().auth.user).toBeNull()
-    expect(useAuthStore.getState().auth.accessToken).toBe('')
-
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.user).toBeNull()
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
+    const { auth } = useAuthStore.getState()
+    expect(auth.user).toBeNull()
+    expect(auth.csrfToken).toBe('')
+    expect(auth.revision).toBe(previous + 1)
   })
 })

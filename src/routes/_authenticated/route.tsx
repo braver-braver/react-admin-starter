@@ -1,11 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { AuthenticatedLayout } from '@/components/layout/authenticated-layout'
+import { requireSession } from '@/features/auth/guard'
 
 export const Route = createFileRoute('/_authenticated')({
-  beforeLoad: ({ location }) => {
-    if (import.meta.env.PROD) {
-      throw redirect({ to: '/sign-in', search: { redirect: location.href } })
-    }
-  },
+  beforeLoad: ({ location }) => requireSession(location.href),
   component: AuthenticatedLayout,
 })

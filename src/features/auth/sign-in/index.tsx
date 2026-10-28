@@ -17,11 +17,22 @@ export function SignIn() {
         <CardHeader>
           <CardTitle className='text-lg tracking-tight'>登录管理端</CardTitle>
           <CardDescription>
-            当前仅供开发演示，真实认证和权限系统将在后续版本接入。
+            {import.meta.env.DEV
+              ? '开发演示：使用下方账户体验不同权限。'
+              : '请输入账户信息，登录已接入的认证服务。'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <UserAuthForm redirectTo={redirect} />
+          {import.meta.env.DEV && (
+            <div className='mt-4 space-y-1 rounded-md bg-muted p-3 text-xs text-muted-foreground'>
+              <p>管理员：admin@example.com</p>
+              <p>只读用户：viewer@example.com</p>
+              <p>受限访客：guest@example.com</p>
+              <p>演示密码：Demo1234!</p>
+              <p>仅用于本地开发，刷新可恢复当前标签页的模拟会话。</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </AuthLayout>
