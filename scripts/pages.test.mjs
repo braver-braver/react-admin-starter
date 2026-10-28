@@ -119,4 +119,3 @@ test('invalid tags, paths, overlapping output and symlinks fail before publishin
   symlinkSync('/etc/passwd', join(linked.buildDir, 'secret'))
   assert.throws(() => assemblePages(linked), /Symlink/)
 })
-
