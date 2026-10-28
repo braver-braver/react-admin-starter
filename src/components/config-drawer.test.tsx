@@ -28,12 +28,8 @@ async function renderConfigDrawer({
 }
 
 async function openDrawer(screen: RenderResult) {
-  await userEvent.click(
-    screen.getByRole('button', { name: /^Open theme settings$/i })
-  )
-  await expect
-    .element(screen.getByText(/^Theme Settings$/i))
-    .toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: /^打开外观设置$/i }))
+  await expect.element(screen.getByText(/^外观设置$/i)).toBeInTheDocument()
 }
 
 describe('ConfigDrawer (integration)', () => {
@@ -51,20 +47,20 @@ describe('ConfigDrawer (integration)', () => {
 
     await openDrawer(screen)
 
-    const drawer = screen.getByRole('dialog', { name: /theme settings/i })
+    const drawer = screen.getByRole('dialog', { name: /外观设置/i })
 
     await expect.element(drawer).toBeInTheDocument()
 
-    await expect.element(drawer.getByText(/^Theme$/i)).toBeInTheDocument()
-    await expect.element(drawer.getByText(/^Layout$/i)).toBeInTheDocument()
+    await expect.element(drawer.getByText(/^主题$/)).toBeInTheDocument()
+    await expect.element(drawer.getByText(/^布局$/)).toBeInTheDocument()
     await expect
-      .element(drawer.getByText(/^Sidebar$/i).first())
+      .element(drawer.getByText(/^侧边栏$/).first())
       .toBeInTheDocument()
-    await expect.element(drawer.getByText(/^Direction$/i)).toBeInTheDocument()
+    await expect.element(drawer.getByText(/^阅读方向$/)).toBeInTheDocument()
     await expect
       .element(
         screen.getByRole('button', {
-          name: /reset all settings to default values/i,
+          name: /恢复所有外观设置的默认值/i,
         })
       )
       .toBeInTheDocument()
@@ -74,9 +70,7 @@ describe('ConfigDrawer (integration)', () => {
     it('applies light theme to <html> and cookie', async () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select light/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择浅色/i }))
       await vi.waitFor(() =>
         expect(document.documentElement.classList.contains('light')).toBe(true)
       )
@@ -86,7 +80,7 @@ describe('ConfigDrawer (integration)', () => {
     it('applies dark theme to <html> and cookie', async () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
-      await userEvent.click(screen.getByRole('radio', { name: /select dark/i }))
+      await userEvent.click(screen.getByRole('radio', { name: /选择深色/i }))
       await vi.waitFor(() =>
         expect(document.documentElement.classList.contains('dark')).toBe(true)
       )
@@ -101,7 +95,7 @@ describe('ConfigDrawer (integration)', () => {
       await openDrawer(screen)
 
       await userEvent.click(
-        screen.getByRole('radio', { name: /select system/i })
+        screen.getByRole('radio', { name: /选择跟随系统/i })
       )
       await vi.waitFor(() => expect(getCookie('vite-ui-theme')).toBe('system'))
       await vi.waitFor(() => {
@@ -118,9 +112,7 @@ describe('ConfigDrawer (integration)', () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
 
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select floating/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择浮动/i }))
       await vi.waitFor(() =>
         expect(getCookie('layout_variant')).toBe('floating')
       )
@@ -131,7 +123,7 @@ describe('ConfigDrawer (integration)', () => {
       await openDrawer(screen)
 
       await userEvent.click(
-        screen.getByRole('radio', { name: /^select sidebar$/i })
+        screen.getByRole('radio', { name: /^选择侧边栏$/i })
       )
       await vi.waitFor(() =>
         expect(getCookie('layout_variant')).toBe('sidebar')
@@ -142,16 +134,12 @@ describe('ConfigDrawer (integration)', () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
 
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select floating/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择浮动/i }))
       await vi.waitFor(() =>
         expect(getCookie('layout_variant')).toBe('floating')
       )
 
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select inset/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择嵌入/i }))
       await vi.waitFor(() => expect(getCookie('layout_variant')).toBe('inset'))
     })
   })
@@ -160,9 +148,7 @@ describe('ConfigDrawer (integration)', () => {
     const screen = await renderConfigDrawer({ sidebarDefaultOpen: true })
     await openDrawer(screen)
 
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select full layout/i })
-    )
+    await userEvent.click(screen.getByRole('radio', { name: /选择全屏模式/i }))
     await vi.waitFor(() =>
       expect(getCookie('layout_collapsible')).toBe('offcanvas')
     )
@@ -174,12 +160,12 @@ describe('ConfigDrawer (integration)', () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
 
-      await userEvent.click(screen.getByRole('radio', { name: /select dark/i }))
+      await userEvent.click(screen.getByRole('radio', { name: /选择深色/i }))
       await vi.waitFor(() => expect(getCookie('vite-ui-theme')).toBe('dark'))
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: /reset theme preference to default/i,
+          name: /恢复默认主题/i,
         })
       )
       await vi.waitFor(() => expect(getCookie('vite-ui-theme')).toBe('system'))
@@ -190,7 +176,7 @@ describe('ConfigDrawer (integration)', () => {
       await openDrawer(screen)
 
       await userEvent.click(
-        screen.getByRole('radio', { name: /select right to left/i })
+        screen.getByRole('radio', { name: /选择从右到左/i })
       )
       await vi.waitFor(() =>
         expect(document.documentElement.getAttribute('dir')).toBe('rtl')
@@ -198,7 +184,7 @@ describe('ConfigDrawer (integration)', () => {
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: /reset text direction to default/i,
+          name: /恢复默认阅读方向/i,
         })
       )
       await vi.waitFor(() =>
@@ -211,16 +197,14 @@ describe('ConfigDrawer (integration)', () => {
       const screen = await renderConfigDrawer()
       await openDrawer(screen)
 
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select floating/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择浮动/i }))
       await vi.waitFor(() =>
         expect(getCookie('layout_variant')).toBe('floating')
       )
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: /reset sidebar style to default/i,
+          name: /恢复默认侧边栏样式/i,
         })
       )
       await vi.waitFor(() => expect(getCookie('layout_variant')).toBe('inset'))
@@ -230,14 +214,12 @@ describe('ConfigDrawer (integration)', () => {
       const screen = await renderConfigDrawer({ sidebarDefaultOpen: true })
       await openDrawer(screen)
 
-      await userEvent.click(
-        screen.getByRole('radio', { name: /select compact/i })
-      )
+      await userEvent.click(screen.getByRole('radio', { name: /选择紧凑/i }))
       await vi.waitFor(() => expect(getCookie('sidebar_state')).toBe('false'))
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: /reset layout options to default/i,
+          name: /恢复默认布局/i,
         })
       )
       await vi.waitFor(() => expect(getCookie('sidebar_state')).toBe('true'))
@@ -252,9 +234,7 @@ describe('ConfigDrawer (integration)', () => {
 
     await openDrawer(screen)
 
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select right to left/i })
-    )
+    await userEvent.click(screen.getByRole('radio', { name: /选择从右到左/i }))
     await vi.waitFor(() =>
       expect(document.documentElement.getAttribute('dir')).toBe('rtl')
     )
@@ -267,12 +247,10 @@ describe('ConfigDrawer (integration)', () => {
     await openDrawer(screen)
 
     await expect
-      .element(screen.getByRole('radio', { name: /select default/i }))
+      .element(screen.getByRole('radio', { name: /选择默认/i }))
       .toHaveAttribute('data-state', 'checked')
 
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select compact/i })
-    )
+    await userEvent.click(screen.getByRole('radio', { name: /选择紧凑/i }))
 
     await vi.waitFor(() => expect(getCookie('sidebar_state')).toBe('false'))
     await vi.waitFor(() => expect(getCookie('layout_collapsible')).toBe('icon'))
@@ -283,16 +261,10 @@ describe('ConfigDrawer (integration)', () => {
 
     await openDrawer(screen)
 
-    await userEvent.click(screen.getByRole('radio', { name: /select dark/i }))
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select right to left/i })
-    )
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select floating/i })
-    )
-    await userEvent.click(
-      screen.getByRole('radio', { name: /select full layout/i })
-    )
+    await userEvent.click(screen.getByRole('radio', { name: /选择深色/i }))
+    await userEvent.click(screen.getByRole('radio', { name: /选择从右到左/i }))
+    await userEvent.click(screen.getByRole('radio', { name: /选择浮动/i }))
+    await userEvent.click(screen.getByRole('radio', { name: /选择全屏模式/i }))
 
     await vi.waitFor(() => expect(getCookie('vite-ui-theme')).toBe('dark'))
     await vi.waitFor(() => expect(getCookie('dir')).toBe('rtl'))
@@ -303,7 +275,7 @@ describe('ConfigDrawer (integration)', () => {
 
     await userEvent.click(
       screen.getByRole('button', {
-        name: /reset all settings to default values/i,
+        name: /恢复所有外观设置的默认值/i,
       })
     )
 
