@@ -161,6 +161,7 @@ function Sidebar({
   collapsible?: 'offcanvas' | 'icon' | 'none'
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const returnFocus = React.useRef<HTMLElement | null>(null)
 
   if (collapsible === 'none') {
     return (
@@ -184,6 +185,18 @@ function Sidebar({
           data-sidebar='sidebar'
           data-slot='sidebar'
           data-mobile='true'
+          onOpenAutoFocus={() => {
+            returnFocus.current =
+              document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null
+          }}
+          onCloseAutoFocus={(event) => {
+            if (returnFocus.current?.isConnected) {
+              event.preventDefault()
+              returnFocus.current.focus()
+            }
+          }}
           className='w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden'
           style={
             {

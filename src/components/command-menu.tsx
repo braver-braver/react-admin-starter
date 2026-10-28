@@ -32,8 +32,17 @@ export function CommandMenu() {
   )
 
   return (
-    <CommandDialog modal open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder='输入命令或搜索页面…' />
+    <CommandDialog
+      title='页面与命令搜索'
+      description='搜索页面或选择命令，按回车执行。'
+      modal
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <CommandInput
+        aria-label='搜索页面或命令'
+        placeholder='输入命令或搜索页面…'
+      />
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
           <CommandEmpty>没有匹配的结果。</CommandEmpty>

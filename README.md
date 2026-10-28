@@ -55,3 +55,19 @@ See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the 
 Adapted from [Sat Naing's shadcn-admin](https://github.com/satnaing/shadcn-admin) at commit `e16c87f213a5ba5e45964e9b67c792105ec74d26`.
 
 Licensed under the MIT License. See [LICENSE](LICENSE) for the original copyright notice and terms.
+
+### 完整应用 E2E 与可访问性基线
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test:browser:install
+pnpm test:e2e
+```
+
+`test:e2e` 先执行生产构建、类型检查和生产产物检查，再由 Playwright 独立启动开发 MSW 应用（5190）与生产预览（5191）。两个端口必须空闲，不复用已运行的开发服务。可使用 `pnpm test:e2e:ui` 交互调试；已有最新构建时可用 `pnpm exec playwright test --project=desktop` 定位单个项目。
+
+套件以全新浏览器上下文覆盖 1440×900 桌面与 390×844 手机视口，验证登录/退出、会话刷新、工作台与用户页导航、只读/受限账户权限、命令面板、主题持久化、侧栏及键盘操作。使用仓库 MSW 演示账户，不需要真实凭据；不注入认证状态或拦截业务请求。生产预览单独验证不加载 MSW，缺少后端时演示账户无法登录，也不能访问受保护页面。
+
+可访问性基线检查主要内容地标、页面标题、表单与图标按钮名称、跳过导航、Tab/Shift+Tab 焦点约束、Escape 关闭与焦点恢复。它不是完整 WCAG 审计，不覆盖屏幕阅读器实机体验、色彩对比度或所有业务表单。
+
+CI 中 `Full application E2E smoke and accessibility baseline` 与组件测试分开显示，任何断言失败都会导致非零退出。失败时保存 7 天的 HTML 报告、截图与 trace；本地产物位于 `playwright-report/` 和 `test-results/`（不提交）。可用 `pnpm exec playwright show-report` 或 `pnpm exec playwright show-trace <trace.zip>` 查看。断言使用语义选择器和自动等待，不依赖固定延时、像素截图或动态用户日期。

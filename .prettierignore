@@ -17,3 +17,10 @@
 
 # Ignore auto generated routeTree.gen.ts
 /src/routeTree.gen.ts
+
+# Full-application E2E configuration and tests
+!/playwright.config.ts
+!/e2e
+!/.github/
+/.github/*
+!/.github/workflows/
