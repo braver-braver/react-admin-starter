@@ -28,14 +28,6 @@ jobs:
         run: pnpm lint
       - name: Check formatting
         run: pnpm format:check
-      - name: Capture Prettier output for changed bulk toolbar
-        if: failure()
-        run: |
-          pnpm exec prettier --write src/components/data-table/bulk-actions.tsx
-          echo 'BULK_FMT_BEGIN'
-          base64 -w0 src/components/data-table/bulk-actions.tsx
-          echo
-          echo 'BULK_FMT_END'
       - name: Install Playwright browser
         run: pnpm test:browser:install
       - name: Test
