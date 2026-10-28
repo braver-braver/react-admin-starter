@@ -1,4 +1,8 @@
-import { createTable, getCoreRowModel, type TableState } from '@tanstack/react-table'
+import {
+  type TableState,
+  createTable,
+  getCoreRowModel,
+} from '@tanstack/react-table'
 import { describe, expect, it } from 'vitest'
 import { type User } from '../data/schema'
 import { getUserRowId } from './users-table'
