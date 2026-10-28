@@ -405,6 +405,58 @@ function assertDelegation(actor: AuthUser, recipient: AuthUser) {
     deny('不能授予自己无权访问的页面。')
 }
 
+/** A hierarchy change must not indirectly delegate data access through descendant scopes. */
+function assertDepartmentChangeWithinGrants(
+  actor: AuthUser,
+  beforeDb: Store,
+  afterDb: Store
+) {
+  for (const record of recordsOf(afterDb, 'accounts')) {
+    if (record.resource !== 'accounts') continue
+    const previous = principal(record.id, beforeDb)
+    const next = principal(record.id, afterDb)
+    if (!next) continue
+    for (const permission of next.permissions) {
+      if (
+        !previous?.permissions.includes(permission) &&
+        !actor.permissions.includes(permission)
+      )
+        deny('不能通过部门变更授予自己未持有的权限。')
+      const before = previous?.dataScopes?.[permission]
+      const after = next.dataScopes?.[permission]
+      if (!after) continue
+      const gainedAll = after.all && !before?.all
+      const gainedSelf = after.self && !before?.self
+      const gainedDepartments = before?.all
+        ? []
+        : after.departments.filter(
+            (department) => !before?.departments.includes(department)
+          )
+      if (!gainedAll && !gainedSelf && !gainedDepartments.length) continue
+      const authorized = actor.dataScopes?.[permission]
+      if (
+        !authorized ||
+        (gainedAll && !authorized.all) ||
+        (gainedSelf &&
+          !authorized.all &&
+          !(authorized.self && actor.id === record.id)) ||
+        (!authorized.all &&
+          gainedDepartments.some(
+            (department) => !authorized.departments.includes(department)
+          ))
+      )
+        deny('调整部门后授予的数据范围超出当前管理员授权。')
+    }
+    if (
+      next.routes?.some(
+        (route) =>
+          !previous?.routes?.includes(route) && !actor.routes?.includes(route)
+      )
+    )
+      deny('不能通过部门变更授予自己无权访问的页面。')
+  }
+}
+
 function references(ids: string[], kind: SystemResource, db: Store) {
   if (
     ids.some(
@@ -656,6 +708,12 @@ async function applyChange(
       conflict('该代码已存在。')
     db.records = [...db.records.filter((entry) => entry !== existing), record]
   }
+  if (
+    resource === 'departments' &&
+    existing?.resource === 'departments' &&
+    !remove
+  )
+    assertDepartmentChangeWithinGrants(actor, systemStore(), db)
   const administrator = db.records.find(
     (entry) => entry.resource === 'roles' && entry.id === 'admin'
   )

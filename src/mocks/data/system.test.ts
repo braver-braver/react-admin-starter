@@ -465,6 +465,15 @@ describe('system authorization kernel', () => {
     await changeSystem(
       'departments',
       sales.id,
+      { ...fields(sales), name: '销售一部' },
+      actor
+    )
+    expect(
+      principal(account.id)!.dataScopes?.['users:read']?.departments
+    ).not.toContain('sales')
+    await changeSystem(
+      'departments',
+      sales.id,
       { ...fields(sales), parentId: 'operations' },
       admin()
     )
