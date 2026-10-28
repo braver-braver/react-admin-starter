@@ -1,5 +1,5 @@
 import { appConfig } from '@/config/app'
-import { LayoutDashboard, Users, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, ScrollText, Users, ShieldCheck } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -29,6 +29,12 @@ export const sidebarData: SidebarData = {
           url: '/permissions',
           icon: ShieldCheck,
           permission: 'permissions:read',
+        },
+        {
+          title: '审计日志',
+          url: '/audit',
+          permission: 'audit:read',
+          icon: ScrollText,
         },
       ],
     },
