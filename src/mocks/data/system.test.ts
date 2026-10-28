@@ -406,6 +406,138 @@ describe('system authorization kernel', () => {
     ).rejects.toMatchObject({ status: 403 })
     expect(principal(account.id)!.routes).not.toContain('/users')
   })
+  it('blocks department reparenting that would widen the editor own descendant user scope', async () => {
+    const reader = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('descendants'),
+        code: 'descendant_reader',
+        permissionIds: ['users:read'],
+      },
+      admin()
+    )
+    const manager = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('all'),
+        code: 'department_manager',
+        permissionIds: ['system:departments:write'],
+        menuIds: ['dashboard'],
+      },
+      admin()
+    )
+    if (!('id' in reader) || !('id' in manager))
+      throw new Error('Missing roles')
+    const account = await changeSystem(
+      'accounts',
+      undefined,
+      {
+        name: '部门经理',
+        email: 'dept-manager@example.com',
+        password: 'Department123!',
+        enabled: true,
+        departmentId: 'operations',
+        roleIds: [reader.id, manager.id],
+      },
+      admin()
+    )
+    if (!('id' in account)) throw new Error('Missing account')
+    const actor = principal(account.id)!
+    expect(actor.dataScopes?.['system:departments:write']?.all).toBe(true)
+    expect(actor.dataScopes?.['users:read']?.departments).toContain('support')
+    expect(actor.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    const sales = systemStore().records.find(
+      (item) => item.resource === 'departments' && item.id === 'sales'
+    )!
+    await expect(
+      changeSystem(
+        'departments',
+        sales.id,
+        { ...fields(sales), parentId: 'operations' },
+        actor
+      )
+    ).rejects.toMatchObject({ status: 403 })
+    expect(principal(account.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    await changeSystem(
+      'departments',
+      sales.id,
+      { ...fields(sales), parentId: 'operations' },
+      admin()
+    )
+    expect(principal(account.id)!.dataScopes?.['users:read']?.departments).toContain('sales')
+  })
+
+  it('blocks organizational changes that expand another account data scope beyond the editor', async () => {
+    const reader = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('descendants'),
+        code: 'descendant_reader',
+        permissionIds: ['users:read'],
+      },
+      admin()
+    )
+    const manager = await changeSystem(
+      'roles',
+      undefined,
+      {
+        ...roleBody('all'),
+        code: 'department_manager',
+        permissionIds: ['system:departments:write'],
+        menuIds: ['dashboard'],
+      },
+      admin()
+    )
+    if (!('id' in reader) || !('id' in manager))
+      throw new Error('Missing roles')
+    for (const [email, roles] of [
+      ['department-reader@example.com', [reader.id]],
+      ['department-manager@example.com', [manager.id]],
+    ] as const) {
+      await changeSystem(
+        'accounts',
+        undefined,
+        {
+          name: email,
+          email,
+          password: 'Department123!',
+          enabled: true,
+          departmentId: 'operations',
+          roleIds: roles,
+        },
+        admin()
+      )
+    }
+    const actorRecord = systemStore().records.find(
+      (item) =>
+        item.resource === 'accounts' &&
+        item.email === 'department-manager@example.com'
+    )!
+    const readerRecord = systemStore().records.find(
+      (item) =>
+        item.resource === 'accounts' &&
+        item.email === 'department-reader@example.com'
+    )!
+    const actor = principal(actorRecord.id)!
+    expect(actor.permissions).not.toContain('users:read')
+    expect(principal(readerRecord.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+    const sales = systemStore().records.find(
+      (item) => item.resource === 'departments' && item.id === 'sales'
+    )!
+    await expect(
+      changeSystem(
+        'departments',
+        sales.id,
+        { ...fields(sales), parentId: 'operations' },
+        actor
+      )
+    ).rejects.toMatchObject({ status: 403 })
+    expect(principal(readerRecord.id)!.dataScopes?.['users:read']?.departments).not.toContain('sales')
+  })
+
   it('serializes concurrent writes, preserves state on errors and never returns credential material', async () => {
     const make = (suffix: string) =>
       changeSystem(
