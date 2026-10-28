@@ -24,3 +24,6 @@
 !/.github/
 /.github/*
 !/.github/workflows/
+
+!/playwright.demo.config.ts
+!/scripts/

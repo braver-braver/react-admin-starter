@@ -43,3 +43,10 @@ dist-ssr
 # Playwright E2E reports and traces
 /playwright-report/
 /test-results/
+
+# Static demo builds and Pages assembly
+/dist-demo/
+/.demo-test/
+/.pages-site/
+/.pages-upload/
+/app/

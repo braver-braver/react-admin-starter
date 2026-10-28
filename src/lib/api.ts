@@ -45,13 +45,16 @@ export async function apiRequest<T>(
   if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
   let response: Response
   try {
-    response = await fetch(path, {
-      ...options,
-      headers,
-      credentials: 'same-origin',
-      cache: 'no-store',
-      redirect: 'error',
-    })
+    response = await fetch(
+      __DEMO_BUILD__ ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
+      {
+        ...options,
+        headers,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        redirect: 'error',
+      }
+    )
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError')
       throw error

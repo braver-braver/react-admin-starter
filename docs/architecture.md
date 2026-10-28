@@ -4,7 +4,7 @@
 A reusable React Admin Starter, **not** a rewrite of face_system V1.
 
 ## Runtime architecture
-React application → feature API functions → shared HTTP client → MSW development handlers or a configurable REST service.
+React application → feature API functions → shared HTTP client → MSW development/demo handlers or a configurable REST service.
 
 No backend runtime is required for local demo mode. GoFrame, Gin and other backends are future consumers of the API contract, not dependencies of the starter.
 
@@ -16,7 +16,7 @@ No backend runtime is required for local demo mode. GoFrame, Gin and other backe
 - Quality: Vitest, Playwright, CI.
 
 ## Security boundaries
-Mocks are development-only. Real authentication and authorization are enforced by the backend. Never store production secrets in the repository or log sensitive fields.
+Mocks run in development or the explicit static demo build (dist-demo). Ordinary production output (dist) excludes mocks; see pages-demo.md for deployment and isolation rules. Real authentication and authorization are enforced by the backend. Never store production secrets in the repository or log sensitive fields.
 
 ## Scope exclusions for v0.1
 No legacy GoFrame API compatibility, no database, no dedicated BFF, no dynamic form builder, no low-code engine, no microfrontend.

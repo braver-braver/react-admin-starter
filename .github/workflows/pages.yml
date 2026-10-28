@@ -1,0 +1,139 @@
+name: Publish mock demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Snapshot history and Pages must advance together; never cancel a Release publish.
+concurrency:
+  group: github-pages-demo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DEMO_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || 'latest' }}
+    steps:
+      - name: Checkout deployment tooling from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Checkout the exact application commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: app
+          persist-credentials: false
+      - name: Validate version and compute site paths
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs'
+          import { releasePattern } from './scripts/assemble-pages.mjs'
+          const version = process.env.DEMO_VERSION
+          if (version !== 'latest' && !releasePattern.test(version)) throw new Error('Release tag must be vMAJOR.MINOR.PATCH with an optional prerelease suffix')
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/')
+          if (!/^[a-zA-Z0-9._-]+$/.test(repo)) throw new Error('Invalid repository name')
+          const base = repo.toLowerCase() === `${owner.toLowerCase()}.github.io` ? '/' : `/${repo}/`
+          const target = version === 'latest' ? base : `${base}releases/${version}/`
+          appendFileSync(process.env.GITHUB_ENV, `DEMO_BASE_PATH=${target}\nDEMO_SERVE_BASE=${base}\nDEMO_TARGET_VERSION=${version}\nDEMO_SERVE_DIR=.pages-upload\n`)
+          NODE
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Install exact application dependencies
+        run: pnpm --dir app install --frozen-lockfile
+      - name: Verify application source and production boundary
+        working-directory: app
+        run: |
+          pnpm lint
+          pnpm format:check
+          pnpm test:browser:install
+          pnpm test
+          pnpm build
+      - name: Build the explicit static mock demo
+        run: pnpm --dir app build:demo
+      - name: Restore previously published snapshots
+        shell: bash
+        run: |
+          mkdir .pages-site
+          git -C .pages-site init
+          # Reuse checkout's credentials without embedding a token in commands or output.
+          git -C .pages-site config include.path "$GITHUB_WORKSPACE/.git/config"
+          git -C .pages-site config user.name 'github-actions[bot]'
+          git -C .pages-site config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git -C .pages-site ls-remote --exit-code --heads origin pages-snapshots; then
+            git -C .pages-site fetch --depth=1 origin pages-snapshots
+            git -C .pages-site checkout --detach FETCH_HEAD
+          else
+            result=$?
+            if [ "$result" -ne 2 ]; then exit "$result"; fi
+          fi
+      - name: Assemble latest and immutable release pages
+        run: node scripts/assemble-pages.mjs app/dist-demo .pages-site .pages-upload
+      - name: Verify the final static Pages artifact
+        working-directory: app
+        env:
+          DEMO_SERVE_DIR: ../.pages-upload
+        run: pnpm exec playwright test --config playwright.demo.config.ts
+      - name: Persist verified site snapshots
+        shell: bash
+        run: |
+          git -C .pages-site add --all
+          if ! git -C .pages-site diff --cached --quiet; then
+            git -C .pages-site commit -m "Publish demo $DEMO_VERSION"
+            git -C .pages-site push origin HEAD:refs/heads/pages-snapshots
+          fi
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload verified Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .pages-upload
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Publish deployment links
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs'
+          const root = process.env.PAGE_URL
+          const version = process.env.DEMO_VERSION
+          const target = new URL(version === 'latest' ? './' : `releases/${version}/`, root)
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `演示版本：${version}\n\n[打开演示](${target}) · [历史版本](${new URL('versions.html', root)})\n`)
+          NODE
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-smoke-failure-evidence
+          path: |
+            app/playwright-report/
+            app/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

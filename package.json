@@ -18,7 +18,10 @@
     "test:coverage": "vitest run --coverage --browser.headless",
     "test:browser:install": "playwright install chromium --with-deps",
     "test:e2e": "pnpm build && playwright test",
-    "test:e2e:ui": "pnpm build && playwright test --ui"
+    "test:e2e:ui": "pnpm build && playwright test --ui",
+    "build:demo": "vite build --mode demo && tsc -b && node scripts/check-demo.mjs",
+    "test:pages": "node --test scripts/pages.test.mjs",
+    "test:demo": "node scripts/prepare-demo-test.mjs && playwright test --config playwright.demo.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

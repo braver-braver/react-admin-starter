@@ -23,7 +23,7 @@ pnpm dev
 
 ## 接入真实服务
 
-设置 `VITE_ENABLE_MOCKS=false` 可在开发时关闭模拟，随后在 Vite 中配置 `/api` 代理，或让应用和 API 通过同一个反向代理提供服务。生产构建始终排除 MSW 及其处理器，即使设置 `VITE_ENABLE_MOCKS=true` 也无法开启模拟。Worker 脚本只由 Vite 开发中间件提供，不在 `public/` 或 `dist/` 中。构建末尾自动检查产物，检测到 Worker、模拟会话标识或演示账户时构建失败。
+设置 `VITE_ENABLE_MOCKS=false` 可在开发时关闭模拟，随后在 Vite 中配置 `/api` 代理，或让应用和 API 通过同一个反向代理提供服务。生产构建始终排除 MSW 及其处理器，即使设置 `VITE_ENABLE_MOCKS=true` 也无法开启模拟。普通生产构建的 Worker 脚本只由 Vite 开发中间件提供，不在 `public/` 或 `dist/` 中。独立的 `build:demo` 会将 Worker 与模拟接口放入 `dist-demo/`，使用 Hash 路由和按版本路径隔离的 Cookie/API/Worker；这不改变普通生产构建的边界。详见 [Pages 演示发布](pages-demo.md)。构建末尾自动检查产物，检测到 Worker、模拟会话标识或演示账户时构建失败。
 
 前端固定访问同源 `/api`。部署时须让 `/api/*` 先路由到后端，再将前端路径回退至 `index.html`。仅部署静态文件不会自动获得认证能力：后端缺失或响应格式不符时会显示错误，无法进入管理页面。
 

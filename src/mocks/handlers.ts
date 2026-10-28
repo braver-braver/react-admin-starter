@@ -8,8 +8,15 @@ type MockSession = {
   expiresAt: number
 }
 
-const SESSION_KEY = 'react-admin-starter:mock-sessions'
-const COOKIE_NAME = 'mock_session'
+const mockBase = import.meta.env.BASE_URL
+const SESSION_KEY =
+  mockBase === '/'
+    ? 'react-admin-starter:mock-sessions'
+    : `react-admin-starter:mock-sessions:${mockBase}`
+const COOKIE_NAME =
+  mockBase === '/'
+    ? 'mock_session'
+    : `mock_session_${encodeURIComponent(mockBase)}`
 const SESSION_LIFETIME_MS = 60 * 60 * 1000
 const DEMO_PASSWORD = 'Demo1234!'
 
@@ -73,21 +80,21 @@ function requiresRequestedWith(request: Request) {
 }
 
 function sessionCookie(id: string) {
-  return `${COOKIE_NAME}=${id}; Path=/; SameSite=Lax; Max-Age=3600`
+  return `${COOKIE_NAME}=${id}; Path=${mockBase}; SameSite=Lax; Max-Age=3600`
 }
 
 function expiredSessionCookie() {
-  return `${COOKIE_NAME}=; Path=/; SameSite=Lax; Max-Age=0`
+  return `${COOKIE_NAME}=; Path=${mockBase}; SameSite=Lax; Max-Age=0`
 }
 
-// This database and cookie are exclusively for the development MSW demo.
+// This database and cookie are exclusively for development and the explicit static MSW demo.
 export function resetMockSessions() {
   sessionStorage.removeItem(SESSION_KEY)
   document.cookie = expiredSessionCookie()
 }
 
 export const handlers = [
-  http.post('/api/auth/login', async ({ request, cookies }) => {
+  http.post(`${mockBase}api/auth/login`, async ({ request, cookies }) => {
     if (!requiresRequestedWith(request)) {
       return error(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
     }
@@ -131,7 +138,7 @@ export const handlers = [
     )
   }),
 
-  http.get('/api/auth/session', ({ cookies }) => {
+  http.get(`${mockBase}api/auth/session`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
     if (!session) return error(401, 'UNAUTHENTICATED', '请先登录。')
 
@@ -140,7 +147,7 @@ export const handlers = [
     })
   }),
 
-  http.post('/api/auth/logout', ({ request, cookies }) => {
+  http.post(`${mockBase}api/auth/logout`, ({ request, cookies }) => {
     if (!requiresRequestedWith(request)) {
       return error(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
     }
@@ -162,7 +169,7 @@ export const handlers = [
     )
   }),
 
-  http.get('/api/auth/permissions', ({ cookies }) => {
+  http.get(`${mockBase}api/auth/permissions`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
     if (!session) return error(401, 'UNAUTHENTICATED', '请先登录。')
     if (!session.user.permissions.includes('permissions:read')) {

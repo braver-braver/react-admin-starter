@@ -71,3 +71,9 @@ pnpm test:e2e
 可访问性基线检查主要内容地标、页面标题、表单与图标按钮名称、跳过导航、Tab/Shift+Tab 焦点约束、Escape 关闭与焦点恢复。它不是完整 WCAG 审计，不覆盖屏幕阅读器实机体验、色彩对比度或所有业务表单。
 
 CI 中 `Full application E2E smoke and accessibility baseline` 与组件测试分开显示，任何断言失败都会导致非零退出。失败时保存 7 天的 HTML 报告、截图与 trace；本地产物位于 `playwright-report/` 和 `test-results/`（不提交）。可用 `pnpm exec playwright show-report` 或 `pnpm exec playwright show-trace <trace.zip>` 查看。断言使用语义选择器和自动等待，不依赖固定延时、像素截图或动态用户日期。
+
+### GitHub Pages 演示发布
+
+独立演示构建 `pnpm build:demo` 输出到 `dist-demo/`，包含 MSW 与演示账户；普通 `pnpm build` 仍输出到 `dist/` 并禁止 Mock。`pnpm test:pages` 验证历史站点组装，`pnpm test:demo` 构建两个真实静态版本并验证桌面/手机的登录、刷新、退出和跨版本会话隔离。
+
+配置 Pages 后，main 更新会发布最新演示，发布 `vMAJOR.MINOR.PATCH` 格式的 Release 会保存版本快照。具体设置、路径、首次发布与恢复方法见 [Pages 演示发布说明](docs/pages-demo.md)。
