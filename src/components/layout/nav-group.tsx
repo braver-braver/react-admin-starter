@@ -51,7 +51,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
           <CollapsibleTrigger
             type='button'
             aria-label={`切换${title}分组`}
-            className='w-full cursor-pointer justify-between hover:bg-sidebar-accent'
+            className='w-full justify-between cursor-pointer hover:bg-sidebar-accent'
           >
             <span>{title}</span>
             <ChevronRight
