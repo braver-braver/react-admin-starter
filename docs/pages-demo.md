@@ -48,7 +48,7 @@ main push 更新最新演示；发布 Release 则从事件对应的准确提交�
 
 ## 故障与恢复
 
-- main、Release、手动触发共用发布并发组，避免两个发布覆盖历史。
+- main、Release、手动触发共用发布并发组，设置 `queue: max` 按顺序排队（GitHub 最多支持 100 个等待任务），避免默认的单等待位取消较早的 Release。队列满时额外任务仍会被 GitHub 取消，需要手动重跑。参见 [GitHub 并发与队列说明](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 - CI 在每个 PR 上验证普通应用 E2E、快照组装、两个静态版本和跨版本会话隔离；发布工作流只验证此次发布的真实目标版本，不要求伪造历史 Release。
 - 静态浏览器验证失败会阻止保存和部署，并保留 7 天失败证据。
 - 快照保存成功但 Pages 部署失败时，已上线站点保持上一版；修复 Pages 设置后重跑即可，快照保留且重跑幂等。
