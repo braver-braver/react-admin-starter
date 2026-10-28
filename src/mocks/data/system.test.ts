@@ -309,7 +309,10 @@ describe('system authorization kernel', () => {
     await changeSystem(
       'roles',
       role.id,
-      { ...fields(role), permissionIds: ['users:read', 'users:write', 'audit:read'] },
+      {
+        ...fields(role),
+        permissionIds: ['users:read', 'users:write', 'audit:read'],
+      },
       admin()
     )
     const limited = principal(account.id)!
@@ -334,7 +337,14 @@ describe('system authorization kernel', () => {
     await changeSystem(
       'roles',
       role.id,
-      { ...fields(role), permissionIds: ['users:read', 'users:write', 'system:accounts:write'] },
+      {
+        ...fields(role),
+        permissionIds: [
+          'users:read',
+          'users:write',
+          'system:accounts:write',
+        ],
+      },
       admin()
     )
     const limited = principal(account.id)!

@@ -385,8 +385,7 @@ export function principal(
 }
 function assertDelegation(
   actor: AuthUser,
-  recipient: AuthUser,
-  db: Store
+  recipient: AuthUser
 ) {
   for (const permission of recipient.permissions) {
     if (!actor.permissions.includes(permission))
@@ -525,7 +524,7 @@ async function applyChange(
             { ...record, enabled: true },
           ],
         })
-        if (candidate) assertDelegation(actor, candidate, db)
+        if (candidate) assertDelegation(actor, candidate)
         if (
           existing?.resource === 'accounts' &&
           existing.enabled !== input.enabled &&
@@ -569,7 +568,7 @@ async function applyChange(
                 : item
             ),
           })
-          if (hypothetical) assertDelegation(actor, hypothetical, candidateDb)
+          if (hypothetical) assertDelegation(actor, hypothetical)
         }
         // A shared role can change privileges for every existing assignee.
         // Validate their resulting grants, not merely the role's codes.
@@ -580,7 +579,7 @@ async function applyChange(
           )
             continue
           const recipient = principal(account.id, candidateDb)
-          if (recipient) assertDelegation(actor, recipient, candidateDb)
+          if (recipient) assertDelegation(actor, recipient)
         }
         break
       }
