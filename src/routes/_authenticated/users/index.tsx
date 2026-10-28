@@ -1,5 +1,7 @@
 import z from 'zod'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useAuthStore } from '@/stores/auth-store'
+import { hasPermissions } from '@/features/auth/rbac'
 import { Users } from '@/features/users'
 import { roles } from '@/features/users/data/data'
 
@@ -28,5 +30,12 @@ const usersSearchSchema = z.object({
 
 export const Route = createFileRoute('/_authenticated/users/')({
   validateSearch: usersSearchSchema,
+  // UX 级权限守卫：缺少 users:read 时展示 403 页（真实鉴权在服务端）
+  beforeLoad: () => {
+    const user = useAuthStore.getState().auth.user
+    if (!hasPermissions(user, ['users:read'])) {
+      throw redirect({ to: '/403' })
+    }
+  },
   component: Users,
 })

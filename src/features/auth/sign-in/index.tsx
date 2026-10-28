@@ -1,4 +1,3 @@
-import { useSearch } from '@tanstack/react-router'
 import {
   Card,
   CardContent,
@@ -10,18 +9,18 @@ import { AuthLayout } from '../auth-layout'
 import { UserAuthForm } from './components/user-auth-form'
 
 export function SignIn() {
-  const { redirect } = useSearch({ from: '/(auth)/sign-in' })
   return (
     <AuthLayout>
       <Card className='max-w-sm gap-4'>
         <CardHeader>
           <CardTitle className='text-lg tracking-tight'>登录管理端</CardTitle>
           <CardDescription>
-            当前仅供开发演示，真实认证和权限系统将在后续版本接入。
+            开发环境由 Mock API 提供登录与会话；接入真实后端只需配置
+            VITE_API_BASE_URL。
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <UserAuthForm redirectTo={redirect} />
+          <UserAuthForm />
         </CardContent>
       </Card>
     </AuthLayout>

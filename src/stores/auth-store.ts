@@ -1,53 +1,54 @@
 import { create } from 'zustand'
-import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
+import { getCookie, removeCookie, setCookie } from '@/lib/cookies'
+import { type SessionUser } from '@/features/auth/schemas'
 
-const ACCESS_TOKEN = 'thisisjustarandomstring'
+const ACCESS_TOKEN_COOKIE = 'ras.access-token'
 
-interface AuthUser {
-  accountNo: string
-  email: string
-  role: string[]
-  exp: number
-}
-
+/**
+ * 认证状态：令牌持久化在 cookie 中以便刷新后恢复会话，
+ * 用户信息始终以 /auth/session 的返回为准（服务端校验）。
+ * 令牌仅用于演示会话保持，不代表任何生产安全边界。
+ */
 interface AuthState {
   auth: {
-    user: AuthUser | null
-    setUser: (user: AuthUser | null) => void
+    user: SessionUser | null
     accessToken: string
-    setAccessToken: (accessToken: string) => void
-    resetAccessToken: () => void
+    setSession: (session: { accessToken: string; user: SessionUser }) => void
+    setUser: (user: SessionUser | null) => void
     reset: () => void
   }
 }
 
-export const useAuthStore = create<AuthState>()((set) => {
-  const cookieState = getCookie(ACCESS_TOKEN)
-  const initToken = cookieState ? JSON.parse(cookieState) : ''
-  return {
-    auth: {
-      user: null,
-      setUser: (user) =>
-        set((state) => ({ ...state, auth: { ...state.auth, user } })),
-      accessToken: initToken,
-      setAccessToken: (accessToken) =>
-        set((state) => {
-          setCookie(ACCESS_TOKEN, JSON.stringify(accessToken))
-          return { ...state, auth: { ...state.auth, accessToken } }
-        }),
-      resetAccessToken: () =>
-        set((state) => {
-          removeCookie(ACCESS_TOKEN)
-          return { ...state, auth: { ...state.auth, accessToken: '' } }
-        }),
-      reset: () =>
-        set((state) => {
-          removeCookie(ACCESS_TOKEN)
-          return {
-            ...state,
-            auth: { ...state.auth, user: null, accessToken: '' },
-          }
-        }),
-    },
+function readPersistedToken(): string {
+  const cookie = getCookie(ACCESS_TOKEN_COOKIE)
+  if (!cookie) return ''
+  try {
+    // 兼容旧版本以 JSON 字符串存储的令牌
+    const parsed = JSON.parse(cookie)
+    return typeof parsed === 'string' ? parsed : cookie
+  } catch {
+    return cookie
   }
-})
+}
+
+export const useAuthStore = create<AuthState>()((set) => ({
+  auth: {
+    user: null,
+    accessToken: readPersistedToken(),
+    setSession: ({ accessToken, user }) =>
+      set((state) => {
+        setCookie(ACCESS_TOKEN_COOKIE, accessToken)
+        return { ...state, auth: { ...state.auth, user, accessToken } }
+      }),
+    setUser: (user) =>
+      set((state) => ({ ...state, auth: { ...state.auth, user } })),
+    reset: () =>
+      set((state) => {
+        removeCookie(ACCESS_TOKEN_COOKIE)
+        return {
+          ...state,
+          auth: { ...state.auth, user: null, accessToken: '' },
+        }
+      }),
+  },
+}))

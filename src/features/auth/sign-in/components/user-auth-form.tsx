@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { z } from 'zod'
-import { useForm } from 'react-hook-form'
+import { useForm, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { cn, sleep } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
+import { signIn } from '../../api'
 
 const formSchema = z.object({
   email: z.email({
@@ -26,50 +27,77 @@ const formSchema = z.object({
   password: z.string().min(1, '请输入密码。').min(7, '密码至少需要 7 位。'),
 })
 
-interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
-  redirectTo?: string
+type FormValues = z.infer<typeof formSchema>
+
+/**
+ * 开发环境展示的演示账号（与 src/mocks/data/accounts.ts 对应）。
+ * 演示口令按「角色名首字母大写 + 123456」推导，属于公开信息。
+ */
+const demoAccounts = [
+  { email: 'admin@example.com', role: 'admin', label: '管理员' },
+  { email: 'operator@example.com', role: 'operator', label: '运营人员' },
+  { email: 'viewer@example.com', role: 'viewer', label: '只读访客' },
+] as const
+
+function demoPassphrase(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1) + '123456'
 }
 
-export function UserAuthForm({
-  className,
-  redirectTo,
-  ...props
-}: UserAuthFormProps) {
+function DemoAccountsHint({ form }: { form: UseFormReturn<FormValues> }) {
+  return (
+    <div className='rounded-md border border-dashed p-3 text-xs text-muted-foreground'>
+      <p className='mb-2 font-medium text-foreground'>
+        演示账号（点击自动填充）
+      </p>
+      <div className='flex flex-wrap gap-2'>
+        {demoAccounts.map((account) => (
+          <Button
+            key={account.email}
+            type='button'
+            variant='secondary'
+            size='sm'
+            className='h-7 px-2 text-xs'
+            onClick={() =>
+              form.reset({
+                email: account.email,
+                password: demoPassphrase(account.role),
+              })
+            }
+          >
+            {account.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type UserAuthFormProps = React.HTMLAttributes<HTMLFormElement>
+
+export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
-  const { auth } = useAuthStore()
+  const setSession = useAuthStore((state) => state.auth.setSession)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: '', password: '' },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    if (import.meta.env.PROD) {
-      toast.error('演示登录仅在开发环境可用，请接入真实认证服务。')
-      return
-    }
-
+  async function onSubmit(data: FormValues) {
     setIsLoading(true)
-    toast.promise(sleep(150), {
-      loading: '正在进入演示模式…',
-      success: () => {
-        setIsLoading(false)
-        auth.setUser({
-          accountNo: 'DEMO',
-          email: data.email,
-          role: ['demo'],
-          exp: Date.now() + 60 * 60 * 1000,
-        })
-        auth.setAccessToken('mock-access-token')
-        navigate({ to: redirectTo || '/', replace: true })
-        return '已进入演示模式'
-      },
-      error: () => {
-        setIsLoading(false)
-        return '演示登录失败'
-      },
-    })
+    try {
+      const session = await signIn(data)
+      setSession(session)
+      toast.success(`欢迎回来，${session.user.name}`)
+      navigate({ to: '/', replace: true })
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : '登录失败，请稍后重试。'
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -105,10 +133,11 @@ export function UserAuthForm({
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading || import.meta.env.PROD}>
+        <Button className='mt-2' disabled={isLoading}>
           {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
-          演示登录
+          登录
         </Button>
+        {import.meta.env.DEV && <DemoAccountsHint form={form} />}
       </form>
     </Form>
   )

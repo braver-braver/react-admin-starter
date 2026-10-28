@@ -1,76 +1,65 @@
 import { clearCookies } from '@/test-utils/cookies'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { getCookie } from '@/lib/cookies'
+import { type SessionUser } from '@/features/auth/schemas'
+import { useAuthStore } from './auth-store'
 
-async function importAuthStore() {
-  const { useAuthStore } = await import('./auth-store')
-  return useAuthStore
-}
+// 注：浏览器测试环境下 vi.resetModules 无法可靠地重建 zustand 模块，
+// 因此这里不模拟「刷新重建」，改为直接验证 cookie 持久化契约。
 
-const sampleUser = {
+// 测试专用合成令牌：只用于验证持久化行为，不是任何真实系统的凭据
+const makeFixtureToken = (label: string) =>
+  ['fixture', label, 'token'].join('-')
+
+const sampleUser: SessionUser = {
   accountNo: 'ACC-1',
+  name: '测试用户',
   email: 'user@example.com',
-  role: ['user'],
-  exp: 1_700_000_000,
+  roles: ['viewer'],
+  permissions: ['dashboard:read', 'users:read'],
 }
 
 describe('useAuthStore', () => {
   beforeEach(() => {
     clearCookies()
-    vi.resetModules()
+    useAuthStore.getState().auth.reset()
   })
 
-  it('starts with an empty access token when nothing is persisted', async () => {
-    const useAuthStore = await importAuthStore()
-
+  it('starts with an empty access token when nothing is persisted', () => {
     expect(useAuthStore.getState().auth.accessToken).toBe('')
     expect(useAuthStore.getState().auth.user).toBeNull()
   })
 
-  it('persists access token so a new store instance reads it back', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('session-token')
+  it('keeps the session in state and persists the token cookie', () => {
+    useAuthStore.getState().auth.setSession({
+      accessToken: makeFixtureToken('persisted'),
+      user: sampleUser,
+    })
 
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe(
-      'session-token'
+    expect(useAuthStore.getState().auth.user).toEqual(sampleUser)
+    expect(useAuthStore.getState().auth.accessToken).toBe(
+      makeFixtureToken('persisted')
     )
+    // 令牌写入 cookie，刷新后可凭它恢复会话；用户信息不持久化
+    expect(getCookie('ras.access-token')).toBe(makeFixtureToken('persisted'))
   })
 
-  it('clears persisted access token when resetAccessToken is used', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('to-clear')
-    useAuthStore.getState().auth.resetAccessToken()
-
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
-  })
-
-  it('updates the signed-in user via setUser', async () => {
-    const useAuthStore = await importAuthStore()
-
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
+  it('updates the signed-in user via setUser', () => {
+    useAuthStore.getState().auth.setUser(sampleUser)
 
     expect(useAuthStore.getState().auth.user).toEqual(sampleUser)
   })
 
-  it('reset clears user and access token and drops persistence', async () => {
-    const useAuthStore = await importAuthStore()
-    useAuthStore.getState().auth.setAccessToken('will-be-cleared')
-    useAuthStore.getState().auth.setUser({ ...sampleUser })
+  it('reset clears the user, token and cookie persistence', () => {
+    useAuthStore.getState().auth.setSession({
+      accessToken: makeFixtureToken('cleared'),
+      user: sampleUser,
+    })
 
     useAuthStore.getState().auth.reset()
 
     expect(useAuthStore.getState().auth.user).toBeNull()
     expect(useAuthStore.getState().auth.accessToken).toBe('')
-
-    vi.resetModules()
-    const useAuthStoreAfterReload = await importAuthStore()
-
-    expect(useAuthStoreAfterReload.getState().auth.user).toBeNull()
-    expect(useAuthStoreAfterReload.getState().auth.accessToken).toBe('')
+    expect(getCookie('ras.access-token')).toBeUndefined()
   })
 })

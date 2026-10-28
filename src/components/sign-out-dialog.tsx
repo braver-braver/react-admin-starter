@@ -1,6 +1,8 @@
-import { useNavigate, useLocation } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { signOut } from '@/features/auth/api'
 
 interface SignOutDialogProps {
   open: boolean
@@ -9,18 +11,15 @@ interface SignOutDialogProps {
 
 export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const navigate = useNavigate()
-  const location = useLocation()
+  const queryClient = useQueryClient()
   const { auth } = useAuthStore()
 
   const handleSignOut = () => {
+    // 登出接口尽力而为，本地凭证与会话缓存始终会被清理
+    void signOut()
     auth.reset()
-    // Preserve current location for redirect after sign-in
-    const currentPath = location.href
-    navigate({
-      to: '/sign-in',
-      search: { redirect: currentPath },
-      replace: true,
-    })
+    queryClient.clear()
+    navigate({ to: '/sign-in', replace: true })
   }
 
   return (
@@ -28,7 +27,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
       open={open}
       onOpenChange={onOpenChange}
       title='退出登录'
-      desc='确认退出当前演示账户吗？退出后需要重新登录。'
+      desc='确认退出当前账户吗？退出后需要重新登录。'
       confirmText='退出登录'
       cancelBtnText='取消'
       destructive
