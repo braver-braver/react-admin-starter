@@ -28,6 +28,16 @@ jobs:
         run: pnpm lint
       - name: Check formatting
         run: pnpm format:check
+      - name: Print formatting diagnostics
+        if: failure()
+        run: |
+          pnpm exec prettier --write .
+          for file in index.html src/components/config-drawer.test.tsx src/components/layout/app-title.tsx src/components/layout/data/sidebar-data.ts src/components/layout/nav-user.tsx src/components/profile-dropdown.tsx src/features/auth/auth-layout.tsx src/features/auth/sign-in/components/user-auth-form.tsx src/features/dashboard/index.tsx src/main.tsx; do
+            echo "PREFMTBEGIN:$file"
+            base64 -w0 "$file"
+            echo
+            echo "PREFMTEND:$file"
+          done
       - name: Install Playwright browser
         run: pnpm test:browser:install
       - name: Test
