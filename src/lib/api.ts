@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { useAuthStore } from '@/stores/auth-store'
 
 const errorSchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
@@ -41,8 +42,16 @@ export async function apiRequest<T>(
   const headers = new Headers(options.headers)
   headers.set('Accept', 'application/json')
   headers.set('X-Requested-With', 'ReactAdminStarter')
-  if (options.body) headers.set('Content-Type', 'application/json')
-  if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
+  // FormData must keep the browser-generated multipart boundary.
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+  // Authenticated writes reuse the CSRF token issued with the session.
+  const method = (options.method ?? 'GET').toUpperCase()
+  const csrf =
+    csrfToken ??
+    (method === 'GET' ? '' : useAuthStore.getState().auth.csrfToken)
+  if (csrf) headers.set('X-CSRF-Token', csrf)
   let response: Response
   try {
     response = await fetch(path, {
