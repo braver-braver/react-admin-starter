@@ -39,3 +39,7 @@ dist-ssr
 # Local browser verification artifacts
 .playwright-cli/
 /output/playwright/
+
+# Playwright E2E reports and traces
+/playwright-report/
+/test-results/

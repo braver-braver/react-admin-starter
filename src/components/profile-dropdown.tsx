@@ -23,7 +23,11 @@ export function ProfileDropdown() {
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+          <Button
+            aria-label='账户菜单'
+            variant='ghost'
+            className='relative h-8 w-8 rounded-full'
+          >
             <Avatar className='h-8 w-8'>
               <AvatarFallback>
                 {account?.name.slice(0, 1) ?? '用'}

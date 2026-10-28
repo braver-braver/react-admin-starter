@@ -43,6 +43,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ['src/**/*.test.{ts,tsx}'],
     silent: 'passed-only',
     unstubEnvs: true,
     browser: {
