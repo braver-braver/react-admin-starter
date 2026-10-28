@@ -46,7 +46,7 @@ describe('UsersInviteDialog', () => {
     const onOpenChange = vi.fn()
     const { getByRole } = await renderDialog(onOpenChange)
 
-    await userEvent.click(getByRole('button', { name: /Close/i }))
+    await userEvent.click(getByRole('button', { name: '关闭' }))
 
     expect(onOpenChange).toHaveBeenCalledOnce()
     expect(onOpenChange).toHaveBeenCalledWith(false)
