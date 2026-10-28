@@ -40,7 +40,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
-See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements.
+See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for the shared string catalog and `Intl` formatting conventions.
 
 ## Design principles
 
