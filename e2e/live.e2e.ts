@@ -26,10 +26,7 @@ test('published Pages version, auth, data and permissions work in a real browser
     .poll(
       async () => {
         try {
-          const metadataUrl = new URL(
-            `demo.json?verify=${Date.now()}`,
-            target
-          )
+          const metadataUrl = new URL(`demo.json?verify=${Date.now()}`, target)
           const result = await request.get(metadataUrl.toString(), {
             timeout: 8000,
             failOnStatusCode: false,
@@ -67,7 +64,9 @@ test('published Pages version, auth, data and permissions work in a real browser
     page.getByRole('complementary', { name: '演示环境信息' })
   ).toContainText(`版本：${version}`)
 
-  await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('admin@example.com')
+  await page
+    .getByRole('textbox', { name: '邮箱', exact: true })
+    .fill('admin@example.com')
   await page.getByLabel('密码', { exact: true }).fill('Demo1234!')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(
@@ -92,7 +91,9 @@ test('published Pages version, auth, data and permissions work in a real browser
   expect(serviceWorkerResponses.length).toBeGreaterThan(0)
   expect(serviceWorkerResponses.every(Boolean)).toBe(true)
 
-  await page.getByRole('textbox', { name: '邮箱', exact: true }).fill('viewer@example.com')
+  await page
+    .getByRole('textbox', { name: '邮箱', exact: true })
+    .fill('viewer@example.com')
   await page.getByLabel('密码', { exact: true }).fill('Demo1234!')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(

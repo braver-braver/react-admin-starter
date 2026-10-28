@@ -27,14 +27,6 @@ jobs:
         run: pnpm lint
       - name: Check formatting
         run: pnpm format:check
-      - name: Capture formatting diagnostics
-        if: failure()
-        run: |
-          pnpm exec prettier --write e2e/live.e2e.ts
-          echo LIVE_E2E_FMT_BEGIN
-          base64 -w0 e2e/live.e2e.ts
-          echo
-          echo LIVE_E2E_FMT_END
       - name: Install Playwright browser
         run: pnpm test:browser:install
       - name: Test
