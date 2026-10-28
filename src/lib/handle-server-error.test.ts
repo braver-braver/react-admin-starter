@@ -15,31 +15,43 @@ beforeEach(() => {
 })
 
 describe('handleServerError', () => {
-  it('shows a generic message when the error is not recognised', () => {
+  it('shows a generic Chinese message when the error is not recognised', () => {
     handleServerError(new Error('network'))
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
   it('maps a plain object with status 204 to the no-content message', () => {
     handleServerError({ status: 204 })
 
-    expect(toastError).toHaveBeenCalledWith('No content.')
+    expect(toastError).toHaveBeenCalledWith('没有返回内容。')
   })
 
   it('prefers the API title when the error is an Axios error with response data', () => {
     const error = new AxiosError('Bad request')
     error.response = {
       status: 422,
-      data: { title: 'Validation failed' },
+      data: { title: '参数校验失败' },
     } as AxiosError['response']
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Validation failed')
+    expect(toastError).toHaveBeenCalledWith('参数校验失败')
   })
 
-  it('falls back to the generic message when Axios response has no data.title', () => {
+  it('falls back to the message field when there is no title', () => {
+    const error = new AxiosError('Request failed')
+    error.response = {
+      status: 400,
+      data: { message: '请求不合法' },
+    } as AxiosError['response']
+
+    handleServerError(error)
+
+    expect(toastError).toHaveBeenCalledWith('请求不合法')
+  })
+
+  it('falls back to the generic message when the response has neither title nor message', () => {
     const error = new AxiosError('Request failed')
     error.response = {
       status: 500,
@@ -48,10 +60,10 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
-  it('falls back to the generic message when Axios data.title is an empty string', () => {
+  it('falls back to the generic message when the title is an empty string', () => {
     const error = new AxiosError('Bad request')
     error.response = {
       status: 400,
@@ -60,7 +72,7 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
   it('logs the error to the console in development', () => {

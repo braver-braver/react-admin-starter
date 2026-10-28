@@ -1,5 +1,8 @@
-import { AxiosError } from 'axios'
 import { toast } from 'sonner'
+import { getApiErrorMessage, getErrorStatus } from '@/lib/api-client'
+
+const GENERIC_ERROR_MESSAGE = '操作失败，请稍后重试。'
+const NO_CONTENT_MESSAGE = '没有返回内容。'
 
 export function handleServerError(error: unknown) {
   if (import.meta.env.DEV) {
@@ -7,22 +10,15 @@ export function handleServerError(error: unknown) {
     console.log(error)
   }
 
-  let errMsg = 'Something went wrong!'
+  let errMsg = GENERIC_ERROR_MESSAGE
 
-  if (
-    error &&
-    typeof error === 'object' &&
-    'status' in error &&
-    Number(error.status) === 204
-  ) {
-    errMsg = 'No content.'
+  if (getErrorStatus(error) === 204) {
+    errMsg = NO_CONTENT_MESSAGE
   }
 
-  if (error instanceof AxiosError) {
-    const title = error.response?.data?.title
-    if (typeof title === 'string' && title.length > 0) {
-      errMsg = title
-    }
+  const apiMessage = getApiErrorMessage(error)
+  if (apiMessage) {
+    errMsg = apiMessage
   }
 
   toast.error(errMsg)
