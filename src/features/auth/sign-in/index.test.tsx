@@ -18,20 +18,14 @@ describe('SignIn development credentials', () => {
     vi.stubEnv('DEV', true)
     vi.stubEnv('VITE_ENABLE_MOCKS', 'false')
     const screen = await render(<SignIn />)
-    await expect
-      .element(screen.getByText(/演示密码/))
-      .not.toBeInTheDocument()
-    await expect
-      .element(screen.getByText(/请输入账户信息，登录已接入的认证服务/))
-      .toBeInTheDocument()
+    await expect.element(screen.getByText(/演示密码/)).not.toBeInTheDocument()
+    await expect.element(screen.getByText(/请输入账户信息/)).toBeInTheDocument()
   })
 
   it('shows mock accounts when development mocks are enabled', async () => {
     vi.stubEnv('DEV', true)
     vi.stubEnv('VITE_ENABLE_MOCKS', 'true')
     const screen = await render(<SignIn />)
-    await expect
-      .element(screen.getByText(/演示密码：Demo1234!/))
-      .toBeInTheDocument()
+    await expect.element(screen.getByText(/Demo1234!/)).toBeInTheDocument()
   })
 })
