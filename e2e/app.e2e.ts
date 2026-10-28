@@ -125,16 +125,27 @@ test('keyboard navigation, command focus, theme persistence and sidebar', async 
   await page.getByRole('button', { name: '切换主题' }).click()
   await page.getByRole('menuitem', { name: '浅色', exact: true }).click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
+  // Radix restores focus when the theme menu closes. Wait for the menu to
+  // unmount before moving focus to the sidebar trigger, otherwise Enter can
+  // land on the theme trigger instead of the sidebar.
+  await expect(page.getByRole('menu')).toHaveCount(0)
 
   const toggle = page.getByRole('banner').getByRole('button', {
     name: /^(Toggle Sidebar|切换侧边栏)$/,
   })
   await toggle.focus()
-  await page.keyboard.press('Enter')
+  await expect(toggle).toBeFocused()
+  await toggle.press('Enter')
   if (test.info().project.name === 'mobile') {
     const drawer = page.getByRole('dialog', { name: /^(Sidebar|侧边栏)$/ })
     await expect(drawer).toBeVisible()
     await containedFocus(page, drawer)
+    await page.keyboard.press('Escape')
+    await expect(drawer).toHaveCount(0)
+    await expect(toggle).toBeFocused()
+    // A second keyboard activation must still open the mobile drawer.
+    await toggle.press('Enter')
+    await expect(drawer).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(drawer).toHaveCount(0)
     await expect(toggle).toBeFocused()

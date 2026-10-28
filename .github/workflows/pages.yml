@@ -117,6 +117,13 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Smoke-test the deployed Pages URL in Chromium
+        working-directory: app
+        env:
+          LIVE_DEMO_SITE_URL: ${{ steps.deployment.outputs.page_url }}
+          LIVE_DEMO_VERSION: ${{ env.DEMO_VERSION }}
+          LIVE_DEMO_COMMIT: ${{ github.sha }}
+        run: pnpm exec playwright test --config playwright.live.config.ts
       - name: Publish deployment links
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}

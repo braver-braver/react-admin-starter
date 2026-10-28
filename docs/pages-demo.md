@@ -38,6 +38,12 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 
 界面路由在 `#/` 后，例如 `…/releases/v0.2.0/#/users`，因此刷新不依赖服务器路径重写。
 
+## 上线后的真实站点验收
+
+发布工作流在 `actions/deploy-pages` 成功后，自动执行 `pnpm test:live`：等待已发布 `demo.json` 中的版本号、Git 提交与目标路径匹配，随后直接通过公开 Pages URL 运行桌面和移动端 Playwright 验证，覆盖登录、刷新、权限差异、退出和接口是否由预期的 Service Worker 响应。此验证检查的是公开站点，不是本地临时服务器，也不会提高全局重试次数；部署 CDN 尚未传播时会进行有上限的轮询，而不是固定睡眠。
+
+若部署成功但线上验收失败，Actions 会保持失败并上传浏览器 trace；此时网站可能已可访问，不能将整次发布标记为完全通过。为手动复现，设置 `LIVE_DEMO_SITE_URL` 为根站点 URL，设置 `LIVE_DEMO_VERSION` 为 `latest` 或发布标签，设置 `LIVE_DEMO_COMMIT` 为该版本对应的 40 位提交 SHA，然后运行 `pnpm test:live`。
+
 ## 自动发布与版本保存
 
 main push 更新最新演示；发布 Release 则从事件对应的准确提交构建到 `releases/<tag>/`。支持 `vMAJOR.MINOR.PATCH` 和带 `-rc.1` 等后缀的预发布版本；旧版本必须本身包含 `build:demo` 和演示测试支持，否则构建会明确失败。不会给已有老 Release 伪造演示。
