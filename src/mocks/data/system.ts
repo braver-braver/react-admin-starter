@@ -383,10 +383,7 @@ export function principal(
     )
   return user
 }
-function assertDelegation(
-  actor: AuthUser,
-  recipient: AuthUser
-) {
+function assertDelegation(actor: AuthUser, recipient: AuthUser) {
   for (const permission of recipient.permissions) {
     if (!actor.permissions.includes(permission))
       deny('不能授予自己未持有的权限。')
@@ -551,10 +548,7 @@ async function applyChange(
         record = { ...common, resource, ...input }
         const candidateDb: Store = {
           ...db,
-          records: [
-            ...db.records.filter((item) => item !== existing),
-            record,
-          ],
+          records: [...db.records.filter((item) => item !== existing), record],
         }
         // A newly-created role must not expand the actor's own capability
         // bounds even before it is assigned to an account.

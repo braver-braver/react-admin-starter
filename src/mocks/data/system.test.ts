@@ -239,7 +239,6 @@ describe('system authorization kernel', () => {
       changeSystem('accounts', account.id, fields(account), admin(), false, -1)
     ).rejects.toMatchObject({ status: 401 })
   })
-
   async function limitedRoleManager() {
     const { role, account } = await operator('department')
     const manager = await changeSystem(
@@ -266,7 +265,6 @@ describe('system authorization kernel', () => {
     )
     return { role, account, limited: principal(account.id)! }
   }
-
   it.each([
     { scope: 'all' as const, departmentIds: [] },
     { scope: 'descendants' as const, departmentIds: [] },
@@ -339,11 +337,7 @@ describe('system authorization kernel', () => {
       role.id,
       {
         ...fields(role),
-        permissionIds: [
-          'users:read',
-          'users:write',
-          'system:accounts:write',
-        ],
+        permissionIds: ['users:read', 'users:write', 'system:accounts:write'],
       },
       admin()
     )
@@ -412,7 +406,6 @@ describe('system authorization kernel', () => {
     ).rejects.toMatchObject({ status: 403 })
     expect(principal(account.id)!.routes).not.toContain('/users')
   })
-
   it('serializes concurrent writes, preserves state on errors and never returns credential material', async () => {
     const make = (suffix: string) =>
       changeSystem(
