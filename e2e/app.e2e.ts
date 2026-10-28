@@ -25,9 +25,9 @@ async function containedFocus(page: Page, dialog: Locator) {
 async function sidebar(page: Page) {
   if (test.info().project.name === 'mobile') {
     await page
-      .getByRole('button', { name: 'Toggle Sidebar', exact: true })
+      .getByRole('button', { name: /^(Toggle Sidebar|切换侧边栏)$/ })
       .click()
-    return page.getByRole('dialog', { name: 'Sidebar', exact: true })
+    return page.getByRole('dialog', { name: /^(Sidebar|侧边栏)$/ })
   }
   return page.locator('[data-slot="sidebar-inner"]')
 }
@@ -127,13 +127,12 @@ test('keyboard navigation, command focus, theme persistence and sidebar', async 
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 
   const toggle = page.getByRole('banner').getByRole('button', {
-    name: 'Toggle Sidebar',
-    exact: true,
+    name: /^(Toggle Sidebar|切换侧边栏)$/,
   })
   await toggle.focus()
   await page.keyboard.press('Enter')
   if (test.info().project.name === 'mobile') {
-    const drawer = page.getByRole('dialog', { name: 'Sidebar', exact: true })
+    const drawer = page.getByRole('dialog', { name: /^(Sidebar|侧边栏)$/ })
     await expect(drawer).toBeVisible()
     await containedFocus(page, drawer)
     await page.keyboard.press('Escape')
