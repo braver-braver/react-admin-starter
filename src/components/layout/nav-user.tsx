@@ -1,5 +1,5 @@
-import { ChevronsUpDown, LogOut, Users } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
+import { ChevronsUpDown, LogOut, Users } from 'lucide-react'
 import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -40,7 +40,9 @@ export function NavUser({ user }: NavUserProps) {
                 className='data-[state=open]:bg-sidebar-accent'
               >
                 <Avatar className='h-8 w-8 rounded-lg'>
-                  {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+                  {user.avatar && (
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                  )}
                   <AvatarFallback className='rounded-lg'>演</AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-start text-sm leading-tight'>

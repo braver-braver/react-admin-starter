@@ -1,13 +1,19 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowUpRight, BookOpen, Palette, Users } from 'lucide-react'
 import { appConfig } from '@/config/app'
+import { ArrowUpRight, BookOpen, Palette, Users } from 'lucide-react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function Dashboard() {
   return (
@@ -28,7 +34,9 @@ export function Dashboard() {
             <CardHeader>
               <BookOpen className='size-5 text-muted-foreground' />
               <CardTitle>工程基座</CardTitle>
-              <CardDescription>React 19、Vite、TanStack 与 shadcn/ui</CardDescription>
+              <CardDescription>
+                React 19、Vite、TanStack 与 shadcn/ui
+              </CardDescription>
             </CardHeader>
             <CardContent className='text-sm text-muted-foreground'>
               保留可复用的布局、路由、表格和主题能力，不绑定特定 Go 后端。
@@ -38,10 +46,15 @@ export function Dashboard() {
             <CardHeader>
               <Users className='size-5 text-muted-foreground' />
               <CardTitle>用户管理示例</CardTitle>
-              <CardDescription>表格、筛选、对话框和表单的组合示例</CardDescription>
+              <CardDescription>
+                表格、筛选、对话框和表单的组合示例
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link to='/users' className='inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline'>
+              <Link
+                to='/users'
+                className='inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline'
+              >
                 查看示例 <ArrowUpRight className='size-4' />
               </Link>
             </CardContent>
@@ -58,7 +71,8 @@ export function Dashboard() {
           </Card>
         </div>
         <p className='mt-6 text-sm text-muted-foreground'>
-          当前为 UI 演示版本，用户数据和登录状态均非真实后端认证；后续将引入 MSW 与 API 契约。
+          当前为 UI 演示版本，用户数据和登录状态均非真实后端认证；后续将引入 MSW
+          与 API 契约。
         </p>
       </Main>
     </>

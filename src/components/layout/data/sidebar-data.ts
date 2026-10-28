@@ -1,5 +1,5 @@
-import { LayoutDashboard, Users } from 'lucide-react'
 import { appConfig } from '@/config/app'
+import { LayoutDashboard, Users } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {

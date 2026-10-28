@@ -1,5 +1,5 @@
-import { PanelsTopLeft } from 'lucide-react'
 import { appConfig } from '@/config/app'
+import { PanelsTopLeft } from 'lucide-react'
 
 type AuthLayoutProps = {
   children: React.ReactNode

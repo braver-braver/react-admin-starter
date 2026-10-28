@@ -1,7 +1,7 @@
-import { LogOut } from 'lucide-react'
-import useDialogState from '@/hooks/use-dialog-state'
 import { appConfig } from '@/config/app'
+import { LogOut } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
+import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
