@@ -1,6 +1,6 @@
 # API、会话与权限
 
-本阶段完成 Issue #3 与 Issue #4 的前端参考实现：Cookie 会话、RBAC、服务端分页 CRUD、文件上传与操作审计都已落到真实 HTTP 请求上，开发环境由 MSW 提供数据。真实认证与授权仍需后端按契约实现；MSW 不提供生产安全保障。
+本阶段完成 Issue #3 与 Issue #4 的前端参考实现：Cookie 会话、RBAC、服务端分页 CRUD、文件上传与操作审计都已落到真实 HTTP 请求上，开发环境由 MSW 提供数据。Issue #20 在此之上加入统一系统管理：登录账号、角色、权限、菜单、部门与部门数据范围，模型详见 [系统管理与统一授权](system-management.md)。真实认证与授权仍需后端按契约实现；MSW 不提供生产安全保障。
 
 ## 本地运行
 
@@ -13,11 +13,11 @@ pnpm dev
 
 | 邮箱 | 角色 | 权限 |
 | --- | --- | --- |
-| admin@example.com | admin | users:read、users:write、permissions:read、audit:read |
+| admin@example.com | admin（内置保护） | 全部权限与菜单，数据范围为全部 |
 | viewer@example.com | viewer | users:read、permissions:read |
 | guest@example.com | guest | 无；仅可进入工作台 |
 
-登录后可访问用户示例、权限示例和审计日志。只读用户没有新增、邀请、编辑、删除或批量操作入口，也看不到审计日志；访客访问这些受限页面时跳转 403。权限示例会真正发起 HTTP 请求，从 API 获取权限。开发时清除 `mock_session` Cookie，再点击“重新读取权限”，可验证 401 会清除账户与查询缓存并跳回登录页。
+演示账号本身就是系统管理里的登录账号记录：角色、菜单与数据范围可以在「系统管理」页面调整，保存后旧会话与导航立即重算。登录后可访问用户示例、权限示例、审计日志和系统管理。只读用户没有新增、邀请、编辑、删除或批量操作入口，也看不到审计日志；访客访问这些受限页面时跳转 403。侧边栏与命令搜索只显示服务端下发的菜单；直接输入未授权路由的 URL 会被守卫拦截到 403。权限示例会真正发起 HTTP 请求，从 API 获取权限。开发时清除 `mock_session` Cookie，再点击“重新读取权限”，可验证 401 会清除账户与查询缓存并跳回登录页。
 
 模拟服务将随机会话 ID 放在 Cookie 中，将模拟会话数据库放在当前标签页的 `sessionStorage` 中，支持同一标签页刷新，1 小时过期。关闭标签页或清除浏览器存储后会话失效；不保证跨标签页共享。此模拟 Cookie 可由 JavaScript 读取，浏览器内的模拟权限也可被修改，不能用于安全验证。
 
@@ -43,7 +43,13 @@ pnpm dev
 | GET | /api/auth/session | Session | 验证当前会话并返回当前权限；未登录返回 401 |
 | POST | /api/auth/logout | `{success:true}` | 校验 CSRF、吊销会话、清除 Cookie |
 | GET | /api/auth/permissions | `{roles,permissions}` | 需要 permissions:read；否则 403 |
-| GET | /api/users | `{items,meta}` | 需要 users:read；分页、筛选、排序由服务端计算 |
+| GET | /api/auth/navigation | Menu[] | 返回当前账号启用且授权的菜单；停用菜单同时撤销路由访问 |
+| GET | /api/system/options | SystemRecord[] | 需要任意 system:*:read；返回角色/权限/菜单/部门选项（按数据范围过滤） |
+| GET | /api/system/{resource} | `{items,total,page,pageSize}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
+| POST | /api/system/{resource} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；校验引用、层级与越权后创建 |
+| PUT | /api/system/{resource}/{id} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；保护记录返回 409 |
+| DELETE | /api/system/{resource}/{id} | `{success:true}` | 需要 `system:{resource}:write` 与 CSRF；仍被引用时返回 409 |
+| GET | /api/users | `{items,meta}` | 需要 users:read；分页、筛选、排序由服务端计算；按数据范围过滤 |
 | POST | /api/users | User | 需要 users:write 与 CSRF；重复邮箱/用户名返回 422 |
 | PUT | /api/users/{id} | User | 需要 users:write 与 CSRF；未知用户返回 404 |
 | DELETE | /api/users/{id} | `{success:true}` | 需要 users:write 与 CSRF |
@@ -58,9 +64,9 @@ pnpm dev
 
 上传契约返回 `{id,name,url,contentType,size}`。演示环境用浏览器对象 URL 直接预览，刷新后失效；真实服务应返回持久化下载地址，并在服务端再次校验类型与大小。
 
-审计流水记录登录、退出、用户增删改、批量删除、状态变更、邀请与批量邀请，字段为 `{id,createdAt,actorName,actorEmail,action,target,detail,ip}`。演示数据预置 120 个用户与 46 条审计记录；所有写入都是内存态，刷新页面后重置。
+审计流水记录登录、退出、用户增删改、批量删除、状态变更、邀请、批量邀请与系统配置变更（`system.changed`），字段为 `{id,createdAt,actorName,actorEmail,action,target,detail,ip}`。演示数据预置 120 个用户与 46 条审计记录；所有写入都是内存态，刷新页面后重置。
 
-Session 包含 `user: {id,email,name,roles,permissions}` 和非空 `csrfToken`。权限字段是普通字符串数组；未识别或缺失的权限默认拒绝，角色名称不隐含管理员通配能力。接口响应应采用 `Cache-Control: no-store`。
+Session 包含 `user: {id,email,name,roles,permissions,routes,departmentId,dataScopes}` 和非空 `csrfToken`。权限字段是普通字符串数组；未识别或缺失的权限默认拒绝，角色名称不隐含管理员通配能力。`routes` 是账号可访问的路径列表，守卫据此拦截直接 URL 访问；`dataScopes` 按权限映射数据范围，语义见 [系统管理与统一授权](system-management.md)。接口响应应采用 `Cache-Control: no-store`。
 
 ## 生命周期与错误
 
@@ -81,3 +87,7 @@ pnpm build
 ```
 
 测试覆盖 API 格式与错误、MSW 会话与 CSRF、用户 CRUD 的服务端分页/筛选/排序、批量操作与写权限拒绝、上传类型与权限校验、审计流水与 audit:read、登录和退出交互、路由和菜单权限、旧请求竞争。真实后端的 HttpOnly、服务端授权、会话吊销与跨标签页一致性仍须后端集成验收。
+
+## 系统管理会话扩展
+
+会话现在同时返回 `routes`、`departmentId` 与按能力代码索引的 `dataScopes`。`dataScope` 是总体摘要，操作鉴权必须读取对应能力的范围。前端从 `/api/auth/navigation` 加载侧栏与命令搜索，受保护路由默认拒绝未下发的路径。账号密码重置、停用/再启用及删除会吊销旧会话；角色授权在每次 Mock API 请求时重算。后端升级必须实现这些字段与接口，详见 [系统管理与统一授权](system-management.md)。
