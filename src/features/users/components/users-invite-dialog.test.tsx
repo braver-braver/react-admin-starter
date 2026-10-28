@@ -1,25 +1,42 @@
-import { useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
-import { showSubmittedData } from '@/lib/show-submitted-data'
 import { UsersInviteDialog } from './users-invite-dialog'
 
-vi.mock('@/lib/show-submitted-data', () => ({ showSubmittedData: vi.fn() }))
+const inviteUserMock = vi.fn()
+
+vi.mock('../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api')>()
+  return {
+    ...actual,
+    inviteUser: (...args: unknown[]) => inviteUserMock(...args),
+  }
+})
+
+async function renderDialog(onOpenChange = vi.fn()) {
+  const client = new QueryClient()
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <UsersInviteDialog open onOpenChange={onOpenChange} />
+    </QueryClientProvider>
+  )
+  return screen
+}
 
 describe('UsersInviteDialog', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
   it('renders the dialog title and description', async () => {
-    const { getByRole, getByText } = await render(
-      <UsersInviteDialog open onOpenChange={vi.fn()} />
-    )
+    const { getByRole, getByText } = await renderDialog()
 
     const title = getByRole('heading', {
       level: 2,
-      name: /Invite User/i,
+      name: /邀请用户/,
     })
-    const desc = getByText(/Invite new user to join your team/i)
+    const desc = getByText(/向新成员发送邮件邀请/)
 
     await expect.element(title).toBeInTheDocument()
     await expect.element(desc).toBeInTheDocument()
@@ -27,131 +44,64 @@ describe('UsersInviteDialog', () => {
 
   it('closes when the dialog close button is clicked', async () => {
     const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersInviteDialog open onOpenChange={onOpenChange} />
-    )
+    const { getByRole } = await renderDialog(onOpenChange)
 
-    const closeButton = getByRole('button', { name: /Close/i })
-    await userEvent.click(closeButton)
+    await userEvent.click(getByRole('button', { name: '关闭' }))
 
     expect(onOpenChange).toHaveBeenCalledOnce()
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('closes when Cancel is clicked', async () => {
+  it('closes when 取消 is clicked', async () => {
     const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersInviteDialog open onOpenChange={onOpenChange} />
-    )
+    const { getByRole } = await renderDialog(onOpenChange)
 
-    const cancelButton = getByRole('button', { name: /Cancel/i })
-    await userEvent.click(cancelButton)
+    await userEvent.click(getByRole('button', { name: /^取消$/ }))
 
     expect(onOpenChange).toHaveBeenCalledOnce()
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('shows error messages when submitting empty form, and clears them as fields are filled', async () => {
-    const onOpenChange = vi.fn()
-    const { getByRole, getByText } = await render(
-      <UsersInviteDialog open onOpenChange={onOpenChange} />
-    )
+  it('shows validation messages when submitting empty form', async () => {
+    const { getByRole, getByText } = await renderDialog()
 
-    const emailErrorMessage = getByText(/Please enter an email to invite./i)
-    const roleErrorMessage = getByText(/Role is required./i)
+    await userEvent.click(getByRole('button', { name: /发送邀请/ }))
 
-    const submitButton = getByRole('button', { name: /Invite/i })
-    await userEvent.click(submitButton)
-
-    await expect.element(emailErrorMessage).toBeInTheDocument()
-    await expect.element(roleErrorMessage).toBeInTheDocument()
-
-    const emailInput = getByRole('textbox', { name: /Email/i })
-    await userEvent.fill(emailInput, 'test@example.com')
-
-    const roleSelect = getByRole('combobox', { name: /Role/i })
-    await userEvent.click(roleSelect)
-    await userEvent.click(getByRole('option', { name: /超级管理员/ }))
-
-    await expect.element(emailErrorMessage).not.toBeInTheDocument()
-    await expect.element(roleErrorMessage).not.toBeInTheDocument()
+    await expect.element(getByText('请输入受邀邮箱。')).toBeInTheDocument()
+    await expect.element(getByText('请选择角色。')).toBeInTheDocument()
   })
 
-  it('resets entered values when the dialog is closed and reopened', async () => {
-    function Harness() {
-      const [open, setOpen] = useState(true)
-      return (
-        <>
-          <button type='button' onClick={() => setOpen(true)}>
-            Reopen
-          </button>
-          <UsersInviteDialog open={open} onOpenChange={setOpen} />
-        </>
-      )
-    }
-
-    const { getByRole } = await render(<Harness />)
-
-    const EMAIL_VALUE = 'test@example.com'
-    const ROLE_VALUE = '超级管理员'
-    const DESC_VALUE = 'This is a test description'
-
-    const emailInput = getByRole('textbox', { name: /Email/i })
-    await userEvent.fill(emailInput, EMAIL_VALUE)
-
-    const roleSelect = getByRole('combobox', { name: /Role/i })
-    await userEvent.click(roleSelect)
-    await userEvent.click(getByRole('option', { name: '超级管理员' }))
-
-    const descInput = getByRole('textbox', { name: /Description/i })
-    await userEvent.fill(descInput, DESC_VALUE)
-
-    await expect.element(emailInput).toHaveValue(EMAIL_VALUE)
-    await expect.element(roleSelect).toHaveTextContent(ROLE_VALUE)
-    await expect.element(descInput).toHaveValue(DESC_VALUE)
-
-    const cancelButton = getByRole('button', { name: /Cancel/i })
-    await userEvent.click(cancelButton)
-
-    const reopenButton = getByRole('button', { name: /Reopen/i })
-    await userEvent.click(reopenButton)
-
-    await expect.element(emailInput).toHaveValue('')
-    await expect.element(roleSelect).toHaveTextContent('Select a role')
-    await expect.element(descInput).toHaveValue('')
-  })
-
-  it('shows submitted data when the form is submitted successfully', async () => {
+  it('invites via the API and closes on success', async () => {
+    inviteUserMock.mockResolvedValueOnce({})
     const onOpenChange = vi.fn()
-    const { getByRole } = await render(
-      <UsersInviteDialog open onOpenChange={onOpenChange} />
-    )
+    const { getByRole, getByLabelText } = await renderDialog(onOpenChange)
 
-    const EMAIL_VALUE = 'test@example.com'
-    const ROLE_VALUE = 'superadmin'
-    const DESC_VALUE = 'Welcome aboard!'
+    await userEvent.fill(getByLabelText('邮箱'), 'new.member@example.com')
+    await userEvent.click(getByRole('combobox'))
+    await userEvent.click(getByRole('option', { name: '管理员', exact: true }))
+    await userEvent.fill(getByLabelText('备注（可选）'), '欢迎加入团队')
+    await userEvent.click(getByRole('button', { name: /发送邀请/ }))
 
-    const emailInput = getByRole('textbox', { name: /Email/i })
-    await userEvent.fill(emailInput, EMAIL_VALUE)
-
-    const roleSelect = getByRole('combobox', { name: /Role/i })
-    await userEvent.click(roleSelect)
-    await userEvent.click(getByRole('option', { name: '超级管理员' }))
-
-    const descInput = getByRole('textbox', { name: /Description/i })
-    await userEvent.fill(descInput, DESC_VALUE)
-
-    const submitButton = getByRole('button', { name: /Invite/i })
-    await userEvent.click(submitButton)
-
-    expect(onOpenChange).toHaveBeenCalledOnce()
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-
-    expect(showSubmittedData).toHaveBeenCalledOnce()
-    expect(showSubmittedData).toHaveBeenCalledWith({
-      email: EMAIL_VALUE,
-      role: ROLE_VALUE,
-      desc: DESC_VALUE,
+    await vi.waitFor(() => expect(inviteUserMock).toHaveBeenCalledOnce())
+    expect(inviteUserMock).toHaveBeenCalledWith({
+      email: 'new.member@example.com',
+      role: 'admin',
+      desc: '欢迎加入团队',
     })
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+  })
+
+  it('keeps the dialog open when the API rejects the invite', async () => {
+    inviteUserMock.mockRejectedValueOnce(new Error('该邮箱已被邀请或注册。'))
+    const onOpenChange = vi.fn()
+    const { getByRole, getByLabelText } = await renderDialog(onOpenChange)
+
+    await userEvent.fill(getByLabelText('邮箱'), 'taken@example.com')
+    await userEvent.click(getByRole('combobox'))
+    await userEvent.click(getByRole('option', { name: /经理/ }))
+    await userEvent.click(getByRole('button', { name: /发送邀请/ }))
+
+    await vi.waitFor(() => expect(inviteUserMock).toHaveBeenCalledOnce())
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })

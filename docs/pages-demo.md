@@ -25,7 +25,7 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 
 ## 首次启用
 
-1. 合并 E2E 基础 PR #12，再合并演示发布 PR。
+1. 确保主分支包含完整应用 E2E 与独立的 Pages 演示发布工作流。
 2. 在仓库 Settings → Pages → Build and deployment 选择 **GitHub Actions**。
 3. 检查 `github-pages` environment 的部署规则：允许 main；若限制分支/标签，再允许发布标签 `v*`。GitHub Actions 必须允许 `contents: write` 创建专用的 `pages-snapshots` 分支，以及 `pages: write` / `id-token: write` 执行 Pages 部署。
 4. 在 main 上运行 `Publish mock demo to GitHub Pages` 工作流，或由合并后的 main push 自动触发。工作流成功及浏览器在线验证之前，不应称站点“已上线”。

@@ -63,6 +63,10 @@ export function assemblePages({ buildDir, siteDir, outputDir }) {
   }
   if (new Set(paths).size !== 3)
     throw new Error('Pages directories must be separate')
+  for (const path of paths) {
+    if (existsSync(path) && lstatSync(path).isSymbolicLink())
+      throw new Error(`Symlink in Pages root: ${path}`)
+  }
   const metadata = validateMetadata(
     JSON.parse(readFileSync(join(buildDir, 'demo.json'), 'utf8'))
   )

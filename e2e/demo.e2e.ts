@@ -40,6 +40,17 @@ for (const version of versions) {
     const banner = page.getByRole('complementary', { name: '演示环境信息' })
     await expect(banner).toContainText(`版本：${version}`)
     await login(page, 'admin')
+    const apiStatus = await page.evaluate(async (mockPath) => {
+      const paths = [
+        'api/auth/session',
+        'api/users?page=1&pageSize=1',
+        'api/audit-logs?page=1&pageSize=1',
+      ]
+      return Promise.all(
+        paths.map(async (path) => (await fetch(`${mockPath}${path}`)).status)
+      )
+    }, base)
+    expect(apiStatus).toEqual([200, 200, 200])
     await page.reload()
     await expect(
       page.getByRole('heading', { name: '用户管理示例' })

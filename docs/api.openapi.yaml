@@ -87,6 +87,346 @@ paths:
           $ref: '#/components/responses/Error'
         '403':
           $ref: '#/components/responses/Error'
+  /users:
+    get:
+      operationId: listUsers
+      description: Requires users:read. Pagination, filtering and sorting are computed by the server.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, default: 10 }
+        - name: username
+          in: query
+          description: Matches username, email, full name or phone number.
+          schema: { type: string }
+        - name: status
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: string, enum: [active, inactive, invited, suspended] }
+        - name: role
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: string, enum: [superadmin, admin, manager, cashier] }
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [username, fullName, email, phoneNumber, status, role, createdAt, updatedAt]
+            default: username
+        - name: sortOrder
+          in: query
+          schema: { type: string, enum: [asc, desc], default: asc }
+      responses:
+        '200':
+          description: One page of users.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createUser
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserWrite'
+      responses:
+        '201':
+          description: Created user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserRecord'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /users/{id}:
+    put:
+      operationId: updateUser
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserWrite'
+      responses:
+        '200':
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserRecord'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+    delete:
+      operationId: deleteUser
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: User deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [success]
+                    properties:
+                      success: { const: true }
+        '404':
+          $ref: '#/components/responses/Error'
+  /users/batch-delete:
+    post:
+      operationId: batchDeleteUsers
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdList'
+      responses:
+        '200':
+          description: Deleted row count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [deletedCount]
+                    properties:
+                      deletedCount: { type: integer, minimum: 0 }
+        '403':
+          $ref: '#/components/responses/Error'
+  /users/status:
+    patch:
+      operationId: updateUsersStatus
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/IdList'
+                - type: object
+                  required: [status]
+                  properties:
+                    status: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: Updated row count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [updatedCount]
+                    properties:
+                      updatedCount: { type: integer, minimum: 0 }
+        '403':
+          $ref: '#/components/responses/Error'
+  /users/invite:
+    post:
+      operationId: inviteUser
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [superadmin, admin, manager, cashier] }
+                desc: { type: string }
+      responses:
+        '201':
+          description: Invited user with status invited.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserRecord'
+        '422':
+          $ref: '#/components/responses/Error'
+  /users/invite-batch:
+    post:
+      operationId: batchInviteUsers
+      description: Requires users:write and a valid CSRF token.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdList'
+      responses:
+        '200':
+          description: Invited row count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [invitedCount]
+                    properties:
+                      invitedCount: { type: integer, minimum: 0 }
+  /uploads:
+    post:
+      operationId: uploadFile
+      description: Requires users:write and a valid CSRF token. Images only, 2MB maximum.
+      parameters:
+        - $ref: '#/components/parameters/RequestedWith'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Uploaded file metadata and preview URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UploadedFile'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      description: Requires audit:read. Newest entries first.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, default: 10 }
+        - name: action
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                [
+                  auth.sign_in,
+                  auth.sign_out,
+                  user.created,
+                  user.updated,
+                  user.deleted,
+                  user.batch_deleted,
+                  user.status_changed,
+                  user.invited,
+                  user.batch_invited,
+                ]
+      responses:
+        '200':
+          description: One page of audit logs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditList'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     sessionCookie:
@@ -100,6 +440,12 @@ components:
       in: header
       required: true
       schema: { type: string, const: ReactAdminStarter }
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      description: Token issued with the current session; required for authenticated writes.
+      schema: { type: string, minLength: 1 }
   schemas:
     Permissions:
       type: object
@@ -127,6 +473,102 @@ components:
         user:
           $ref: '#/components/schemas/User'
         csrfToken: { type: string, minLength: 1 }
+    UserRecord:
+      type: object
+      required: [id, firstName, lastName, username, email, phoneNumber, status, role, createdAt, updatedAt]
+      properties:
+        id: { type: string, minLength: 1 }
+        firstName: { type: string }
+        lastName: { type: string }
+        username: { type: string }
+        email: { type: string, format: email }
+        phoneNumber: { type: string }
+        status: { type: string, enum: [active, inactive, invited, suspended] }
+        role: { type: string, enum: [superadmin, admin, manager, cashier] }
+        avatarUrl: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UserWrite:
+      type: object
+      required: [firstName, lastName, username, email, phoneNumber, role]
+      properties:
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string, minLength: 1 }
+        username: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        phoneNumber: { type: string, minLength: 1 }
+        role: { type: string, enum: [superadmin, admin, manager, cashier] }
+        password: { type: string, minLength: 8 }
+        avatarUrl: { type: string }
+    PageMeta:
+      type: object
+      required: [page, pageSize, total, totalPageCount]
+      properties:
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+        totalPageCount: { type: integer, minimum: 1 }
+    UserList:
+      type: object
+      required: [items, meta]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserRecord'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    IdList:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items: { type: string }
+    UploadedFile:
+      type: object
+      required: [id, name, url, contentType, size]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string }
+        contentType: { type: string }
+        size: { type: integer, minimum: 0 }
+    AuditLog:
+      type: object
+      required: [id, createdAt, actorName, actorEmail, action, target, detail, ip]
+      properties:
+        id: { type: string }
+        createdAt: { type: string, format: date-time }
+        actorName: { type: string }
+        actorEmail: { type: string, format: email }
+        action:
+          type: string
+          enum:
+            [
+              auth.sign_in,
+              auth.sign_out,
+              user.created,
+              user.updated,
+              user.deleted,
+              user.batch_deleted,
+              user.status_changed,
+              user.invited,
+              user.batch_invited,
+            ]
+        target: { type: string }
+        detail: { type: string }
+        ip: { type: string }
+    AuditList:
+      type: object
+      required: [items, meta]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
   responses:
     Session:
       description: Validated session. Login sets a rotated session cookie; all session responses use Cache-Control no-store.

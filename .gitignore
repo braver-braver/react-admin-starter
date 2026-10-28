@@ -33,6 +33,9 @@ dist-ssr
 **/__screenshots__/
 .vitest-attachments/
 
+# Local security-scanner audit records
+.mimosa/
+
 # TanStack Router generated file
 /src/routeTree.gen.ts
 

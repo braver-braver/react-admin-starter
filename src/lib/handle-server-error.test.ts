@@ -19,13 +19,13 @@ describe('handleServerError', () => {
   it('shows a generic message when the error is not recognised', () => {
     handleServerError(new Error('network'))
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
   it('maps a plain object with status 204 to the no-content message', () => {
     handleServerError({ status: 204 })
 
-    expect(toastError).toHaveBeenCalledWith('No content.')
+    expect(toastError).toHaveBeenCalledWith('没有返回内容。')
   })
 
   it('prefers the API title when the error is an Axios error with response data', () => {
@@ -49,7 +49,7 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
   it('falls back to the generic message when Axios data.title is an empty string', () => {
@@ -61,7 +61,7 @@ describe('handleServerError', () => {
 
     handleServerError(error)
 
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
+    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
 
   it('does not log raw error objects that can contain credentials', () => {

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type {
   ColumnFiltersState,
   OnChangeFn,
   PaginationState,
+  SortingState,
 } from '@tanstack/react-table'
 
 type SearchRecord = Record<string, unknown>
@@ -28,6 +29,13 @@ type UseTableUrlStateParams = {
     enabled?: boolean
     key?: string
     trim?: boolean
+  }
+  sorting?: {
+    /** URL keys synced with server-side sorting */
+    sortByKey?: string
+    sortOrderKey?: string
+    /** Sorting applied when the URL carries no sort field */
+    defaultSort?: SortingState
   }
   columnFilters?: Array<
     | {
@@ -58,11 +66,27 @@ type UseTableUrlStateReturn = {
   // Pagination
   pagination: PaginationState
   onPaginationChange: OnChangeFn<PaginationState>
+  // Sorting
+  sorting?: SortingState
+  onSortingChange?: OnChangeFn<SortingState>
   // Helpers
   ensurePageInRange: (
     pageCount: number,
     opts?: { resetTo?: 'first' | 'last' }
   ) => void
+}
+
+function readSortingState(
+  search: SearchRecord,
+  sortByKey: string,
+  sortOrderKey: string,
+  defaultSort?: SortingState
+): SortingState {
+  const field = search[sortByKey]
+  if (typeof field === 'string' && field !== '') {
+    return [{ id: field, desc: search[sortOrderKey] === 'desc' }]
+  }
+  return defaultSort ?? []
 }
 
 export function useTableUrlState(
@@ -73,6 +97,7 @@ export function useTableUrlState(
     navigate,
     pagination: paginationCfg,
     globalFilter: globalFilterCfg,
+    sorting: sortingCfg,
     columnFilters: columnFiltersCfg = [],
   } = params
 
@@ -85,8 +110,8 @@ export function useTableUrlState(
   const globalFilterEnabled = globalFilterCfg?.enabled ?? true
   const trimGlobal = globalFilterCfg?.trim ?? true
 
-  // Build initial column filters from the current search params
-  const initialColumnFilters: ColumnFiltersState = useMemo(() => {
+  // URL search is the single source of truth, including history navigation.
+  const columnFilters: ColumnFiltersState = useMemo(() => {
     const collected: ColumnFiltersState = []
     for (const cfg of columnFiltersCfg) {
       const raw = (search as SearchRecord)[cfg.searchKey]
@@ -106,9 +131,6 @@ export function useTableUrlState(
     }
     return collected
   }, [columnFiltersCfg, search])
-
-  const [columnFilters, setColumnFilters] =
-    useState<ColumnFiltersState>(initialColumnFilters)
 
   const pagination: PaginationState = useMemo(() => {
     const rawPage = (search as SearchRecord)[pageKey]
@@ -133,11 +155,11 @@ export function useTableUrlState(
     })
   }
 
-  const [globalFilter, setGlobalFilter] = useState<string | undefined>(() => {
-    if (!globalFilterEnabled) return undefined
-    const raw = (search as SearchRecord)[globalFilterKey]
-    return typeof raw === 'string' ? raw : ''
-  })
+  const globalFilter: string | undefined = globalFilterEnabled
+    ? typeof search[globalFilterKey] === 'string'
+      ? (search[globalFilterKey] as string)
+      : ''
+    : undefined
 
   const onGlobalFilterChange: OnChangeFn<string> | undefined =
     globalFilterEnabled
@@ -147,7 +169,6 @@ export function useTableUrlState(
               ? updater(globalFilter ?? '')
               : updater
           const value = trimGlobal ? next.trim() : next
-          setGlobalFilter(value)
           navigate({
             search: (prev) => ({
               ...(prev as SearchRecord),
@@ -161,8 +182,6 @@ export function useTableUrlState(
   const onColumnFiltersChange: OnChangeFn<ColumnFiltersState> = (updater) => {
     const next =
       typeof updater === 'function' ? updater(columnFilters) : updater
-    setColumnFilters(next)
-
     const patch: Record<string, unknown> = {}
 
     for (const cfg of columnFiltersCfg) {
@@ -190,6 +209,30 @@ export function useTableUrlState(
     })
   }
 
+  // Sorting: single column synced with the URL for server-side sorting.
+  const sortByKey = sortingCfg?.sortByKey ?? ('sortBy' as string)
+  const sortOrderKey = sortingCfg?.sortOrderKey ?? ('sortOrder' as string)
+
+  const sorting: SortingState | undefined = sortingCfg
+    ? readSortingState(search, sortByKey, sortOrderKey, sortingCfg.defaultSort)
+    : undefined
+
+  const onSortingChange: OnChangeFn<SortingState> | undefined = sortingCfg
+    ? (updater) => {
+        const next =
+          typeof updater === 'function' ? updater(sorting ?? []) : updater
+        const first = next[0]
+        navigate({
+          search: (prev) => ({
+            ...(prev as SearchRecord),
+            [pageKey]: undefined,
+            [sortByKey]: first?.id,
+            [sortOrderKey]: first ? (first.desc ? 'desc' : 'asc') : undefined,
+          }),
+        })
+      }
+    : undefined
+
   const ensurePageInRange = (
     pageCount: number,
     opts: { resetTo?: 'first' | 'last' } = { resetTo: 'first' }
@@ -214,6 +257,8 @@ export function useTableUrlState(
     onColumnFiltersChange,
     pagination,
     onPaginationChange,
+    sorting,
+    onSortingChange,
     ensurePageInRange,
   }
 }

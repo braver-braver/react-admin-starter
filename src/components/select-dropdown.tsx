@@ -1,4 +1,5 @@
 import { Loader } from 'lucide-react'
+import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { FormControl } from '@/components/ui/form'
 import {
@@ -37,7 +38,7 @@ export function SelectDropdown({
     <Select {...defaultState}>
       <FormControl>
         <SelectTrigger disabled={disabled} className={cn(className)}>
-          <SelectValue placeholder={placeholder ?? 'Select'} />
+          <SelectValue placeholder={placeholder ?? t('select')} />
         </SelectTrigger>
       </FormControl>
       <SelectContent>
@@ -46,7 +47,7 @@ export function SelectDropdown({
             <div className='flex items-center justify-center gap-2'>
               <Loader className='h-5 w-5 animate-spin' />
               {'  '}
-              Loading...
+              {t('loading')}
             </div>
           </SelectItem>
         ) : (

@@ -82,6 +82,18 @@ test('release retries preserve bytes and reject changed provenance', (t) => {
     /immutable release/
   )
 })
+test('refuses symlinked root directories before updating snapshots', (t) => {
+  const f = fixture(t)
+  const build = f.build('latest')
+  mkdirSync(f.siteDir)
+  const linkedSite = join(f.siteDir, '..', 'linked-site')
+  symlinkSync(f.siteDir, linkedSite, 'dir')
+  assert.throws(
+    () => assemblePages({ ...build, siteDir: linkedSite }),
+    /Symlink in Pages root/
+  )
+})
+
 test('invalid tags, paths, overlapping output and symlinks fail before publishing', (t) => {
   const f = fixture(t)
   assert.throws(
@@ -107,3 +119,4 @@ test('invalid tags, paths, overlapping output and symlinks fail before publishin
   symlinkSync('/etc/passwd', join(linked.buildDir, 'secret'))
   assert.throws(() => assemblePages(linked), /Symlink/)
 })
+

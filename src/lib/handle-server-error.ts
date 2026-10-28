@@ -1,9 +1,10 @@
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { ApiError } from '@/lib/api'
+import { t } from '@/lib/i18n'
 
 export function handleServerError(error: unknown) {
-  let errMsg = 'Something went wrong!'
+  let errMsg = t('serverError')
 
   if (
     error &&
@@ -11,7 +12,7 @@ export function handleServerError(error: unknown) {
     'status' in error &&
     Number(error.status) === 204
   ) {
-    errMsg = 'No content.'
+    errMsg = t('noContent')
   }
 
   if (error instanceof AxiosError) {

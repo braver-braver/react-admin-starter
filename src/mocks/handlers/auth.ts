@@ -1,24 +1,30 @@
 import { HttpResponse, http } from 'msw'
 import { getCookie } from '@/lib/cookies'
+import { type Permission } from '@/lib/permissions'
 import { type AuthUser, loginSchema } from '@/features/auth/schema'
+import { appendAuditLog } from '../data/audit'
 
-type MockSession = {
+/**
+ * 演示用会话：随机会话 ID 放在 Cookie，会话库放在当前标签页的 sessionStorage。
+ * 仅供开发与测试；生产构建会排除整个 MSW 目录。
+ */
+export type MockSession = {
   user: AuthUser
   csrfToken: string
   expiresAt: number
 }
 
-const mockBase = import.meta.env.BASE_URL
+export const mockBase = import.meta.env.BASE_URL
 const SESSION_KEY =
   mockBase === '/'
     ? 'react-admin-starter:mock-sessions'
     : `react-admin-starter:mock-sessions:${mockBase}`
-const COOKIE_NAME =
+export const COOKIE_NAME =
   mockBase === '/'
     ? 'mock_session'
     : `mock_session_${encodeURIComponent(mockBase)}`
+export const DEMO_PASSWORD = 'Demo1234!'
 const SESSION_LIFETIME_MS = 60 * 60 * 1000
-const DEMO_PASSWORD = 'Demo1234!'
 
 const demoUsers: Record<string, AuthUser> = {
   'admin@example.com': {
@@ -26,7 +32,12 @@ const demoUsers: Record<string, AuthUser> = {
     email: 'admin@example.com',
     name: '演示管理员',
     roles: ['admin'],
-    permissions: ['users:read', 'users:write', 'permissions:read'],
+    permissions: [
+      'users:read',
+      'users:write',
+      'permissions:read',
+      'audit:read',
+    ],
   },
   'viewer@example.com': {
     id: 'demo-viewer',
@@ -71,7 +82,11 @@ function getSession(id: string | undefined): MockSession | undefined {
   return session
 }
 
-function error(status: 400 | 401 | 403, code: string, message: string) {
+export function apiError(
+  status: 400 | 401 | 403 | 404 | 409 | 422,
+  code: string,
+  message: string
+) {
   return HttpResponse.json({ error: { code, message } }, { status })
 }
 
@@ -87,28 +102,71 @@ function expiredSessionCookie() {
   return `${COOKIE_NAME}=; Path=${mockBase}; SameSite=Lax; Max-Age=0`
 }
 
-// This database and cookie are exclusively for development and the explicit static MSW demo.
+// Demo-only browser session storage; scoped by the current Vite base path.
 export function resetMockSessions() {
   sessionStorage.removeItem(SESSION_KEY)
   document.cookie = expiredSessionCookie()
 }
 
-export const handlers = [
+/** 从请求 Cookie 解析当前演示会话；未登录返回 undefined。 */
+export function currentSession(
+  cookies: Record<string, string>
+): MockSession | undefined {
+  return getSession(cookies[COOKIE_NAME])
+}
+
+/** 写操作的来源校验：CSRF 令牌必须与当前会话一致。 */
+export function requireCsrf(
+  request: Request,
+  session: MockSession
+): Response | null {
+  if (request.headers.get('X-CSRF-Token') !== session.csrfToken) {
+    return apiError(403, 'INVALID_CSRF_TOKEN', '请求令牌无效。')
+  }
+  return null
+}
+
+/** 服务端权限校验：缺失的权限一律拒绝。 */
+export function requirePermission(
+  session: MockSession,
+  permission: Permission
+): Response | null {
+  if (!session.user.permissions.includes(permission)) {
+    return apiError(403, 'FORBIDDEN', '没有执行该操作的权限。')
+  }
+  return null
+}
+
+function auditAuthEvent(
+  session: MockSession,
+  action: 'auth.sign_in' | 'auth.sign_out'
+) {
+  appendAuditLog({
+    actorName: session.user.name,
+    actorEmail: session.user.email,
+    action,
+    target: session.user.email,
+    detail: action === 'auth.sign_in' ? '登录管理端' : '退出登录',
+    ip: '127.0.0.1',
+  })
+}
+
+export const authHandlers = [
   http.post(`${mockBase}api/auth/login`, async ({ request, cookies }) => {
     if (!requiresRequestedWith(request)) {
-      return error(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
+      return apiError(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
     }
 
     let body: unknown
     try {
       body = await request.json()
     } catch {
-      return error(400, 'INVALID_REQUEST', '请求内容必须是 JSON。')
+      return apiError(400, 'INVALID_REQUEST', '请求内容必须是 JSON。')
     }
 
     const parsed = loginSchema.safeParse(body)
     if (!parsed.success)
-      return error(
+      return apiError(
         400,
         'INVALID_CREDENTIALS_FORMAT',
         '请输入有效的邮箱和密码。'
@@ -116,7 +174,7 @@ export const handlers = [
 
     const user = demoUsers[parsed.data.email.toLowerCase()]
     if (!user || parsed.data.password !== DEMO_PASSWORD) {
-      return error(401, 'INVALID_CREDENTIALS', '邮箱或密码错误。')
+      return apiError(401, 'INVALID_CREDENTIALS', '邮箱或密码错误。')
     }
 
     const sessionId = crypto.randomUUID()
@@ -131,6 +189,7 @@ export const handlers = [
         delete sessions[id]
     }
     writeSessions({ ...sessions, [sessionId]: session })
+    auditAuthEvent(session, 'auth.sign_in')
 
     return HttpResponse.json(
       { data: { user: session.user, csrfToken: session.csrfToken } },
@@ -140,7 +199,7 @@ export const handlers = [
 
   http.get(`${mockBase}api/auth/session`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
-    if (!session) return error(401, 'UNAUTHENTICATED', '请先登录。')
+    if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
 
     return HttpResponse.json({
       data: { user: session.user, csrfToken: session.csrfToken },
@@ -149,17 +208,17 @@ export const handlers = [
 
   http.post(`${mockBase}api/auth/logout`, ({ request, cookies }) => {
     if (!requiresRequestedWith(request)) {
-      return error(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
+      return apiError(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
     }
 
     const sessionId = cookies[COOKIE_NAME]
     const session = getSession(sessionId)
     if (!sessionId || !session)
-      return error(401, 'UNAUTHENTICATED', '请先登录。')
-    if (request.headers.get('X-CSRF-Token') !== session.csrfToken) {
-      return error(403, 'INVALID_CSRF_TOKEN', '请求令牌无效。')
-    }
+      return apiError(401, 'UNAUTHENTICATED', '请先登录。')
+    const csrfDenied = requireCsrf(request, session)
+    if (csrfDenied) return csrfDenied
 
+    auditAuthEvent(session, 'auth.sign_out')
     const sessions = readSessions()
     delete sessions[sessionId]
     writeSessions(sessions)
@@ -171,10 +230,9 @@ export const handlers = [
 
   http.get(`${mockBase}api/auth/permissions`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
-    if (!session) return error(401, 'UNAUTHENTICATED', '请先登录。')
-    if (!session.user.permissions.includes('permissions:read')) {
-      return error(403, 'FORBIDDEN', '无权读取权限信息。')
-    }
+    if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
+    const denied = requirePermission(session, 'permissions:read')
+    if (denied) return denied
 
     return HttpResponse.json({
       data: {

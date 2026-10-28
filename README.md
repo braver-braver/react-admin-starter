@@ -2,7 +2,7 @@
 
 A lightweight, Chinese-first, reusable React admin application based on [shadcn-admin](https://github.com/satnaing/shadcn-admin).
 
-> **Status:** v0.1 Foundation. The shell is Chinese-first and the upstream demos are reduced to a minimal dashboard and user-table example. **MSW-backed session and RBAC examples are available in development; production requires a real same-origin auth API.**
+> **Status:** v0.2. The shell is Chinese-first. Development builds ship MSW-backed cookie sessions, RBAC, server-driven user CRUD, image upload and audit-log examples; production requires a real same-origin auth API with server-side authorization.**
 
 ## Tech stack
 
@@ -35,12 +35,12 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 - [x] Import the pinned upstream source, assets and license
 - [x] v0.1: Remove unrelated demo routes, localize navigation and expose app branding
 - [x] v0.2: Development-only MSW APIs, authentication and RBAC reference implementation
-- [ ] v0.2: Reusable server-side CRUD, uploads and audit-log examples
+- [x] v0.2: Reusable server-side CRUD, uploads and audit-log examples
 - [ ] v1.0: Stable API contract, documentation and template-quality release
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
-See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements.
+See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
 
 ## Design principles
 
@@ -72,8 +72,13 @@ pnpm test:e2e
 
 CI 中 `Full application E2E smoke and accessibility baseline` 与组件测试分开显示，任何断言失败都会导致非零退出。失败时保存 7 天的 HTML 报告、截图与 trace；本地产物位于 `playwright-report/` 和 `test-results/`（不提交）。可用 `pnpm exec playwright show-report` 或 `pnpm exec playwright show-trace <trace.zip>` 查看。断言使用语义选择器和自动等待，不依赖固定延时、像素截图或动态用户日期。
 
-### GitHub Pages 演示发布
+## 静态演示与版本预览
 
-独立演示构建 `pnpm build:demo` 输出到 `dist-demo/`，包含 MSW 与演示账户；普通 `pnpm build` 仍输出到 `dist/` 并禁止 Mock。`pnpm test:pages` 验证历史站点组装，`pnpm test:demo` 构建两个真实静态版本并验证桌面/手机的登录、刷新、退出和跨版本会话隔离。
+普通生产构建使用 `pnpm build`，始终排除演示账户与 MSW。仅用于公开展示的静态演示使用 `pnpm build:demo`，通过版本路径与生产 API 隔离。
 
-配置 Pages 后，main 更新会发布最新演示，发布 `vMAJOR.MINOR.PATCH` 格式的 Release 会保存版本快照。具体设置、路径、首次发布与恢复方法见 [Pages 演示发布说明](docs/pages-demo.md)。
+```sh
+pnpm test:pages
+pnpm test:demo
+```
+
+GitHub Pages 需要仓库管理员启用后才会部署；历史快照遵循不可覆写的 Release 版本约束。详见 [部署与恢复](docs/pages-demo.md)。
