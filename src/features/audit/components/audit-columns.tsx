@@ -1,11 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table'
+import { formatDateTime } from '@/lib/i18n'
 import { Badge } from '@/components/ui/badge'
 import { auditActionLabels, type AuditLog } from '../data/schema'
-
-const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
-  dateStyle: 'short',
-  timeStyle: 'short',
-})
 
 export const auditColumns: ColumnDef<AuditLog>[] = [
   {
@@ -14,7 +10,7 @@ export const auditColumns: ColumnDef<AuditLog>[] = [
     enableSorting: false,
     cell: ({ row }) => (
       <span className='text-nowrap tabular-nums'>
-        {dateFormatter.format(row.original.createdAt)}
+        {formatDateTime(row.original.createdAt)}
       </span>
     ),
   },
