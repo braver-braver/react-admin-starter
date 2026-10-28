@@ -101,13 +101,14 @@ export function UsersTable({ search, navigate }: DataTableProps) {
     state: {
       sorting,
       pagination,
-      rowSelection,
+      rowSelection: isPlaceholderData || isError ? {} : rowSelection,
       columnFilters,
       columnVisibility: can(user, 'users:write')
         ? columnVisibility
         : { ...columnVisibility, select: false, actions: false },
     },
-    enableRowSelection: can(user, 'users:write'),
+    enableRowSelection:
+      can(user, 'users:write') && !isPlaceholderData && !isError,
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
@@ -238,9 +239,11 @@ export function UsersTable({ search, navigate }: DataTableProps) {
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
-      <Permission permission='users:write'>
-        <DataTableBulkActions table={table} />
-      </Permission>
+      {!isPlaceholderData && !isError && (
+        <Permission permission='users:write'>
+          <DataTableBulkActions table={table} />
+        </Permission>
+      )}
     </div>
   )
 }

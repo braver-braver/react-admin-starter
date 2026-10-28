@@ -412,7 +412,7 @@ describe('sorting', () => {
     })
   })
 
-  it('resynchronizes column filters when browser history changes the URL', async () => {
+  it('syncs column filters after browser Back/Forward', async () => {
     const navigate = vi.fn() as Mock<NavigateFn>
     const { result, rerender } = await renderHook(
       ({ search }: { search: Record<string, unknown> }) =>
@@ -451,5 +451,4 @@ describe('sorting', () => {
     rerender({ search: { filter: 'after' } })
     await vi.waitFor(() => expect(result.current.globalFilter).toBe('after'))
   })
-
 })

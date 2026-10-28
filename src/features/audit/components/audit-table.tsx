@@ -89,6 +89,10 @@ export function AuditTable({ search, navigate }: AuditTableProps) {
   const filtered = (actionColumn?.getFilterValue() as string[] | undefined)
     ?.length
 
+  let emptyMessage = '暂无审计记录'
+  if (isPending) emptyMessage = '加载中…'
+  else if (isError) emptyMessage = '加载失败'
+
   return (
     <div
       className={cn(
@@ -169,7 +173,7 @@ export function AuditTable({ search, navigate }: AuditTableProps) {
                   colSpan={columns.length}
                   className='h-24 text-center'
                 >
-                  {isPending ? '加载中…' : isError ? '加载失败' : '暂无审计记录'}
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             )}
