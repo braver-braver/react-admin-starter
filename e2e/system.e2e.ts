@@ -60,7 +60,7 @@ test('navigation groups collapse on desktop and mobile without hiding icon navig
     await sidebarTrigger.click()
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
     const compactGroupTrigger = page.locator(
-      '[data-slot="collapsible-trigger"][aria-label="切换系统管理分组"]'
+      'button[aria-label="切换系统管理分组"]'
     )
     // Hidden headers must be absent from keyboard and screen-reader navigation.
     await expect(compactGroupTrigger).toBeDisabled()
