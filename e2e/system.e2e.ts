@@ -26,6 +26,65 @@ async function logout(page: Page) {
     page.getByRole('textbox', { name: '邮箱', exact: true })
   ).toBeVisible()
 }
+test('navigation groups collapse on desktop and mobile without hiding icon navigation', async ({
+  page,
+}) => {
+  await page.goto(address('/system/roles'))
+  await login(page)
+  await expect(
+    page.getByRole('heading', { name: '角色管理', exact: true })
+  ).toBeVisible()
+
+  const isMobile = test.info().project.name.includes('mobile')
+  const sidebarTrigger = page.locator('header [data-slot="sidebar-trigger"]')
+  if (isMobile) await sidebarTrigger.click()
+
+  const group = page.getByRole('button', { name: '切换系统管理分组' })
+  const roleLink = page.getByRole('link', {
+    name: '角色管理',
+    exact: true,
+  })
+  await expect(group).toHaveAttribute('aria-expanded', 'true')
+  await expect(roleLink).toBeVisible()
+
+  await group.click()
+  await expect(group).toHaveAttribute('aria-expanded', 'false')
+  await expect(roleLink).not.toBeVisible()
+  // Other groups must not be affected.
+  await expect(
+    page.getByRole('button', { name: '切换工作区分组' })
+  ).toHaveAttribute('aria-expanded', 'true')
+
+  if (!isMobile) {
+    const sidebar = page.locator('[data-slot="sidebar"][data-state]')
+    await sidebarTrigger.click()
+    await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
+    const compactGroupTrigger = page.locator(
+      'button[aria-label="切换系统管理分组"]'
+    )
+    // Hidden headers must be absent from keyboard and screen-reader navigation.
+    await expect(compactGroupTrigger).toBeDisabled()
+    await expect(compactGroupTrigger).toHaveAttribute('tabindex', '-1')
+    await expect(compactGroupTrigger).toHaveAttribute('aria-hidden', 'true')
+    await expect(
+      page.locator('[data-sidebar="menu-button"]').filter({
+        hasText: '角色管理',
+      })
+    ).toBeVisible()
+    await sidebarTrigger.click()
+    await expect(sidebar).toHaveAttribute('data-state', 'expanded')
+    await expect(group).toBeEnabled()
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+  }
+
+  await group.click()
+  await expect(roleLink).toBeVisible()
+  await page.getByRole('link', { name: '权限管理', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: '权限管理', exact: true })
+  ).toBeVisible()
+})
+
 test('system pages expose real forms and menu changes update navigation after refresh', async ({
   page,
 }) => {

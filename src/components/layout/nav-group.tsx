@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
 import {
@@ -35,25 +35,58 @@ import {
 
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
+  const [expanded, setExpanded] = useState(true)
   const href = useLocation({ select: (location) => location.href })
+  // A compact icon rail must always show the page icons, even for folded groups.
+  const iconOnly = state === 'collapsed' && !isMobile
+
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
-      <SidebarMenu>
-        {items.map((item) => {
-          const key = `${item.title}-${item.url}`
+      <Collapsible
+        open={expanded || iconOnly}
+        onOpenChange={setExpanded}
+        className='group/nav-group'
+      >
+        <SidebarGroupLabel asChild>
+          <CollapsibleTrigger
+            type='button'
+            aria-label={`切换${title}分组`}
+            disabled={iconOnly}
+            tabIndex={iconOnly ? -1 : undefined}
+            aria-hidden={iconOnly ? true : undefined}
+            className='w-full cursor-pointer hover:bg-sidebar-accent'
+          >
+            <span>{title}</span>
+            <ChevronRight
+              aria-hidden='true'
+              className='ms-auto transition-transform duration-200 group-data-[state=open]/nav-group:rotate-90'
+            />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent>
+          <SidebarMenu>
+            {items.map((item) => {
+              const key = `${item.title}-${item.url}`
 
-          if (!item.items)
-            return <SidebarMenuLink key={key} item={item} href={href} />
+              if (!item.items)
+                return <SidebarMenuLink key={key} item={item} href={href} />
 
-          if (state === 'collapsed' && !isMobile)
-            return (
-              <SidebarMenuCollapsedDropdown key={key} item={item} href={href} />
-            )
+              if (state === 'collapsed' && !isMobile)
+                return (
+                  <SidebarMenuCollapsedDropdown
+                    key={key}
+                    item={item}
+                    href={href}
+                  />
+                )
 
-          return <SidebarMenuCollapsible key={key} item={item} href={href} />
-        })}
-      </SidebarMenu>
+              return (
+                <SidebarMenuCollapsible key={key} item={item} href={href} />
+              )
+            })}
+          </SidebarMenu>
+        </CollapsibleContent>
+      </Collapsible>
     </SidebarGroup>
   )
 }
