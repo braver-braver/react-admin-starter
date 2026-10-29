@@ -43,12 +43,12 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 | v0.2 · 通用业务示例与质量基线 | 服务端分页 CRUD、文件上传、审计日志、桌面/手机 E2E 与可访问性基线 | 已完成 · 已合并 | [#4](https://github.com/braver-braver/react-admin-starter/issues/4) · [#9](https://github.com/braver-braver/react-admin-starter/issues/9) |
 | v0.2 · 系统管理与统一授权 | 账号、角色、权限、菜单、部门管理；动态路由、按能力的数据范围及越权回归测试 | 已完成 · 已合并 | [#20](https://github.com/braver-braver/react-admin-starter/issues/20) · [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21) |
 | Pages 演示基础设施 | 独立静态 Mock 演示、`latest` 在线验证、Release 版本快照构建与隔离测试 | 代码已完成 · 线上 latest 已验收 | [#14](https://github.com/braver-braver/react-admin-starter/issues/14) · [PR #16](https://github.com/braver-braver/react-admin-starter/pull/16) |
-| 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 进行中 · PR 待合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
+| 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 已完成 · 已合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
 | v1.0 · API 契约稳定化 | 对齐 OpenAPI、Zod、MSW 与文档；核验会话、CSRF、401/403、动态导航和数据范围契约，补齐真实后端接入指南 | 计划中 · 待拆分任务 | [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.yaml) |
 | v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 计划中 · 尚无 Release | [工程规范](AGENTS.md) · [发布说明](docs/pages-demo.md) |
 | Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 待验收 · 需真实 Release | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) |
 
-**下一步顺序：** 复审并合并 PR #22 → 验收最新 Pages 导航 → 冻结 v1.0 API 契约与接入文档 → 对齐版本并发布真实 Release → 完成 #15 的版本快照验收。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
+**下一步顺序：** 验收最新 Pages 导航 → 冻结 v1.0 API 契约与接入文档 → 对齐版本并发布真实 Release → 完成 #15 的版本快照验收。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
