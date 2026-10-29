@@ -1,3 +1,36 @@
+# Changelog
+
+This file distinguishes **React Admin Starter** development from the release history of its [shadcn-admin upstream](https://github.com/satnaing/shadcn-admin). The source was imported at a pinned upstream commit; see [upstream provenance](docs/upstream.md).
+
+**Release status:** Unreleased. The package version remains `0.1.0`. Milestones named v0.1 and v0.2 describe implemented functionality, **not** Git tags or GitHub Releases of this repository. No React Admin Starter GitHub Release has been published yet.
+
+## Unreleased — React Admin Starter
+
+### Added
+
+- Imported the pinned, MIT-licensed shadcn-admin baseline and built a simplified Chinese-first admin shell ([#1](https://github.com/braver-braver/react-admin-starter/issues/1), [#2](https://github.com/braver-braver/react-admin-starter/issues/2)).
+- Added mock-first cookie sessions, authenticated routes and role-based access control ([#3](https://github.com/braver-braver/react-admin-starter/issues/3), [PR #7](https://github.com/braver-braver/react-admin-starter/pull/7)).
+- Added reusable server-driven user CRUD, uploads, audit logs, shared localization and browser accessibility coverage ([#4](https://github.com/braver-braver/react-admin-starter/issues/4), [#9](https://github.com/braver-braver/react-admin-starter/issues/9), [#10](https://github.com/braver-braver/react-admin-starter/issues/10)).
+- Added system administration for accounts, roles, permissions, menus and departments, with server-issued navigation and capability-specific data scopes ([#20](https://github.com/braver-braver/react-admin-starter/issues/20), [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21)).
+- Added independently built GitHub Pages mock previews and version-scoped snapshot infrastructure; authentic Release history is still awaiting verification ([#14](https://github.com/braver-braver/react-admin-starter/issues/14), [#15](https://github.com/braver-braver/react-admin-starter/issues/15)).
+- Added collapsible navigation groups while preserving icon-only sidebar access ([PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)).
+
+### Security and quality
+
+- Enforced operation-specific scope checks, delegated permission and route ceilings, protected recovery records and session revocation in the mock reference API.
+- Added desktop/mobile UI checks, privilege-escalation regression coverage, production mock isolation and published Pages browser smoke tests.
+
+### Documentation
+
+- Clarified development milestones versus published versions and tracked pending v1.0 contract and release-readiness work in the [README](README.md).
+- Documented the production API/security boundary in [architecture](docs/architecture.md) and [authentication](docs/auth-and-api.md).
+
+---
+
+## Historical upstream changelog — shadcn-admin only
+
+**The entries below are retained verbatim from the imported upstream project. Their version numbers (including v2.2.1) are not React Admin Starter releases.** See [upstream provenance](docs/upstream.md) for the pinned source.
+
 ## v2.2.1 (2025-11-06)
 
 ### Fix
