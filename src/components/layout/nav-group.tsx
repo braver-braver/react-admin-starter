@@ -51,6 +51,9 @@ export function NavGroup({ title, items }: NavGroupProps) {
           <CollapsibleTrigger
             type='button'
             aria-label={`切换${title}分组`}
+            disabled={iconOnly}
+            tabIndex={iconOnly ? -1 : undefined}
+            aria-hidden={iconOnly ? true : undefined}
             className='w-full cursor-pointer hover:bg-sidebar-accent'
           >
             <span>{title}</span>

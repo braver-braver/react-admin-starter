@@ -59,6 +59,13 @@ test('navigation groups collapse on desktop and mobile without hiding icon navig
     const sidebar = page.locator('[data-slot="sidebar"][data-state]')
     await sidebarTrigger.click()
     await expect(sidebar).toHaveAttribute('data-state', 'collapsed')
+    const compactGroupTrigger = page.locator(
+      '[data-slot="collapsible-trigger"][aria-label="切换系统管理分组"]'
+    )
+    // Hidden headers must be absent from keyboard and screen-reader navigation.
+    await expect(compactGroupTrigger).toBeDisabled()
+    await expect(compactGroupTrigger).toHaveAttribute('tabindex', '-1')
+    await expect(compactGroupTrigger).toHaveAttribute('aria-hidden', 'true')
     await expect(
       page.locator('[data-sidebar="menu-button"]').filter({
         hasText: '角色管理',
@@ -66,6 +73,7 @@ test('navigation groups collapse on desktop and mobile without hiding icon navig
     ).toBeVisible()
     await sidebarTrigger.click()
     await expect(sidebar).toHaveAttribute('data-state', 'expanded')
+    await expect(group).toBeEnabled()
     await expect(group).toHaveAttribute('aria-expanded', 'false')
   }
 
