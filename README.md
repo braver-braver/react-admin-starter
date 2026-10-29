@@ -2,7 +2,7 @@
 
 A lightweight, Chinese-first, reusable React admin application based on [shadcn-admin](https://github.com/satnaing/shadcn-admin).
 
-> **Status:** v0.2. The shell is Chinese-first. Development builds ship MSW-backed cookie sessions, RBAC, server-driven user CRUD, image upload and audit-log examples; production requires a real same-origin auth API with server-side authorization.\*\*
+> **状态：功能里程碑 v0.2 已实现，尚未发布正式 GitHub Release。** 当前 `package.json` 版本为 `0.1.0`；`v0.1` 与 `v0.2` 仅表示开发里程碑，并非已发布的 Tag/Release。开发环境与独立的 Pages 演示使用 MSW；普通生产构建不包含 Mock，必须接入真实的同源 API，由后端执行认证及权限校验。
 
 ## Tech stack
 
@@ -32,13 +32,25 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 ## Roadmap
 
-- [x] Import the pinned upstream source, assets and license
-- [x] v0.1: Remove unrelated demo routes, localize navigation and expose app branding
-- [x] v0.2: Development-only MSW APIs, authentication and RBAC reference implementation
-- [x] v0.2: Reusable server-side CRUD, uploads and audit-log examples
-- [ ] v1.0: Stable API contract, documentation and template-quality release
+开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-10-29）。
 
-See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
+<!-- prettier-ignore -->
+| 里程碑 | 主要交付与验收标准 | 状态 | 跟踪 |
+| --- | --- | --- | --- |
+| 基线导入 | 固定 shadcn-admin 上游提交，保留资源、署名与 MIT License | 已完成 · 已合并 | [#1](https://github.com/braver-braver/react-admin-starter/issues/1) · [PR #5](https://github.com/braver-braver/react-admin-starter/pull/5) |
+| v0.1 · 管理端外壳 | 精简非通用页面、中文优先界面、品牌及导航基础 | 已完成 · 已合并 | [#2](https://github.com/braver-braver/react-admin-starter/issues/2) · [#10](https://github.com/braver-braver/react-admin-starter/issues/10) |
+| v0.2 · Mock API 与认证 | 开发环境 MSW、Cookie Session、RBAC 及受保护路由 | 已完成 · 已合并 | [#3](https://github.com/braver-braver/react-admin-starter/issues/3) · [PR #7](https://github.com/braver-braver/react-admin-starter/pull/7) |
+| v0.2 · 通用业务示例与质量基线 | 服务端分页 CRUD、文件上传、审计日志、桌面/手机 E2E 与可访问性基线 | 已完成 · 已合并 | [#4](https://github.com/braver-braver/react-admin-starter/issues/4) · [#9](https://github.com/braver-braver/react-admin-starter/issues/9) |
+| v0.2 · 系统管理与统一授权 | 账号、角色、权限、菜单、部门管理；动态路由、按能力的数据范围及越权回归测试 | 已完成 · 已合并 | [#20](https://github.com/braver-braver/react-admin-starter/issues/20) · [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21) |
+| Pages 演示基础设施 | 独立静态 Mock 演示、`latest` 在线验证、Release 版本快照构建与隔离测试 | 代码已完成 · 线上 latest 已验收 | [#14](https://github.com/braver-braver/react-admin-starter/issues/14) · [PR #16](https://github.com/braver-braver/react-admin-starter/pull/16) |
+| 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 已完成 · 已合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
+| v1.0 · API 契约稳定化 | 对齐 OpenAPI、Zod、MSW 与文档；核验会话、CSRF、401/403、动态导航和数据范围契约，补齐真实后端接入指南 | 计划中 · 待拆分任务 | [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.yaml) |
+| v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 计划中 · 尚无 Release | [工程规范](AGENTS.md) · [发布说明](docs/pages-demo.md) |
+| Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 待验收 · 需真实 Release | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) |
+
+**下一步顺序：** 验收最新 Pages 导航 → 冻结 v1.0 API 契约与接入文档 → 对齐版本并发布真实 Release → 完成 #15 的版本快照验收。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
+
+See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
 See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
 
