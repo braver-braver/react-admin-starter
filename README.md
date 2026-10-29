@@ -34,6 +34,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-10-29）。
 
+<!-- prettier-ignore: Keep link-heavy milestone rows readable in source. -->
 | 里程碑 | 主要交付与验收标准 | 状态 | 跟踪 |
 | --- | --- | --- | --- |
 | 基线导入 | 固定 shadcn-admin 上游提交，保留资源、署名与 MIT License | 已完成 · 已合并 | [#1](https://github.com/braver-braver/react-admin-starter/issues/1) · [PR #5](https://github.com/braver-braver/react-admin-starter/pull/5) |
