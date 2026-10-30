@@ -4,6 +4,7 @@ import {
   currentSession,
   mockBase,
   requireCsrf,
+  requireRequestedWith,
   requirePermission,
 } from './auth'
 
@@ -12,6 +13,8 @@ const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 
 export const uploadsHandlers = [
   http.post(`${mockBase}api/uploads`, async ({ request, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =

@@ -73,8 +73,15 @@ export function apiError<S extends ErrorStatus>(
   return HttpResponse.json({ error: { code, message } }, { status })
 }
 
-function requiresRequestedWith(request: Request) {
-  return request.headers.get('X-Requested-With') === 'ReactAdminStarter'
+/**
+ * 写请求的来源标识：所有 POST/PUT/PATCH/DELETE 都必须带
+ * `X-Requested-With: ReactAdminStarter`，先于登录与权限检查。
+ */
+export function requireRequestedWith(request: Request): Response | null {
+  if (request.headers.get('X-Requested-With') !== 'ReactAdminStarter') {
+    return apiError(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
+  }
+  return null
 }
 
 function sessionCookie(id: string) {
@@ -136,9 +143,8 @@ function auditAuthEvent(
 
 export const authHandlers = [
   http.post(`${mockBase}api/auth/login`, async ({ request, cookies }) => {
-    if (!requiresRequestedWith(request)) {
-      return apiError(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
-    }
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
 
     let body: unknown
     try {
@@ -203,9 +209,8 @@ export const authHandlers = [
   }),
 
   http.post(`${mockBase}api/auth/logout`, ({ request, cookies }) => {
-    if (!requiresRequestedWith(request)) {
-      return apiError(403, 'REQUEST_HEADER_REQUIRED', '缺少请求来源标识。')
-    }
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
 
     const sessionId = cookies[COOKIE_NAME]
     const session = getSession(sessionId)

@@ -15,6 +15,7 @@ import {
   currentSession,
   mockBase,
   requireCsrf,
+  requireRequestedWith,
   requirePermission,
 } from './auth'
 
@@ -56,6 +57,10 @@ async function handle({
   params,
   cookies,
 }: Parameters<Parameters<typeof http.all>[1]>[0]) {
+  if (request.method !== 'GET') {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
+  }
   const resource = resourceSchema.safeParse(params.resource)
   if (!resource.success) return apiError(404, 'NOT_FOUND', '未知系统资源。')
   const session = currentSession(cookies)

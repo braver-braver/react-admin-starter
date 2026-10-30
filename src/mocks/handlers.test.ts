@@ -486,6 +486,85 @@ describe('upload handlers', () => {
   })
 })
 
+describe('request headers and multi-value query keys', () => {
+  const writes: [string, string, object | undefined][] = [
+    ['POST', '/api/users', {}],
+    ['PUT', '/api/users/x', {}],
+    ['DELETE', '/api/users/x', undefined],
+    ['POST', '/api/users/batch-delete', { ids: [] }],
+    ['PATCH', '/api/users/status', { ids: [], status: 'active' }],
+    ['POST', '/api/users/invite', { email: 'a@b.co', role: 'cashier' }],
+    ['POST', '/api/users/invite-batch', { ids: [] }],
+    ['POST', '/api/uploads', undefined],
+    ['POST', '/api/system/roles', {}],
+    ['PUT', '/api/system/roles/x', {}],
+    ['DELETE', '/api/system/roles/x', undefined],
+  ]
+
+  it.each(writes)(
+    'rejects %s %s without X-Requested-With, even when signed in with a CSRF token',
+    async (method, path, body) => {
+      const session = await loginSession()
+      const response = await fetch(path, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': session.csrfToken,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      expect(response.status).toBe(403)
+      expect(await response.json()).toEqual({
+        error: {
+          code: 'REQUEST_HEADER_REQUIRED',
+          message: '缺少请求来源标识。',
+        },
+      })
+    }
+  )
+
+  it('checks the header before the session, so anonymous writes get the same 403', async () => {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    expect(response.status).toBe(403)
+    expect(
+      ((await response.json()) as { error: { code: string } }).error.code
+    ).toBe('REQUEST_HEADER_REQUIRED')
+  })
+
+  it('only reads repeated keys: status[] / role[] / action[] are ignored', async () => {
+    await loginSession()
+    const count = async (query: string) => {
+      const body = (await (
+        await fetch(`/api/users?pageSize=100&${query}`)
+      ).json()) as {
+        data: { meta: { total: number } }
+      }
+      return body.data.meta.total
+    }
+    const all = await count('')
+    const repeated = await count('status=inactive')
+    expect(repeated).toBeLessThan(all)
+    expect(await count('status[]=inactive')).toBe(all)
+    expect(await count('role[]=admin')).toBe(all)
+
+    const audit = async (query: string) =>
+      (
+        (await (
+          await fetch(`/api/audit-logs?pageSize=100&${query}`)
+        ).json()) as {
+          data: { meta: { total: number } }
+        }
+      ).data.meta.total
+    const auditAll = await audit('')
+    expect(await audit('action[]=auth.sign_in')).toBe(auditAll)
+    expect(await audit('action=auth.sign_in')).toBeLessThanOrEqual(auditAll)
+  })
+})
+
 describe('audit handlers', () => {
   it('requires audit:read and filters by action', async () => {
     await loginSession('viewer@example.com')

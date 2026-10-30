@@ -77,11 +77,16 @@ const guarded = {
 } as const satisfies DeclaredErrors
 const guardedWrite = {
   ...anyUser,
-  403: ['FORBIDDEN', 'INVALID_CSRF_TOKEN'],
+  403: ['REQUEST_HEADER_REQUIRED', 'FORBIDDEN', 'INVALID_CSRF_TOKEN'],
 } as const satisfies DeclaredErrors
 const scopedWrite = {
   ...anyUser,
-  403: ['FORBIDDEN', 'INVALID_CSRF_TOKEN', 'DATA_SCOPE_DENIED'],
+  403: [
+    'REQUEST_HEADER_REQUIRED',
+    'FORBIDDEN',
+    'INVALID_CSRF_TOKEN',
+    'DATA_SCOPE_DENIED',
+  ],
 } as const satisfies DeclaredErrors
 
 const systemReadPermissions: readonly Permission[] = [
@@ -138,7 +143,12 @@ function systemOperations<
       success: { status: 201, schema: record },
       errors: {
         401: ['UNAUTHENTICATED', 'SYSTEM_RULE'],
-        403: ['FORBIDDEN', 'INVALID_CSRF_TOKEN', 'SYSTEM_RULE'],
+        403: [
+          'REQUEST_HEADER_REQUIRED',
+          'FORBIDDEN',
+          'INVALID_CSRF_TOKEN',
+          'SYSTEM_RULE',
+        ],
         409: ['SYSTEM_RULE'],
         422: ['INVALID_FIELDS', 'SYSTEM_RULE'],
       },
@@ -156,7 +166,12 @@ function systemOperations<
       success: { status: 200, schema: record },
       errors: {
         401: ['UNAUTHENTICATED', 'SYSTEM_RULE'],
-        403: ['FORBIDDEN', 'INVALID_CSRF_TOKEN', 'SYSTEM_RULE'],
+        403: [
+          'REQUEST_HEADER_REQUIRED',
+          'FORBIDDEN',
+          'INVALID_CSRF_TOKEN',
+          'SYSTEM_RULE',
+        ],
         404: ['SYSTEM_RULE'],
         409: ['SYSTEM_RULE'],
         422: ['INVALID_FIELDS', 'SYSTEM_RULE'],
@@ -174,7 +189,12 @@ function systemOperations<
       success: { status: 200, schema: successSchema },
       errors: {
         401: ['UNAUTHENTICATED', 'SYSTEM_RULE'],
-        403: ['FORBIDDEN', 'INVALID_CSRF_TOKEN', 'SYSTEM_RULE'],
+        403: [
+          'REQUEST_HEADER_REQUIRED',
+          'FORBIDDEN',
+          'INVALID_CSRF_TOKEN',
+          'SYSTEM_RULE',
+        ],
         404: ['SYSTEM_RULE'],
         409: ['SYSTEM_RULE'],
       },
