@@ -154,3 +154,12 @@ export const systemListOf = <T extends z.ZodType>(item: T) =>
     page: z.number(),
     pageSize: z.number(),
   })
+
+/** GET /api/system/{resource} query string. `pageSize` above 100 is clamped to 100. */
+export const systemListQuerySchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(10),
+  search: z.string().optional().meta({
+    description: 'Case-insensitive match on the name and the code or email.',
+  }),
+})

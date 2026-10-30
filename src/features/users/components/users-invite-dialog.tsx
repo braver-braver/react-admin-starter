@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { inviteUser } from '../api'
 import { roles } from '../data/data'
+import { type UserRole } from '../data/schema'
 import { usersQueryKey } from '../queries'
 
 const formSchema = z.object({
@@ -58,7 +59,8 @@ export function UsersInviteDialog({
     mutationFn: (values: UserInviteForm) =>
       inviteUser({
         email: values.email,
-        role: values.role,
+        // The select only offers values from `roles`; the server validates it.
+        role: values.role as UserRole,
         desc: values.desc || undefined,
       }),
     onSuccess: () => {

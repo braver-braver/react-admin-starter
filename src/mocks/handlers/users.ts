@@ -1,3 +1,11 @@
+import { idListSchema } from '@/contract/common'
+import {
+  USER_FIELDS_REQUIRED,
+  userInviteSchema,
+  userSortKeys,
+  userStatusUpdateSchema,
+  userWriteSchema,
+} from '@/contract/users'
 import { HttpResponse, http } from 'msw'
 import { type AuthUser } from '@/features/auth/schema'
 import { appendAuditLog } from '../data/audit'
@@ -33,16 +41,7 @@ type UsersQuery = {
   sortOrder: 'asc' | 'desc'
 }
 
-const SORTABLE_KEYS = new Set([
-  'username',
-  'fullName',
-  'email',
-  'phoneNumber',
-  'status',
-  'role',
-  'createdAt',
-  'updatedAt',
-])
+const SORTABLE_KEYS = new Set<string>(userSortKeys)
 
 function parseUsersQuery(request: Request): UsersQuery {
   const { searchParams } = new URL(request.url)
@@ -58,7 +57,8 @@ function parseUsersQuery(request: Request): UsersQuery {
 
   return {
     page: positive('page', 1),
-    pageSize: positive('pageSize', 10),
+    // Same cap as the system-management lists (decision D3).
+    pageSize: Math.min(100, positive('pageSize', 10)),
     username: (searchParams.get('username') ?? '').trim().toLowerCase(),
     status: multi('status'),
     role: multi('role'),
@@ -123,67 +123,35 @@ function applyUsersQuery(query: UsersQuery, actor: AuthUser) {
   }
 }
 
-type UserWriteBody = {
-  firstName?: unknown
-  lastName?: unknown
-  username?: unknown
-  email?: unknown
-  phoneNumber?: unknown
-  role?: unknown
-  password?: unknown
-  avatarUrl?: unknown
-  departmentId?: unknown
-}
-
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const ROLES = new Set(['superadmin', 'admin', 'manager', 'cashier'])
-
-function readUserBody(body: UserWriteBody | null) {
-  const text = (value: unknown) =>
-    typeof value === 'string' ? value.trim() : ''
-  return {
-    departmentId: text(body?.departmentId) || undefined,
-    firstName: text(body?.firstName),
-    lastName: text(body?.lastName),
-    username: text(body?.username),
-    email: text(body?.email),
-    phoneNumber: text(body?.phoneNumber),
-    role: text(body?.role),
-    avatarUrl: text(body?.avatarUrl) || undefined,
+/**
+ * Validates a user write body with the contract schema. When several fields
+ * are wrong, a missing required field is reported before any other problem.
+ */
+function parseUserBody(body: unknown) {
+  const parsed = userWriteSchema.safeParse(body)
+  if (parsed.success) {
+    // Business users have no credentials in the mock: never store the password.
+    const { password: _password, ...fields } = parsed.data
+    return { fields, error: null }
   }
-}
-
-function validateUserFields(
-  fields: ReturnType<typeof readUserBody>
-): string | null {
-  if (
-    !fields.firstName ||
-    !fields.lastName ||
-    !fields.username ||
-    !fields.email ||
-    !fields.phoneNumber ||
-    !fields.role
-  ) {
-    return '请完整填写必填字段。'
-  }
-  if (!EMAIL_PATTERN.test(fields.email)) return '邮箱格式不正确。'
-  if (!ROLES.has(fields.role)) return '角色不在允许范围内。'
-  return null
+  const issues = parsed.error.issues
+  const first =
+    issues.find((issue) => issue.message === USER_FIELDS_REQUIRED) ?? issues[0]
+  return { fields: null, error: first.message }
 }
 
 function actorOf(session: { user: { name: string; email: string } }) {
   return { actorName: session.user.name, actorEmail: session.user.email }
 }
 
-async function readJson(request: Request): Promise<UserWriteBody | null> {
-  return (await request.json().catch(() => null)) as UserWriteBody | null
+async function readJson(request: Request): Promise<unknown> {
+  return request.json().catch(() => null)
 }
 
+/** Ids of a bulk request; a malformed body selects nothing. */
 function readIds(body: unknown): string[] {
-  const ids = (body as { ids?: unknown } | null)?.ids
-  return Array.isArray(ids)
-    ? ids.filter((id): id is string => typeof id === 'string')
-    : []
+  const parsed = idListSchema.safeParse(body)
+  return parsed.success ? parsed.data.ids : []
 }
 
 function writableDepartment(actor: AuthUser, departmentId: string) {
@@ -215,9 +183,8 @@ export const usersHandlers = [
       requirePermission(session, 'users:write') ?? requireCsrf(request, session)
     if (denied) return denied
 
-    const fields = readUserBody(await readJson(request))
-    const invalid = validateUserFields(fields)
-    if (invalid) return apiError(422, 'INVALID_USER_FIELDS', invalid)
+    const { fields, error } = parseUserBody(await readJson(request))
+    if (!fields) return apiError(422, 'INVALID_USER_FIELDS', error)
     if (findUserByEmailOrUsername(fields.email, fields.username)) {
       return apiError(422, 'DUPLICATE_USER', '邮箱或用户名已存在。')
     }
@@ -228,7 +195,6 @@ export const usersHandlers = [
       createdBy: session.user.id,
       ...fields,
       departmentId: fields.departmentId ?? session.user.departmentId ?? '',
-      role: fields.role as MockUser['role'],
       status: 'active',
       createdAt: now,
       updatedAt: now,
@@ -267,9 +233,8 @@ export const usersHandlers = [
     if (!canAccessData(session.user, existing, 'users:write'))
       return apiError(403, 'DATA_SCOPE_DENIED', '数据超出当前范围。')
 
-    const fields = readUserBody(await readJson(request))
-    const invalid = validateUserFields(fields)
-    if (invalid) return apiError(422, 'INVALID_USER_FIELDS', invalid)
+    const { fields, error } = parseUserBody(await readJson(request))
+    if (!fields) return apiError(422, 'INVALID_USER_FIELDS', error)
     if (findUserByEmailOrUsername(fields.email, fields.username, existing.id)) {
       return apiError(422, 'DUPLICATE_USER', '邮箱或用户名已存在。')
     }
@@ -296,7 +261,6 @@ export const usersHandlers = [
       return apiError(403, 'DATA_SCOPE_DENIED', '所属部门超出范围或不可用。')
     Object.assign(existing, fields, {
       departmentId,
-      role: fields.role as MockUser['role'],
       updatedAt: new Date().toISOString(),
     })
     appendAuditLog({
@@ -380,14 +344,14 @@ export const usersHandlers = [
       requirePermission(session, 'users:write') ?? requireCsrf(request, session)
     if (denied) return denied
 
-    const body = (await request.json().catch(() => null)) as {
-      ids?: unknown
-      status?: unknown
-    } | null
-    const status = body?.status
-    if (status !== 'active' && status !== 'inactive') {
-      return apiError(422, 'INVALID_STATUS', '状态只允许启用或停用。')
+    const body = await readJson(request)
+    const requested = userStatusUpdateSchema.shape.status.safeParse(
+      (body as { status?: unknown } | null)?.status
+    )
+    if (!requested.success) {
+      return apiError(422, 'INVALID_STATUS', requested.error.issues[0].message)
     }
+    const status = requested.data
     const ids = new Set(readIds(body))
     if (
       usersStore.some(
@@ -424,16 +388,14 @@ export const usersHandlers = [
       requirePermission(session, 'users:write') ?? requireCsrf(request, session)
     if (denied) return denied
 
-    const body = (await request.json().catch(() => null)) as {
-      email?: unknown
-      role?: unknown
-    } | null
-    const email = typeof body?.email === 'string' ? body.email.trim() : ''
-    const role = typeof body?.role === 'string' ? body.role : ''
-    if (!EMAIL_PATTERN.test(email))
-      return apiError(422, 'INVALID_EMAIL', '请输入有效邮箱。')
-    if (!ROLES.has(role))
-      return apiError(422, 'INVALID_ROLE', '角色不在允许范围内。')
+    const parsed = userInviteSchema.safeParse(await readJson(request))
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return issue.path[0] === 'role'
+        ? apiError(422, 'INVALID_ROLE', issue.message)
+        : apiError(422, 'INVALID_EMAIL', issue.message)
+    }
+    const { email, role } = parsed.data
 
     const username = email.split('@')[0].toLowerCase()
     if (findUserByEmailOrUsername(email, username)) {
@@ -450,7 +412,7 @@ export const usersHandlers = [
       username,
       email,
       phoneNumber: '—',
-      role: role as MockUser['role'],
+      role,
       status: 'invited',
       createdAt: now,
       updatedAt: now,

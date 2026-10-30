@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageMetaSchema, wireDate } from './common.ts'
+import { idListSchema, pageMetaSchema, wireDate } from './common.ts'
 
 export const userStatusSchema = z.union([
   z.literal('active'),
@@ -41,3 +41,119 @@ export const userListResponseSchema = z.object({
   meta: pageMetaSchema,
 })
 export type UserListResponse = z.infer<typeof userListResponseSchema>
+
+// ---------------------------------------------------------------- requests
+
+/** The only roles a user may hold. */
+export const userRoleValues = [
+  'superadmin',
+  'admin',
+  'manager',
+  'cashier',
+] as const
+
+/** Columns the list can be sorted by. */
+export const userSortKeys = [
+  'username',
+  'fullName',
+  'email',
+  'phoneNumber',
+  'status',
+  'role',
+  'createdAt',
+  'updatedAt',
+] as const
+export type UserSortKey = (typeof userSortKeys)[number]
+
+/** Shown when a required field is missing or blank; reported before other messages. */
+export const USER_FIELDS_REQUIRED = '请完整填写必填字段。'
+const ROLE_NOT_ALLOWED = '角色不在允许范围内。'
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+const requiredText = z
+  .string({ error: USER_FIELDS_REQUIRED })
+  .trim()
+  .min(1, USER_FIELDS_REQUIRED)
+const optionalText = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => value || undefined)
+const roleField = (message: string) =>
+  z.enum(userRoleValues, {
+    error: (issue) =>
+      issue.input === undefined || issue.input === ''
+        ? USER_FIELDS_REQUIRED
+        : message,
+  })
+
+/** POST /api/users and PUT /api/users/{id}. Unknown fields are ignored. */
+export const userWriteSchema = z.object({
+  firstName: requiredText,
+  lastName: requiredText,
+  username: requiredText,
+  email: requiredText.regex(EMAIL_PATTERN, '邮箱格式不正确。').meta({
+    format: 'email',
+  }),
+  phoneNumber: requiredText,
+  role: roleField(ROLE_NOT_ALLOWED),
+  password: z
+    .string()
+    .min(8, '密码至少需要 8 位字符。')
+    .max(128)
+    .optional()
+    .meta({ description: 'Optional on update: omit to keep the current one.' }),
+  departmentId: optionalText.meta({
+    description:
+      'Must be inside the actor users:write scope. Defaults to the actor department on create and is unchanged on update.',
+  }),
+  avatarUrl: optionalText,
+})
+export type UserWritePayload = z.input<typeof userWriteSchema>
+
+/** POST /api/users/invite */
+export const userInviteSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .regex(EMAIL_PATTERN, '请输入有效邮箱。')
+    .meta({ format: 'email' }),
+  role: z.enum(userRoleValues, { error: ROLE_NOT_ALLOWED }),
+  desc: z.string().optional(),
+})
+export type UserInvitePayload = z.input<typeof userInviteSchema>
+
+/** PATCH /api/users/status */
+export const userStatusUpdateSchema = idListSchema.extend({
+  status: z.enum(['active', 'inactive'], {
+    error: '状态只允许启用或停用。',
+  }),
+})
+export type UserBulkStatus = z.infer<typeof userStatusUpdateSchema>['status']
+
+/** Result counts of the bulk operations. */
+export const deletedCountSchema = z.object({ deletedCount: z.number() })
+export const updatedCountSchema = z.object({ updatedCount: z.number() })
+export const invitedCountSchema = z.object({ invitedCount: z.number() })
+
+/**
+ * GET /api/users query string. Repeated keys carry arrays
+ * (`status=active&status=invited`). An unknown `sortBy` falls back to
+ * `username` rather than failing; `pageSize` above 100 is clamped to 100.
+ */
+export const usersQuerySchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(10),
+  username: z.string().optional().meta({
+    description: 'Matches username, email, full name or phone number.',
+  }),
+  status: z.array(userStatusSchema).optional(),
+  role: z.array(userRoleSchema).optional(),
+  sortBy: z.enum(userSortKeys).default('username'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+})
+/** Client-side parameters: page and pageSize are always sent. */
+export type UsersListParams = z.input<typeof usersQuerySchema> & {
+  page: number
+  pageSize: number
+}

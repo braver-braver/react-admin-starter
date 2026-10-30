@@ -15,9 +15,3 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'user.batch_invited': '批量邀请',
   'system.changed': '系统配置变更',
 }
-
-export type AuditListParams = {
-  page: number
-  pageSize: number
-  action?: AuditAction[]
-}

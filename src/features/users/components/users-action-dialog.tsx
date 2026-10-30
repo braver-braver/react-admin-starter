@@ -27,7 +27,7 @@ import { PasswordInput } from '@/components/password-input'
 import { SelectDropdown } from '@/components/select-dropdown'
 import { createUser, updateUser } from '../api'
 import { roles } from '../data/data'
-import { type User } from '../data/schema'
+import { type User, type UserRole } from '../data/schema'
 import { usersQueryKey } from '../queries'
 
 const formSchema = z
@@ -131,7 +131,8 @@ export function UsersActionDialog({
         username: values.username,
         email: values.email,
         phoneNumber: values.phoneNumber,
-        role: values.role,
+        // The select only offers values from `roles`; the server validates it.
+        role: values.role as UserRole,
         password,
         avatarUrl: values.avatarUrl || undefined,
       }

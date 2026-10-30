@@ -23,7 +23,12 @@ import {
 import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Permission } from '@/components/permission'
 import { roles } from '../data/data'
-import { type User } from '../data/schema'
+import {
+  type User,
+  type UserRole,
+  type UserSortKey,
+  type UserStatus,
+} from '../data/schema'
 import { usersQueryOptions } from '../queries'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { usersColumns as columns } from './users-columns'
@@ -85,11 +90,14 @@ export function UsersTable({ search, navigate }: DataTableProps) {
         typeof usernameFilter === 'string' && usernameFilter.trim() !== ''
           ? usernameFilter.trim()
           : undefined,
+      // URL-derived strings; the server ignores or rejects unknown values.
       status: Array.isArray(statusFilter)
-        ? statusFilter.map(String)
+        ? (statusFilter.map(String) as UserStatus[])
         : undefined,
-      role: Array.isArray(roleFilter) ? roleFilter.map(String) : undefined,
-      sortBy: sorting?.[0]?.id,
+      role: Array.isArray(roleFilter)
+        ? (roleFilter.map(String) as UserRole[])
+        : undefined,
+      sortBy: sorting?.[0]?.id as UserSortKey | undefined,
       sortOrder: sorting?.[0]?.desc ? 'desc' : 'asc',
     })
   )
