@@ -14,10 +14,16 @@ const code = z
     /^[a-z][a-z0-9:_-]{1,79}$/,
     '代码使用小写字母、数字、冒号、下划线或连字符。'
   )
-const ids = z
-  .array(id)
-  .max(200)
-  .refine((items) => new Set(items).size === items.length, '不能重复选择。')
+/**
+ * A list of record ids: at most 200, no duplicates. `refine` rules never reach
+ * JSON Schema, so the uniqueness rule is also stated with `uniqueItems`.
+ */
+const uniqueIds = (min = 0, message?: string) =>
+  (min > 0 ? z.array(id).min(min, message) : z.array(id))
+    .max(200)
+    .refine((items) => new Set(items).size === items.length, '不能重复选择。')
+    .meta({ uniqueItems: true })
+const ids = uniqueIds()
 const scopeSchema = z.enum([
   'all',
   'department',
@@ -25,8 +31,13 @@ const scopeSchema = z.enum([
   'self',
   'custom',
 ])
-const password = z.string().min(8, '密码至少 8 位。').max(128)
-const email = z.email('请输入有效邮箱。')
+const password = z.string().min(8, '密码至少 8 位。').max(128).meta({
+  description:
+    'Initial or new password. Required to create an account; omit it on update to keep the current one.',
+})
+const email = z.email('请输入有效邮箱。').meta({
+  description: 'Compared and stored in lower case; the server lowercases it.',
+})
 
 // Field shapes are shared by the request body (strict: unknown keys are
 // rejected) and the response record (tolerant: a backend may add fields).
@@ -35,7 +46,7 @@ const accountFields = {
   email,
   enabled: z.boolean(),
   departmentId: id,
-  roleIds: ids.min(1, '至少选择一个角色。'),
+  roleIds: uniqueIds(1, '至少选择一个角色。'),
 }
 const roleFields = {
   name,
@@ -81,6 +92,10 @@ export const roleInput = z
     (value) => value.scope !== 'custom' || value.departmentIds.length > 0,
     { message: '请选择数据范围部门。', path: ['departmentIds'] }
   )
+  .meta({
+    description:
+      'When `scope` is `custom`, `departmentIds` must contain at least one department; for other scopes it may be empty.',
+  })
 export const permissionInput = z.strictObject(permissionFields)
 export const menuInput = z.strictObject(menuFields)
 export const departmentInput = z.strictObject(departmentFields)
