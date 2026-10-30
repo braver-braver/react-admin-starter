@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { auditListResponseSchema } from './audit.ts'
+import { auditListResponseSchema, auditQuerySchema } from './audit.ts'
 import { loginSchema, permissionsSchema, sessionSchema } from './auth.ts'
 import { idListSchema, successSchema } from './common.ts'
 import type { DeclaredErrors } from './errors.ts'
@@ -19,9 +19,20 @@ import {
   roleInput,
   roleSchema,
   systemListOf,
+  systemListQuerySchema,
 } from './system.ts'
 import { uploadFileSchema } from './uploads.ts'
-import { userListResponseSchema, userSchema } from './users.ts'
+import {
+  deletedCountSchema,
+  invitedCountSchema,
+  updatedCountSchema,
+  userInviteSchema,
+  userListResponseSchema,
+  userSchema,
+  userStatusUpdateSchema,
+  userWriteSchema,
+  usersQuerySchema,
+} from './users.ts'
 
 /**
  * Operation registry: the single list of every HTTP operation of the API.
@@ -46,6 +57,8 @@ export type Operation = {
   /** Needs `X-CSRF-Token` matching the session. */
   csrf: boolean
   params?: z.ZodType
+  /** Query string schema; arrays are sent as repeated keys. */
+  query?: z.ZodType
   /** JSON request body schema. Absent when not modelled yet or not JSON. */
   body?: z.ZodType
   /** Body is `multipart/form-data` (the `file` part). */
@@ -109,6 +122,7 @@ function systemOperations<
       permission: `system:${resource}:read`,
       auth: 'session',
       csrf: false,
+      query: systemListQuerySchema,
       success: { status: 200, schema: systemListOf(record) },
       errors: guarded,
     },
@@ -250,6 +264,7 @@ export const operations = [
     permission: 'users:read',
     auth: 'session',
     csrf: false,
+    query: usersQuerySchema,
     success: { status: 200, schema: userListResponseSchema },
     errors: guarded,
   },
@@ -261,6 +276,7 @@ export const operations = [
     permission: 'users:write',
     auth: 'session',
     csrf: true,
+    body: userWriteSchema,
     success: { status: 201, schema: userSchema },
     errors: { ...scopedWrite, 422: ['INVALID_USER_FIELDS', 'DUPLICATE_USER'] },
   },
@@ -273,6 +289,7 @@ export const operations = [
     auth: 'session',
     csrf: true,
     params: idParams,
+    body: userWriteSchema,
     success: { status: 200, schema: userSchema },
     errors: {
       ...scopedWrite,
@@ -301,10 +318,7 @@ export const operations = [
     auth: 'session',
     csrf: true,
     body: idListSchema,
-    success: {
-      status: 200,
-      schema: z.object({ deletedCount: z.number() }),
-    },
+    success: { status: 200, schema: deletedCountSchema },
     errors: scopedWrite,
   },
   {
@@ -315,10 +329,8 @@ export const operations = [
     permission: 'users:write',
     auth: 'session',
     csrf: true,
-    success: {
-      status: 200,
-      schema: z.object({ updatedCount: z.number() }),
-    },
+    body: userStatusUpdateSchema,
+    success: { status: 200, schema: updatedCountSchema },
     errors: { ...scopedWrite, 422: ['INVALID_STATUS'] },
   },
   {
@@ -329,6 +341,7 @@ export const operations = [
     permission: 'users:write',
     auth: 'session',
     csrf: true,
+    body: userInviteSchema,
     success: { status: 201, schema: userSchema },
     errors: {
       ...scopedWrite,
@@ -344,10 +357,7 @@ export const operations = [
     auth: 'session',
     csrf: true,
     body: idListSchema,
-    success: {
-      status: 200,
-      schema: z.object({ invitedCount: z.number() }),
-    },
+    success: { status: 200, schema: invitedCountSchema },
     errors: scopedWrite,
   },
   // --- uploads
@@ -375,6 +385,7 @@ export const operations = [
     permission: 'audit:read',
     auth: 'session',
     csrf: false,
+    query: auditQuerySchema,
     success: { status: 200, schema: auditListResponseSchema },
     errors: guarded,
   },

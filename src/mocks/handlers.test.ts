@@ -346,6 +346,84 @@ describe('user CRUD handlers', () => {
       ((await response.json()) as { error: { code: string } }).error.code
     ).toBe('INVALID_USER_FIELDS')
   })
+
+  it('caps pageSize at 100 on users and audit logs', async () => {
+    await loginSession()
+    for (const path of ['/api/users', '/api/audit-logs']) {
+      const response = await fetch(`${path}?page=1&pageSize=1000`)
+      const body = (await response.json()) as {
+        data: { items: unknown[]; meta: { pageSize: number } }
+      }
+      expect(body.data.meta.pageSize).toBe(100)
+      expect(body.data.items.length).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('prioritises the required-field message and never stores passwords', async () => {
+    const session = await loginSession()
+    const post = (body: object) =>
+      fetch('/api/users', {
+        method: 'POST',
+        headers: writeHeaders(session.csrfToken),
+        body: JSON.stringify(body),
+      })
+    const response = await post({ email: 'bad', role: 'root' })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toEqual({
+      error: { code: 'INVALID_USER_FIELDS', message: '请完整填写必填字段。' },
+    })
+
+    const created = await post({
+      firstName: '密',
+      lastName: '码',
+      username: `pw_${Date.now()}`,
+      email: `pw.${Date.now()}@example.com`,
+      phoneNumber: '+8613800000009',
+      role: 'cashier',
+      password: 'Secret123!',
+    })
+    expect(created.status).toBe(201)
+    expect(JSON.stringify(await created.json())).not.toContain('Secret123!')
+  })
+
+  it('maps invite validation to INVALID_EMAIL / INVALID_ROLE', async () => {
+    const session = await loginSession()
+    const invite = (body: object) =>
+      fetch('/api/users/invite', {
+        method: 'POST',
+        headers: writeHeaders(session.csrfToken),
+        body: JSON.stringify(body),
+      })
+    const email = await invite({ email: 'nope', role: 'cashier' })
+    expect(email.status).toBe(422)
+    expect(
+      ((await email.json()) as { error: { code: string } }).error.code
+    ).toBe('INVALID_EMAIL')
+    const role = await invite({ email: 'ok@example.com', role: 'root' })
+    expect(role.status).toBe(422)
+    expect(
+      ((await role.json()) as { error: { code: string } }).error.code
+    ).toBe('INVALID_ROLE')
+  })
+
+  it('rejects an invalid bulk status and treats malformed ids as an empty set', async () => {
+    const session = await loginSession()
+    const patch = (body: object) =>
+      fetch('/api/users/status', {
+        method: 'PATCH',
+        headers: writeHeaders(session.csrfToken),
+        body: JSON.stringify(body),
+      })
+    const bad = await patch({ ids: ['x'], status: 'invited' })
+    expect(bad.status).toBe(422)
+    expect(((await bad.json()) as { error: { code: string } }).error.code).toBe(
+      'INVALID_STATUS'
+    )
+
+    const malformed = await patch({ ids: 'not-a-list', status: 'active' })
+    expect(malformed.status).toBe(200)
+    expect(await malformed.json()).toEqual({ data: { updatedCount: 0 } })
+  })
 })
 
 describe('upload handlers', () => {

@@ -1,15 +1,21 @@
-import { z } from 'zod'
-import { apiRequest } from '@/lib/api'
+import { successSchema } from '@/contract/common'
 import {
+  deletedCountSchema,
+  invitedCountSchema,
+  updatedCountSchema,
   userListResponseSchema,
   userSchema,
+  type UserBulkStatus,
+  type UserInvitePayload,
   type UsersListParams,
   type UserWritePayload,
-} from './data/schema'
+} from '@/contract/users'
+import { apiRequest } from '@/lib/api'
 
 /**
  * 用户管理 API：全部经共享 apiRequest，响应由 zod 校验。
  * 分页、筛选、排序与授权都由服务端执行（users:read / users:write）。
+ * 请求与查询参数的类型来自 src/contract，不在这里手写。
  */
 
 function toSearchParams(params: UsersListParams): URLSearchParams {
@@ -45,38 +51,27 @@ export function updateUser(id: string, payload: UserWritePayload) {
   })
 }
 
-const deleteResponseSchema = z.object({ success: z.literal(true) })
-const countResponse = (key: 'deletedCount' | 'updatedCount' | 'invitedCount') =>
-  z.object({ [key]: z.number() })
-
 export function deleteUser(id: string) {
-  return apiRequest(`/api/users/${id}`, deleteResponseSchema, {
+  return apiRequest(`/api/users/${id}`, successSchema, {
     method: 'DELETE',
   })
 }
 
 export function batchDeleteUsers(ids: string[]) {
-  return apiRequest('/api/users/batch-delete', countResponse('deletedCount'), {
+  return apiRequest('/api/users/batch-delete', deletedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })
 }
 
-export function updateUsersStatus(
-  ids: string[],
-  status: 'active' | 'inactive'
-) {
-  return apiRequest('/api/users/status', countResponse('updatedCount'), {
+export function updateUsersStatus(ids: string[], status: UserBulkStatus) {
+  return apiRequest('/api/users/status', updatedCountSchema, {
     method: 'PATCH',
     body: JSON.stringify({ ids, status }),
   })
 }
 
-export function inviteUser(payload: {
-  email: string
-  role: string
-  desc?: string
-}) {
+export function inviteUser(payload: UserInvitePayload) {
   return apiRequest('/api/users/invite', userSchema, {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -84,7 +79,7 @@ export function inviteUser(payload: {
 }
 
 export function batchInviteUsers(ids: string[]) {
-  return apiRequest('/api/users/invite-batch', countResponse('invitedCount'), {
+  return apiRequest('/api/users/invite-batch', invitedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })

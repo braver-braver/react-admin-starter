@@ -11,7 +11,8 @@ function parseListQuery(request: Request) {
   }
   return {
     page: positive('page', 1),
-    pageSize: positive('pageSize', 10),
+    // Same cap as the other lists (decision D3).
+    pageSize: Math.min(100, positive('pageSize', 10)),
     action: [
       ...searchParams.getAll('action'),
       ...searchParams.getAll('action[]'),

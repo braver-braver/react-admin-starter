@@ -35,3 +35,15 @@ export const auditListResponseSchema = z.object({
   meta: pageMetaSchema,
 })
 export type AuditListResponse = z.infer<typeof auditListResponseSchema>
+
+/** GET /api/audit-logs query string. `pageSize` above 100 is clamped to 100. */
+export const auditQuerySchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(10),
+  action: z.array(auditActionSchema).optional(),
+})
+/** Client-side parameters: page and pageSize are always sent. */
+export type AuditListParams = z.input<typeof auditQuerySchema> & {
+  page: number
+  pageSize: number
+}
