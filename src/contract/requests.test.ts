@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { auditQuerySchema } from './audit.ts'
+import { systemListQuerySchema } from './system.ts'
 import {
   USER_FIELDS_REQUIRED,
   userInviteSchema,
@@ -91,15 +92,32 @@ describe('user invite and status schemas', () => {
 })
 
 describe('list query schemas', () => {
-  it('applies defaults and caps pageSize at 100 (decision D3)', () => {
+  it('applies defaults', () => {
     expect(usersQuerySchema.parse({})).toMatchObject({
       page: 1,
       pageSize: 10,
       sortBy: 'username',
       sortOrder: 'asc',
     })
-    expect(usersQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false)
-    expect(auditQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false)
-    expect(auditQuerySchema.parse({ pageSize: 100 }).pageSize).toBe(100)
+  })
+
+  it('clamps pageSize above 100 to 100 instead of rejecting it (decision D3)', () => {
+    for (const schema of [
+      usersQuerySchema,
+      auditQuerySchema,
+      systemListQuerySchema,
+    ]) {
+      expect(schema.parse({ pageSize: 100 }).pageSize).toBe(100)
+      expect(schema.parse({ pageSize: 101 }).pageSize).toBe(100)
+      expect(schema.parse({ pageSize: 5000 }).pageSize).toBe(100)
+      expect(schema.safeParse({ pageSize: 0 }).success).toBe(false)
+    }
+  })
+
+  it('falls back to username for an unknown sortBy (decision D6)', () => {
+    expect(usersQuerySchema.parse({ sortBy: 'password' }).sortBy).toBe(
+      'username'
+    )
+    expect(usersQuerySchema.parse({ sortBy: 'email' }).sortBy).toBe('email')
   })
 })

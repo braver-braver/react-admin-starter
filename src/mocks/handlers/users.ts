@@ -1,4 +1,3 @@
-import { idListSchema } from '@/contract/common'
 import {
   USER_FIELDS_REQUIRED,
   userInviteSchema,
@@ -148,10 +147,14 @@ async function readJson(request: Request): Promise<unknown> {
   return request.json().catch(() => null)
 }
 
-/** Ids of a bulk request; a malformed body selects nothing. */
+/**
+ * Ids of a bulk request. A body without an `ids` array selects nothing; inside
+ * the array, non-string entries are skipped and the rest still apply.
+ */
 function readIds(body: unknown): string[] {
-  const parsed = idListSchema.safeParse(body)
-  return parsed.success ? parsed.data.ids : []
+  const ids = (body as { ids?: unknown } | null)?.ids
+  if (!Array.isArray(ids)) return []
+  return ids.filter((id): id is string => typeof id === 'string')
 }
 
 function writableDepartment(actor: AuthUser, departmentId: string) {

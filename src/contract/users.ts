@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { idListSchema, pageMetaSchema, wireDate } from './common.ts'
+import {
+  idListSchema,
+  pageMetaSchema,
+  pageSizeQuery,
+  wireDate,
+} from './common.ts'
 
 export const userStatusSchema = z.union([
   z.literal('active'),
@@ -145,13 +150,13 @@ export const invitedCountSchema = z.object({ invitedCount: z.number() })
  */
 export const usersQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(100).default(10),
+  pageSize: pageSizeQuery,
   username: z.string().optional().meta({
     description: 'Matches username, email, full name or phone number.',
   }),
   status: z.array(userStatusSchema).optional(),
   role: z.array(userRoleSchema).optional(),
-  sortBy: z.enum(userSortKeys).default('username'),
+  sortBy: z.enum(userSortKeys).default('username').catch('username'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 })
 /** Client-side parameters: page and pageSize are always sent. */
