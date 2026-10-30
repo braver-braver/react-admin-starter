@@ -962,7 +962,6 @@ components:
         protected:
           type: "boolean"
           readOnly: true
-      additionalProperties: false
     SystemRole:
       type: "object"
       required: ["name", "code", "enabled", "permissionIds", "menuIds", "scope", "departmentIds", "id", "resource", "protected"]
@@ -996,7 +995,6 @@ components:
         protected:
           type: "boolean"
           readOnly: true
-      additionalProperties: false
     SystemPermission:
       type: "object"
       required: ["name", "code", "description", "id", "resource", "protected"]
@@ -1015,7 +1013,6 @@ components:
         protected:
           type: "boolean"
           readOnly: true
-      additionalProperties: false
     SystemMenu:
       type: "object"
       required: ["name", "parentId", "kind", "routeId", "enabled", "visible", "order", "id", "resource", "protected"]
@@ -1044,7 +1041,6 @@ components:
         protected:
           type: "boolean"
           readOnly: true
-      additionalProperties: false
     SystemDepartment:
       type: "object"
       required: ["name", "code", "parentId", "enabled", "id", "resource", "protected"]
@@ -1065,7 +1061,6 @@ components:
         protected:
           type: "boolean"
           readOnly: true
-      additionalProperties: false
     SystemRecord:
       oneOf:
         - $ref: "#/components/schemas/SystemAccount"
@@ -1100,7 +1095,6 @@ components:
         total:
           type: "integer"
           minimum: 0
-      additionalProperties: false
     SystemOptions:
       type: "object"
       required: ["items"]
@@ -1109,4 +1103,3 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/SystemRecord"
-      additionalProperties: false
