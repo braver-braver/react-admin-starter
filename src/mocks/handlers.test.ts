@@ -423,6 +423,18 @@ describe('user CRUD handlers', () => {
     const malformed = await patch({ ids: 'not-a-list', status: 'active' })
     expect(malformed.status).toBe(200)
     expect(await malformed.json()).toEqual({ data: { updatedCount: 0 } })
+
+    // Inside a list, malformed entries are skipped and the valid ids still apply.
+    const list = (await (
+      await fetch('/api/users?page=1&pageSize=50')
+    ).json()) as {
+      data: { items: { id: string; status: string }[] }
+    }
+    const target = list.data.items.find((user) => user.status === 'inactive')
+    expect(target).toBeDefined()
+    const mixed = await patch({ ids: [target!.id, null, 7], status: 'active' })
+    expect(mixed.status).toBe(200)
+    expect(await mixed.json()).toEqual({ data: { updatedCount: 1 } })
   })
 })
 

@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { idListSchema, pageMetaSchema, wireDate } from './common.ts'
+import {
+  idListSchema,
+  pageMetaSchema,
+  pageSizeQuery,
+  wireDate,
+} from './common.ts'
 
 export const userStatusSchema = z.union([
   z.literal('active'),
@@ -64,6 +69,8 @@ export const userSortKeys = [
   'updatedAt',
 ] as const
 export type UserSortKey = (typeof userSortKeys)[number]
+const isUserSortKey = (value: string): value is UserSortKey =>
+  (userSortKeys as readonly string[]).includes(value)
 
 /** Shown when a required field is missing or blank; reported before other messages. */
 export const USER_FIELDS_REQUIRED = '请完整填写必填字段。'
@@ -145,13 +152,21 @@ export const invitedCountSchema = z.object({ invitedCount: z.number() })
  */
 export const usersQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(100).default(10),
+  pageSize: pageSizeQuery,
   username: z.string().optional().meta({
     description: 'Matches username, email, full name or phone number.',
   }),
   status: z.array(userStatusSchema).optional(),
   role: z.array(userRoleSchema).optional(),
-  sortBy: z.enum(userSortKeys).default('username'),
+  sortBy: z
+    .string()
+    .default('username')
+    .transform(
+      (value): UserSortKey => (isUserSortKey(value) ? value : 'username')
+    )
+    .meta({
+      description: `One of ${userSortKeys.join(', ')}. Any other value falls back to username.`,
+    }),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 })
 /** Client-side parameters: page and pageSize are always sent. */

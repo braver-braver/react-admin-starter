@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { pageSizeQuery } from './common.ts'
 import { systemResources } from './permissions.ts'
 
 export const resourceSchema = z.enum(systemResources)
@@ -158,7 +159,7 @@ export const systemListOf = <T extends z.ZodType>(item: T) =>
 /** GET /api/system/{resource} query string. `pageSize` above 100 is clamped to 100. */
 export const systemListQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
-  pageSize: z.number().int().min(1).max(100).default(10),
+  pageSize: pageSizeQuery,
   search: z.string().optional().meta({
     description: 'Case-insensitive match on the name and the code or email.',
   }),
