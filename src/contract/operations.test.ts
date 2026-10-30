@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { errorCatalog, type ErrorCode, type ErrorCodeFor } from './errors.ts'
-import { operations } from './operations.ts'
+import { operations, type Operation, type OperationId } from './operations.ts'
 import { systemResources } from './permissions.ts'
+
+/** Widened view for iteration; `operations` itself keeps literal types. */
+const registry: readonly Operation[] = operations
 
 const contractSources = import.meta.glob(['./*.ts', '!./*.test.ts'], {
   query: '?raw',
@@ -15,21 +18,21 @@ const mockSources = import.meta.glob('../mocks/**/*.ts', {
 }) as Record<string, string>
 
 describe('operation registry', () => {
-  it('registers all 36 operations: 16 fixed paths plus 5 resources x 4', () => {
-    const system = operations.filter((op) => op.path.startsWith('/system/'))
-    const fixed = operations.filter(
+  it('registers all 36 registry: 16 fixed paths plus 5 resources x 4', () => {
+    const system = registry.filter((op) => op.path.startsWith('/system/'))
+    const fixed = registry.filter(
       (op) =>
         !/^\/system\/(accounts|roles|permissions|menus|departments)/.test(
           op.path
         )
     )
-    expect(operations).toHaveLength(36)
+    expect(registry).toHaveLength(36)
     expect(fixed).toHaveLength(16)
     expect(system.filter((op) => op.path !== '/system/options')).toHaveLength(
       20
     )
     for (const resource of systemResources) {
-      const ofResource = operations.filter((op) =>
+      const ofResource = registry.filter((op) =>
         op.path.startsWith(`/system/${resource}`)
       )
       expect(ofResource.map((op) => op.method).sort()).toEqual([
@@ -42,23 +45,23 @@ describe('operation registry', () => {
   })
 
   it('has unique operation ids and unique method + path pairs', () => {
-    const ids = operations.map((op) => op.id)
-    const routes = operations.map((op) => `${op.method} ${op.path}`)
+    const ids = registry.map((op) => op.id)
+    const routes = registry.map((op) => `${op.method} ${op.path}`)
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(routes).size).toBe(routes.length)
   })
 
   it('requires a session for every operation except login', () => {
     expect(
-      operations.filter((op) => op.auth === 'none').map((op) => op.id)
+      registry.filter((op) => op.auth === 'none').map((op) => op.id)
     ).toEqual(['login'])
-    for (const op of operations.filter((op) => op.auth === 'session')) {
+    for (const op of registry.filter((op) => op.auth === 'session')) {
       expect(op.errors[401], op.id).toContain('UNAUTHENTICATED')
     }
   })
 
   it('declares CSRF only on writes, and the CSRF error wherever it is required', () => {
-    for (const op of operations) {
+    for (const op of registry) {
       if (op.method === 'GET') expect(op.csrf, op.id).toBe(false)
       if (op.csrf) expect(op.errors[403], op.id).toContain('INVALID_CSRF_TOKEN')
       if (op.permission) expect(op.errors[403], op.id).toContain('FORBIDDEN')
@@ -66,7 +69,7 @@ describe('operation registry', () => {
   })
 
   it('declares only codes that the catalog allows for that status', () => {
-    for (const op of operations) {
+    for (const op of registry) {
       for (const [status, codes] of Object.entries(op.errors)) {
         for (const code of codes as readonly ErrorCode[]) {
           expect(
@@ -80,12 +83,47 @@ describe('operation registry', () => {
 
   it('uses every operation-scoped error code at least once', () => {
     const used = new Set(
-      operations.flatMap((op) => Object.values(op.errors).flat() as ErrorCode[])
+      registry.flatMap((op) => Object.values(op.errors).flat() as ErrorCode[])
     )
     const unused = (Object.keys(errorCatalog) as ErrorCode[]).filter(
       (code) => errorCatalog[code].scope === 'operation' && !used.has(code)
     )
     expect(unused).toEqual([])
+  })
+})
+
+describe('literal types', () => {
+  it('keeps operation ids as literals, so clients can be typed from them', () => {
+    const known: OperationId = 'listUsers'
+    const generated: OperationId = 'createSystemRole'
+    // @ts-expect-error not a registered operation id
+    const unknown: OperationId = 'dropDatabase'
+    expect([known, generated, unknown]).toHaveLength(3)
+  })
+
+  it('uses a different request schema for creating and updating an account', () => {
+    const create = registry.find((op) => op.id === 'createSystemAccount')
+    const update = registry.find((op) => op.id === 'updateSystemAccount')
+    const base = {
+      name: 'Ada',
+      email: 'ada@example.org',
+      enabled: true,
+      departmentId: 'dept',
+      roleIds: ['role'],
+    }
+    expect(create?.body?.safeParse(base).success).toBe(false)
+    expect(
+      create?.body?.safeParse({ ...base, password: 'longenough' }).success
+    ).toBe(true)
+    expect(update?.body?.safeParse(base).success).toBe(true)
+  })
+
+  it('declares {ids} as the body of the id-list batch operations', () => {
+    for (const id of ['batchDeleteUsers', 'inviteUsersBatch']) {
+      const body = registry.find((op) => op.id === id)?.body
+      expect(body?.safeParse({ ids: ['a'] }).success, id).toBe(true)
+      expect(body?.safeParse({}).success, id).toBe(false)
+    }
   })
 })
 

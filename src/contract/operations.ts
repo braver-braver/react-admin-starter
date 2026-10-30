@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import { auditListResponseSchema } from './audit.ts'
 import { loginSchema, permissionsSchema, sessionSchema } from './auth.ts'
-import { successSchema } from './common.ts'
+import { idListSchema, successSchema } from './common.ts'
 import type { DeclaredErrors } from './errors.ts'
 import type { Permission, SystemResource } from './permissions.ts'
 import {
+  accountCreateInput,
   accountInput,
   accountSchema,
   departmentInput,
@@ -78,12 +79,24 @@ const systemReadPermissions: readonly Permission[] = [
   'system:departments:read',
 ]
 
-function systemOperations<R extends z.ZodType, I extends z.ZodType>(
-  resource: SystemResource,
-  name: string,
-  record: R,
-  input: I
-): Operation[] {
+/**
+ * The four operations of one system resource. Generic and `as const` so that
+ * operation ids, paths and schemas keep their literal types (the typed client
+ * in M1-T7 derives from them).
+ */
+function systemOperations<
+  const Res extends SystemResource,
+  const Name extends string,
+  Record extends z.ZodType,
+  Create extends z.ZodType,
+  Update extends z.ZodType,
+>(
+  resource: Res,
+  name: Name,
+  record: Record,
+  createInput: Create,
+  updateInput: Update
+) {
   const collection = `/system/${resource}` as const
   const member = `/system/${resource}/{id}` as const
   const write = `system:${resource}:write` as const
@@ -107,7 +120,7 @@ function systemOperations<R extends z.ZodType, I extends z.ZodType>(
       permission: write,
       auth: 'session',
       csrf: true,
-      body: input,
+      body: createInput,
       success: { status: 201, schema: record },
       errors: {
         401: ['UNAUTHENTICATED', 'SYSTEM_RULE'],
@@ -125,7 +138,7 @@ function systemOperations<R extends z.ZodType, I extends z.ZodType>(
       auth: 'session',
       csrf: true,
       params: idParams,
-      body: input,
+      body: updateInput,
       success: { status: 200, schema: record },
       errors: {
         401: ['UNAUTHENTICATED', 'SYSTEM_RULE'],
@@ -152,10 +165,10 @@ function systemOperations<R extends z.ZodType, I extends z.ZodType>(
         409: ['SYSTEM_RULE'],
       },
     },
-  ]
+  ] as const satisfies readonly Operation[]
 }
 
-export const operations: readonly Operation[] = [
+export const operations = [
   // --- auth (6 incl. navigation)
   {
     id: 'login',
@@ -287,6 +300,7 @@ export const operations: readonly Operation[] = [
     permission: 'users:write',
     auth: 'session',
     csrf: true,
+    body: idListSchema,
     success: {
       status: 200,
       schema: z.object({ deletedCount: z.number() }),
@@ -329,6 +343,7 @@ export const operations: readonly Operation[] = [
     permission: 'users:write',
     auth: 'session',
     csrf: true,
+    body: idListSchema,
     success: {
       status: 200,
       schema: z.object({ invitedCount: z.number() }),
@@ -364,19 +379,30 @@ export const operations: readonly Operation[] = [
     errors: guarded,
   },
   // --- system management: 5 resources x (list, create, update, delete)
-  ...systemOperations('accounts', 'Account', accountSchema, accountInput),
-  ...systemOperations('roles', 'Role', roleSchema, roleInput),
+  ...systemOperations(
+    'accounts',
+    'Account',
+    accountSchema,
+    accountCreateInput,
+    accountInput
+  ),
+  ...systemOperations('roles', 'Role', roleSchema, roleInput, roleInput),
   ...systemOperations(
     'permissions',
     'Permission',
     permissionSchema,
+    permissionInput,
     permissionInput
   ),
-  ...systemOperations('menus', 'Menu', menuSchema, menuInput),
+  ...systemOperations('menus', 'Menu', menuSchema, menuInput, menuInput),
   ...systemOperations(
     'departments',
     'Department',
     departmentSchema,
+    departmentInput,
     departmentInput
   ),
-]
+] as const satisfies readonly Operation[]
+
+/** Union of all operation ids; use it to type client calls. */
+export type OperationId = (typeof operations)[number]['id']

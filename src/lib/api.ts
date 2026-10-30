@@ -1,5 +1,5 @@
-import { z } from 'zod'
-import { apiErrorSchema } from '@/contract/common'
+import { type z } from 'zod'
+import { apiErrorSchema, successEnvelope } from '@/contract/common'
 import { useAuthStore } from '@/stores/auth-store'
 
 export class ApiError extends Error {
@@ -88,7 +88,7 @@ export async function apiRequest<T>(
   if (startedAt !== revision) {
     throw new ApiError(409, 'SESSION_CHANGED', '登录状态已变化，请重新操作。')
   }
-  const parsed = z.object({ data: schema }).safeParse(body)
+  const parsed = successEnvelope(schema).safeParse(body)
   if (!parsed.success) {
     throw new ApiError(
       502,

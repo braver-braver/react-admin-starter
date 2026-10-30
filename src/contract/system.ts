@@ -25,6 +25,8 @@ const scopeSchema = z.enum([
   'self',
   'custom',
 ])
+const password = z.string().min(8, '密码至少 8 位。').max(128)
+/** Update body: the password is optional (omit to keep the current one). */
 export const accountInput = z
   .object({
     name,
@@ -34,9 +36,11 @@ export const accountInput = z
     enabled: z.boolean(),
     departmentId: id,
     roleIds: ids.min(1, '至少选择一个角色。'),
-    password: z.string().min(8, '密码至少 8 位。').max(128).optional(),
+    password: password.optional(),
   })
   .strict()
+/** Create body: a new login account must be given an initial password. */
+export const accountCreateInput = accountInput.extend({ password })
 export const roleInput = z
   .object({
     name,
