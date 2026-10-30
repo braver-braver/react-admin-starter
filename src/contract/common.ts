@@ -28,7 +28,10 @@ export const idListSchema = z.object({ ids: z.array(z.string()) })
 /** Largest page size a list returns; larger requests are clamped (decision D3). */
 export const MAX_PAGE_SIZE = 100
 
-/** `pageSize` query parameter: values above the maximum are clamped, not rejected. */
+/**
+ * `pageSize` query parameter: values above the maximum are clamped, not
+ * rejected, so the input JSON Schema deliberately carries no `maximum`.
+ */
 export const pageSizeQuery = z
   .number()
   .int()
@@ -36,8 +39,7 @@ export const pageSizeQuery = z
   .default(10)
   .transform((value) => Math.min(value, MAX_PAGE_SIZE))
   .meta({
-    maximum: MAX_PAGE_SIZE,
-    description: `Values above ${MAX_PAGE_SIZE} are clamped to ${MAX_PAGE_SIZE}.`,
+    description: `Values above ${MAX_PAGE_SIZE} are clamped to ${MAX_PAGE_SIZE}; the response meta reports the effective pageSize.`,
   })
 
 /** Pagination metadata of server-paged lists. */

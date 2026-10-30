@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { describe, expect, it } from 'vitest'
 import { auditQuerySchema } from './audit.ts'
 import { systemListQuerySchema } from './system.ts'
@@ -119,5 +120,19 @@ describe('list query schemas', () => {
       'username'
     )
     expect(usersQuerySchema.parse({ sortBy: 'email' }).sortBy).toBe('email')
+  })
+
+  it('does not describe the clamped inputs as invalid in the input JSON Schema', () => {
+    const json = z.toJSONSchema(usersQuerySchema, {
+      io: 'input',
+      unrepresentable: 'any',
+    }) as { properties: Record<string, Record<string, unknown>> }
+    // `.int()` adds the safe-integer bound; the point is that 101 stays valid.
+    expect(
+      (json.properties.pageSize.maximum as number | undefined) ?? Infinity
+    ).toBeGreaterThan(100)
+    expect(json.properties.pageSize.description).toMatch(/clamped to 100/)
+    expect(json.properties.sortBy).not.toHaveProperty('enum')
+    expect(json.properties.sortBy.description).toMatch(/falls back to username/)
   })
 })

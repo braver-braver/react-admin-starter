@@ -69,6 +69,8 @@ export const userSortKeys = [
   'updatedAt',
 ] as const
 export type UserSortKey = (typeof userSortKeys)[number]
+const isUserSortKey = (value: string): value is UserSortKey =>
+  (userSortKeys as readonly string[]).includes(value)
 
 /** Shown when a required field is missing or blank; reported before other messages. */
 export const USER_FIELDS_REQUIRED = '请完整填写必填字段。'
@@ -156,7 +158,15 @@ export const usersQuerySchema = z.object({
   }),
   status: z.array(userStatusSchema).optional(),
   role: z.array(userRoleSchema).optional(),
-  sortBy: z.enum(userSortKeys).default('username').catch('username'),
+  sortBy: z
+    .string()
+    .default('username')
+    .transform(
+      (value): UserSortKey => (isUserSortKey(value) ? value : 'username')
+    )
+    .meta({
+      description: `One of ${userSortKeys.join(', ')}. Any other value falls back to username.`,
+    }),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 })
 /** Client-side parameters: page and pageSize are always sent. */
