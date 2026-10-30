@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DbxlOmJ0.js";import{t}from"./system-Cbp7PV8s.js";var n=e(),r=()=>(0,n.jsx)(t,{resource:`roles`});export{r as component};
