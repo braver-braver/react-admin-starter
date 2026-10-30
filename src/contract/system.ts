@@ -26,70 +26,88 @@ const scopeSchema = z.enum([
   'custom',
 ])
 const password = z.string().min(8, '密码至少 8 位。').max(128)
+const email = z.email('请输入有效邮箱。')
+
+// Field shapes are shared by the request body (strict: unknown keys are
+// rejected) and the response record (tolerant: a backend may add fields).
+const accountFields = {
+  name,
+  email,
+  enabled: z.boolean(),
+  departmentId: id,
+  roleIds: ids.min(1, '至少选择一个角色。'),
+}
+const roleFields = {
+  name,
+  code,
+  enabled: z.boolean(),
+  permissionIds: ids,
+  menuIds: ids,
+  scope: scopeSchema,
+  departmentIds: ids,
+}
+const permissionFields = { name, code, description: z.string().trim().max(200) }
+const menuFields = {
+  name,
+  parentId: z.string().max(100),
+  kind: z.enum(['directory', 'page']),
+  routeId: z.string().max(100),
+  enabled: z.boolean(),
+  visible: z.boolean(),
+  order: z.number().int().min(0).max(9999),
+}
+const departmentFields = {
+  name,
+  code,
+  parentId: z.string().max(100),
+  enabled: z.boolean(),
+}
+
 /** Update body: the password is optional (omit to keep the current one). */
-export const accountInput = z
-  .object({
-    name,
-    email: z
-      .email('请输入有效邮箱。')
-      .transform((value) => value.toLowerCase()),
-    enabled: z.boolean(),
-    departmentId: id,
-    roleIds: ids.min(1, '至少选择一个角色。'),
-    password: password.optional(),
-  })
-  .strict()
+export const accountInput = z.strictObject({
+  ...accountFields,
+  email: email.transform((value) => value.toLowerCase()),
+  password: password.optional(),
+})
 /** Create body: a new login account must be given an initial password. */
-export const accountCreateInput = accountInput.extend({ password })
+export const accountCreateInput = z.strictObject({
+  ...accountFields,
+  email: email.transform((value) => value.toLowerCase()),
+  password,
+})
 export const roleInput = z
-  .object({
-    name,
-    code,
-    enabled: z.boolean(),
-    permissionIds: ids,
-    menuIds: ids,
-    scope: scopeSchema,
-    departmentIds: ids,
-  })
-  .strict()
+  .strictObject(roleFields)
   .refine(
     (value) => value.scope !== 'custom' || value.departmentIds.length > 0,
     { message: '请选择数据范围部门。', path: ['departmentIds'] }
   )
-export const permissionInput = z
-  .object({ name, code, description: z.string().trim().max(200) })
-  .strict()
-export const menuInput = z
-  .object({
-    name,
-    parentId: z.string().max(100),
-    kind: z.enum(['directory', 'page']),
-    routeId: z.string().max(100),
-    enabled: z.boolean(),
-    visible: z.boolean(),
-    order: z.number().int().min(0).max(9999),
-  })
-  .strict()
-export const departmentInput = z
-  .object({ name, code, parentId: z.string().max(100), enabled: z.boolean() })
-  .strict()
+export const permissionInput = z.strictObject(permissionFields)
+export const menuInput = z.strictObject(menuFields)
+export const departmentInput = z.strictObject(departmentFields)
+
 const common = { id, protected: z.boolean() }
-export const accountSchema = accountInput
-  .omit({ password: true })
-  .extend({ ...common, resource: z.literal('accounts') })
-export const roleSchema = roleInput.safeExtend({
+export const accountSchema = z.object({
+  ...accountFields,
+  ...common,
+  resource: z.literal('accounts'),
+})
+export const roleSchema = z.object({
+  ...roleFields,
   ...common,
   resource: z.literal('roles'),
 })
-export const permissionSchema = permissionInput.extend({
+export const permissionSchema = z.object({
+  ...permissionFields,
   ...common,
   resource: z.literal('permissions'),
 })
-export const menuSchema = menuInput.extend({
+export const menuSchema = z.object({
+  ...menuFields,
   ...common,
   resource: z.literal('menus'),
 })
-export const departmentSchema = departmentInput.extend({
+export const departmentSchema = z.object({
+  ...departmentFields,
   ...common,
   resource: z.literal('departments'),
 })

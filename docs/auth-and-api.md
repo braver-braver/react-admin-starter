@@ -35,6 +35,8 @@ pnpm dev
 
 可供后端对接的定义见 [OpenAPI](api.openapi.yaml)。运行时使用 `src/features/auth/schema.ts` 的 Zod 契约验证成功响应；业务 API 函数放在各 feature 下，公共传输层在 `src/lib/api.ts`。不依赖 GoFrame 或特定业务响应码。
 
+时间戳（`createdAt`、`updatedAt`）一律是 ISO 8601 date-time 字符串，如 `2026-10-30T10:00:00Z`，允许小数秒与 `±hh:mm` 偏移；数字、布尔值、`null` 或无时区字符串都会被前端拒绝。响应对象允许出现契约之外的新增字段（前端忽略）；系统管理的请求体不允许未知字段。
+
 成功响应为 `{ "data": T }`。失败使用正确 HTTP 状态码及 `{ "error": { "code": "...", "message": "..." } }`，不允许以 HTTP 200 返回登录失败。错误 message 应可直接展示，不能含凭证或内部堆栈。
 
 | 方法 | 路径 | 成功 data | 行为 |

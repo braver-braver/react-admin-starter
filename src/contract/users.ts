@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageMetaSchema } from './common.ts'
+import { pageMetaSchema, wireDate } from './common.ts'
 
 export const userStatusSchema = z.union([
   z.literal('active'),
@@ -30,8 +30,8 @@ export const userSchema = z.object({
   status: userStatusSchema,
   role: userRoleSchema,
   avatarUrl: z.string().optional(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
+  createdAt: wireDate,
+  updatedAt: wireDate,
 })
 export type User = z.infer<typeof userSchema>
 
