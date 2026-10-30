@@ -1,3 +1,4 @@
+import { type ErrorCodeFor, type ErrorStatus } from '@/contract/errors'
 import { HttpResponse, http } from 'msw'
 import { getCookie } from '@/lib/cookies'
 import { type Permission } from '@/lib/permissions'
@@ -63,9 +64,10 @@ function getSession(id: string | undefined): MockSession | undefined {
   return { ...session, user }
 }
 
-export function apiError(
-  status: 400 | 401 | 403 | 404 | 409 | 422,
-  code: string,
+/** `code` must be a registered error code that may be sent with `status`. */
+export function apiError<S extends ErrorStatus>(
+  status: S,
+  code: ErrorCodeFor<S>,
   message: string
 ) {
   return HttpResponse.json({ error: { code, message } }, { status })

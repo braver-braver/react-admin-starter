@@ -1,21 +1,7 @@
-import { z } from 'zod'
+import { type AuditAction } from '@/contract/audit'
 
-/** 审计动作白名单：与服务端契约、mock 流水共用同一份定义 */
-export const auditActionValues = [
-  'auth.sign_in',
-  'auth.sign_out',
-  'user.created',
-  'user.updated',
-  'user.deleted',
-  'user.batch_deleted',
-  'user.status_changed',
-  'user.invited',
-  'user.batch_invited',
-  'system.changed',
-] as const
-
-export const auditActionSchema = z.enum(auditActionValues)
-export type AuditAction = z.infer<typeof auditActionSchema>
+// Schemas live in the API contract; re-exported so UI imports stay stable.
+export * from '@/contract/audit'
 
 export const auditActionLabels: Record<AuditAction, string> = {
   'auth.sign_in': '登录',
@@ -29,29 +15,6 @@ export const auditActionLabels: Record<AuditAction, string> = {
   'user.batch_invited': '批量邀请',
   'system.changed': '系统配置变更',
 }
-
-export const auditLogSchema = z.object({
-  id: z.string(),
-  createdAt: z.coerce.date(),
-  actorName: z.string(),
-  actorEmail: z.string(),
-  action: auditActionSchema,
-  target: z.string(),
-  detail: z.string(),
-  ip: z.string(),
-})
-export type AuditLog = z.infer<typeof auditLogSchema>
-
-export const auditListResponseSchema = z.object({
-  items: z.array(auditLogSchema),
-  meta: z.object({
-    page: z.number(),
-    pageSize: z.number(),
-    total: z.number(),
-    totalPageCount: z.number(),
-  }),
-})
-export type AuditListResponse = z.infer<typeof auditListResponseSchema>
 
 export type AuditListParams = {
   page: number
