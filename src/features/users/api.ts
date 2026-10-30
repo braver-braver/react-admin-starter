@@ -1,6 +1,9 @@
-import { z } from 'zod'
 import { apiRequest } from '@/lib/api'
+import { successSchema } from '@/lib/contract-schemas'
 import {
+  deletedCountSchema,
+  invitedCountSchema,
+  updatedCountSchema,
   userListResponseSchema,
   userSchema,
   type UsersListParams,
@@ -45,18 +48,14 @@ export function updateUser(id: string, payload: UserWritePayload) {
   })
 }
 
-const deleteResponseSchema = z.object({ success: z.literal(true) })
-const countResponse = (key: 'deletedCount' | 'updatedCount' | 'invitedCount') =>
-  z.object({ [key]: z.number() })
-
 export function deleteUser(id: string) {
-  return apiRequest(`/api/users/${id}`, deleteResponseSchema, {
+  return apiRequest(`/api/users/${id}`, successSchema, {
     method: 'DELETE',
   })
 }
 
 export function batchDeleteUsers(ids: string[]) {
-  return apiRequest('/api/users/batch-delete', countResponse('deletedCount'), {
+  return apiRequest('/api/users/batch-delete', deletedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })
@@ -66,7 +65,7 @@ export function updateUsersStatus(
   ids: string[],
   status: 'active' | 'inactive'
 ) {
-  return apiRequest('/api/users/status', countResponse('updatedCount'), {
+  return apiRequest('/api/users/status', updatedCountSchema, {
     method: 'PATCH',
     body: JSON.stringify({ ids, status }),
   })
@@ -84,7 +83,7 @@ export function inviteUser(payload: {
 }
 
 export function batchInviteUsers(ids: string[]) {
-  return apiRequest('/api/users/invite-batch', countResponse('invitedCount'), {
+  return apiRequest('/api/users/invite-batch', invitedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })

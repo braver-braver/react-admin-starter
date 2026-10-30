@@ -1,6 +1,6 @@
-import { z } from 'zod'
 import { apiRequest } from '@/lib/api'
-import { type LoginInput, sessionSchema } from './schema'
+import { successSchema } from '@/lib/contract-schemas'
+import { type LoginInput, permissionsSchema, sessionSchema } from './schema'
 
 export const authApi = {
   login: (input: LoginInput) =>
@@ -12,18 +12,11 @@ export const authApi = {
   session: () =>
     apiRequest('/api/auth/session', sessionSchema, { handleAuthError: false }),
   logout: (csrfToken: string) =>
-    apiRequest('/api/auth/logout', z.object({ success: z.literal(true) }), {
+    apiRequest('/api/auth/logout', successSchema, {
       method: 'POST',
       csrfToken,
       handleAuthError: false,
     }),
   permissions: (signal?: AbortSignal) =>
-    apiRequest(
-      '/api/auth/permissions',
-      z.object({
-        roles: z.array(z.string()),
-        permissions: z.array(z.string()),
-      }),
-      { signal }
-    ),
+    apiRequest('/api/auth/permissions', permissionsSchema, { signal }),
 }
