@@ -97,7 +97,7 @@ paths:
           schema: { type: integer, minimum: 1, default: 1 }
         - name: pageSize
           in: query
-          schema: { type: integer, minimum: 1, default: 10 }
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
         - name: username
           in: query
           description: Matches username, email, full name or phone number.

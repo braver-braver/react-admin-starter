@@ -64,6 +64,14 @@ describe('user invite and status schemas', () => {
     expect(role.error?.issues[0].message).toBe('角色不在允许范围内。')
   })
 
+  it('uses the localized message when the invite email is missing or not a string', () => {
+    for (const email of [undefined, 42, null]) {
+      const result = userInviteSchema.safeParse({ email, role: 'cashier' })
+      expect(result.error?.issues[0].path[0]).toBe('email')
+      expect(result.error?.issues[0].message).toBe('请输入有效邮箱。')
+    }
+  })
+
   it('does not silently coerce an invalid invite role', () => {
     expect(
       userInviteSchema.safeParse({ email: 'a@b.co', role: 'root' }).success

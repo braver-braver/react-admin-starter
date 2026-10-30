@@ -111,12 +111,14 @@ export const userWriteSchema = z.object({
 })
 export type UserWritePayload = z.input<typeof userWriteSchema>
 
+const INVITE_EMAIL_INVALID = '请输入有效邮箱。'
+
 /** POST /api/users/invite */
 export const userInviteSchema = z.object({
   email: z
-    .string()
+    .string({ error: INVITE_EMAIL_INVALID })
     .trim()
-    .regex(EMAIL_PATTERN, '请输入有效邮箱。')
+    .regex(EMAIL_PATTERN, INVITE_EMAIL_INVALID)
     .meta({ format: 'email' }),
   role: z.enum(userRoleValues, { error: ROLE_NOT_ALLOWED }),
   desc: z.string().optional(),
