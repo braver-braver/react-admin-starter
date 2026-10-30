@@ -22,7 +22,7 @@ The frontend assumes an API response envelope of `{ "data": ... }` on success or
 - **System:** login accounts, roles, permission catalog, menu and registered route IDs, departments and capability-specific data scopes.
 - **Shared:** HTTP errors, session-aware state, permission helpers, URL-synchronized server-driven DataTable state, validated forms and upload primitives.
 - **Examples:** users (server-side paginated CRUD and uploads), permissions and read-only audit logs.
-- **Contracts:** OpenAPI specification, feature-local Zod schemas and typed API clients.
+- **Contracts:** `src/contract/` holds the Zod schemas, the error-code table (`errors.ts`) and the registry of every API operation (`operations.ts`); `features/*/schema.ts` re-export it. The registry mirrors the reference mock and will become the single source for the generated OpenAPI document, the typed client and the mock response guard (milestone M1). The contract directory may import only `zod` and its own files (no `@/` alias, no `import.meta.env`, no React) so Node can load it directly; `operations.test.ts` enforces this. The OpenAPI specification is still hand-written until that generation lands.
 - **Quality:** Vitest browser tests, Playwright desktop/mobile and demo smoke tests, CI and production-boundary checks.
 
 ## Navigation and authorization boundaries

@@ -14,6 +14,7 @@ This file distinguishes **React Admin Starter** development from the release his
 - Added system administration for accounts, roles, permissions, menus and departments, with server-issued navigation and capability-specific data scopes ([#20](https://github.com/braver-braver/react-admin-starter/issues/20), [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21)).
 - Added independently built GitHub Pages mock previews and version-scoped snapshot infrastructure; authentic Release history is still awaiting verification ([#14](https://github.com/braver-braver/react-admin-starter/issues/14), [#15](https://github.com/braver-braver/react-admin-starter/issues/15)).
 - Added collapsible navigation groups while preserving icon-only sidebar access ([PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)).
+- Added `src/contract/`: the Zod schemas, a table of all 21 API error codes and a registry of all 36 API operations (method, path, capability, CSRF, success schema, declared errors). Feature schema files re-export it, so UI imports are unchanged. This is the first step toward generating the OpenAPI document from code; no runtime behaviour changes ([#26](https://github.com/braver-braver/react-admin-starter/issues/26), M1-T1).
 
 ### Security and quality
 
