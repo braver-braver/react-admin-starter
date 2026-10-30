@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageMetaSchema } from './common.ts'
+import { pageMetaSchema, wireDate } from './common.ts'
 
 /** 审计动作白名单：与服务端契约、mock 流水共用同一份定义 */
 export const auditActionValues = [
@@ -20,7 +20,7 @@ export type AuditAction = z.infer<typeof auditActionSchema>
 
 export const auditLogSchema = z.object({
   id: z.string(),
-  createdAt: z.coerce.date(),
+  createdAt: wireDate,
   actorName: z.string(),
   actorEmail: z.string(),
   action: auditActionSchema,
