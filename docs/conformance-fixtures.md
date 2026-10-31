@@ -45,11 +45,12 @@
 | 引用无环 | 部门 2 个（父子） | 父部门改挂到自身或子部门下 → 422 `SYSTEM_RULE` |
 | 凭证不进入账号 DTO 和审计 | 部门 1 个；角色 1 个；账号 1 个（随后改密码） | 创建、更新、列表、登录响应和审计日志里没有明文密码，也没有名称含 password/hash/salt/secret/credential 的字段 |
 | 停用再启用后旧会话仍失效 | 部门 1 个；角色 1 个；账号 1 个 | 停用期间登录 → 401 `INVALID_CREDENTIALS`；重新启用后，停用前的会话 Cookie 访问 `getSession` → 401（需要能回放 Cookie 的客户端，见下文）；可以重新登录 |
-| 角色编辑不能委派超出自身的能力 | 部门 1 个；编辑者角色 `system:roles:read`+`system:roles:write`+`users:read`/all；账号 1 个 | 建含 `users:write` 的角色 → 403 `SYSTEM_RULE`；建只含 `users:read` 的角色 → 201 |
+| 角色编辑不能委派超出自身的能力、范围和页面（含已分配的账号） | 部门 2 个（本部门、另一部门）；编辑者角色 `system:roles:read`+`system:roles:write`/all 与 `users:read`/custom（本部门）；目标角色 `users:read`/custom（本部门），分配给另一部门的 1 个账号；编辑者账号 1 个 | 新建或修改角色时加入 `users:write`、改成 all 范围、加入 `users` 菜单 → 403 `SYSTEM_RULE`；把目标角色改成 department 范围（编辑者自己不越界，但让另一部门的账号获得该部门范围）→ 403；以上修改都不生效；只改名 → 200；新建范围内的角色 → 201 |
 | 账号分配不能委派超出自身的数据范围 | 部门 1 个；管理者角色 `system:accounts:*`+`users:read`/custom（本部门）；`users:read` 的 all 与 custom 角色各 1 个；账号 1 个 | 给新账号分配 all 范围的角色 → 403 `SYSTEM_RULE`；分配 custom 范围的 → 201 |
 | 本人范围的账号不能改部门 | 部门 2 个；角色 `system:accounts:*`/self；账号 1 个 | 把自己改到另一个部门 → 403 `SYSTEM_RULE`；同部门改名 → 200 |
 | 系统引用选项跟随资源读授权 | 部门 2 个；角色 `system:departments:read`/custom（部门 A）与 `system:roles:read`/all；账号 2 个 | 前者的 `getSystemOptions` 只有部门，含 A、不含 B；后者只有角色 |
-| 部门改父级或启用需按编辑者改动前的授权校验 | 部门 3 个（分支 A、同级 B、A 下停用的 C）；角色 `audit:read`/descendants 与 `system:departments:*`/all；账号 2 个（都在 A） | 编辑者（没有 `audit:read`）把 B 挂到 A 下、或启用 C → 403 `SYSTEM_RULE`；admin 把 B 挂到 A 下 → 200 |
+| 部门改父级或启用需按编辑者改动前的授权校验：数据范围 | 部门 3 个（分支 A、同级 B、A 下停用的 C）；角色 `audit:read`/descendants 与 `system:departments:*`/all；账号 2 个（都在 A） | 编辑者（没有 `audit:read`）把 B 挂到 A 下、或启用 C → 403 `SYSTEM_RULE`；admin 把 B 挂到 A 下 → 200 |
+| 部门改父级或启用需按编辑者改动前的授权校验：重新生效账号的能力和页面 | 部门 4 个（办公室、停用的父部门及其子部门、另一个停用部门）；角色 `users:write`/self、`users:read`/self（含 `users` 菜单）、编辑者 `system:departments:*`+`users:read`/all；账号 3 个 | 部门停用后其中的账号失效。编辑者（没有 `users:write`，也没有 `users` 菜单）把子部门移出停用的父部门、启用父部门、启用另一个部门，都会让账号重新获得编辑者没有的能力或页面 → 403 `SYSTEM_RULE`；admin 启用 → 200 |
 
 ## 会话 Cookie 回放
 

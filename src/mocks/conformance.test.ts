@@ -145,6 +145,17 @@ describe('the suite catches a non-conformant back end', () => {
           },
         })
       ),
+      // Accepts any role edit without checking what it delegates.
+      http.put(`${apiBase}/system/roles/:id`, async ({ request, params }) =>
+        HttpResponse.json({
+          data: {
+            ...((await request.json()) as object),
+            id: params.id,
+            protected: false,
+            resource: 'roles',
+          },
+        })
+      ),
       // Accepts any department edit without checking the hierarchy or grants.
       http.put(
         `${apiBase}/system/departments/:id`,
@@ -177,7 +188,9 @@ describe('the suite catches a non-conformant back end', () => {
       ).toEqual([
         'AGENTS.md: references acyclic',
         'AGENTS.md: reject mixed-scope batches atomically',
-        "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants",
+        "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants: capabilities and routes of reactivated accounts",
+        "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants: data scopes",
+        'AGENTS.md: role edits must not delegate capabilities, data scopes or routes beyond the actor, also through existing assignees',
         'AGENTS.md: system reference options follow resource read grants',
       ])
     } finally {

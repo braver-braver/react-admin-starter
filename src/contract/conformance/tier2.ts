@@ -112,8 +112,8 @@ export type FixtureKit = {
 type RoleSpec = {
   permissions: readonly Permission[]
   scope: Scope
-  departmentIds?: string[]
-  menuIds?: string[]
+  departmentIds?: readonly string[]
+  menuIds?: readonly string[]
 }
 type AccountSpec = { departmentId: string; roleIds: string[] }
 
@@ -776,41 +776,152 @@ export function tier2Scenarios(): Scenario[] {
       },
     },
     {
-      name: 'AGENTS.md: role edits must not delegate capabilities beyond the actor (createSystemRole with an unheld permission → 403 SYSTEM_RULE)',
+      name: 'AGENTS.md: role edits must not delegate capabilities, data scopes or routes beyond the actor, also through existing assignees (createSystemRole, updateSystemRole → 403 SYSTEM_RULE)',
       tier: 2,
       async run(client, fixtures) {
         await withFixtures(client, fixtures, async (kit) => {
           await kit.asAdmin()
-          const department = await kit.department()
-          const editorRole = await kit.role({
-            permissions: [
-              'system:roles:read',
-              'system:roles:write',
-              'users:read',
-            ],
-            scope: 'all',
-          })
+          const menu = (await listAll(client, 'listSystemMenus')).find(
+            (record) =>
+              record.kind === 'page' && record.routeId === USERS_ROUTE_ID
+          )
+          assert(
+            menu,
+            `listSystemMenus: no page menu for route ${USERS_ROUTE_ID}`
+          )
+          const home = await kit.department()
+          const elsewhere = await kit.department()
+          // The editor may edit any role, but holds users:read only for
+          // `home`, no users:write, and not the users menu.
+          const editorRoles = [
+            await kit.role({
+              permissions: ['system:roles:read', 'system:roles:write'],
+              scope: 'all',
+            }),
+            await kit.role({
+              permissions: ['users:read'],
+              scope: 'custom',
+              departmentIds: [home.id],
+            }),
+          ]
           const editor = await kit.account({
-            departmentId: department.id,
-            roleIds: [editorRole.id],
+            departmentId: home.id,
+            roleIds: editorRoles.map((role) => role.id),
           })
-          const beyond = await kit.roleBody({
-            permissions: ['users:write'],
-            scope: 'all',
-          })
-          const within = await kit.roleBody({
+          // A role within the editor's grants, assigned to an account in
+          // another department.
+          const target = await kit.role({
             permissions: ['users:read'],
-            scope: 'all',
+            scope: 'custom',
+            departmentIds: [home.id],
           })
+          await kit.account({
+            departmentId: elsewhere.id,
+            roleIds: [target.id],
+          })
+          const targetBody = {
+            name: target.name,
+            code: target.code,
+            enabled: target.enabled,
+            permissionIds: target.permissionIds,
+            menuIds: target.menuIds,
+            scope: target.scope,
+            departmentIds: target.departmentIds,
+          }
+          const [usersWrite] = await kit.permissionIds(['users:write'])
+          const createBeyond = [
+            [
+              'an unheld capability',
+              { permissions: ['users:write'], scope: 'all' },
+            ],
+            [
+              'a wider data scope',
+              { permissions: ['users:read'], scope: 'all' },
+            ],
+            [
+              'an unheld route',
+              {
+                permissions: ['users:read'],
+                scope: 'custom',
+                departmentIds: [home.id],
+                menuIds: [menu.id],
+              },
+            ],
+          ] as const
+          const creates: [string, Record<string, unknown>][] = []
+          for (const [label, spec] of createBeyond)
+            creates.push([label, await kit.roleBody(spec)])
+          const updates: [string, Record<string, unknown>][] = [
+            [
+              'an unheld capability',
+              {
+                ...targetBody,
+                permissionIds: [...target.permissionIds, usersWrite],
+              },
+            ],
+            ['a wider data scope', { ...targetBody, scope: 'all' }],
+            ['an unheld route', { ...targetBody, menuIds: [menu.id] }],
+            // `department` stays within the editor's own grants, but gives
+            // the assignee in `elsewhere` users:read there.
+            [
+              "a scope beyond the editor's for an existing assignee",
+              { ...targetBody, scope: 'department', departmentIds: [] },
+            ],
+          ]
 
           await kit.signIn(editor.credentials)
-          expectError(
-            await client.call('createSystemRole', { body: beyond }),
-            403,
-            'SYSTEM_RULE'
+          for (const [label, body] of creates) {
+            const response = await client.call('createSystemRole', { body })
+            if (response.status === 201)
+              kit.track(
+                'roles',
+                (response.body as { data: { id: string } }).data.id
+              )
+            try {
+              expectError(response, 403, 'SYSTEM_RULE')
+            } catch (error) {
+              throw new ContractAssertionError(
+                `createSystemRole with ${label}: ${reason(error)}`
+              )
+            }
+          }
+          for (const [label, body] of updates) {
+            try {
+              expectError(
+                await client.call('updateSystemRole', {
+                  params: { id: target.id },
+                  body,
+                }),
+                403,
+                'SYSTEM_RULE'
+              )
+            } catch (error) {
+              throw new ContractAssertionError(
+                `updateSystemRole with ${label}: ${reason(error)}`
+              )
+            }
+          }
+          const renamed = expectSuccess(
+            await client.call('updateSystemRole', {
+              params: { id: target.id },
+              body: { ...targetBody, name: `${target.name} 改名` },
+            }),
+            'updateSystemRole'
+          )
+          assert(
+            renamed.scope === 'custom' &&
+              renamed.menuIds.length === 0 &&
+              renamed.permissionIds.join() === target.permissionIds.join(),
+            'updateSystemRole: rejected edits left the role unchanged'
           )
           const allowed = expectSuccess(
-            await client.call('createSystemRole', { body: within }),
+            await client.call('createSystemRole', {
+              body: await kit.roleBody({
+                permissions: ['users:read'],
+                scope: 'custom',
+                departmentIds: [home.id],
+              }),
+            }),
             'createSystemRole'
           )
           kit.track('roles', allowed.id)
@@ -962,7 +1073,7 @@ export function tier2Scenarios(): Scenario[] {
       },
     },
     {
-      name: "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants (updateSystemDepartment → 403 SYSTEM_RULE)",
+      name: "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants: data scopes (updateSystemDepartment → 403 SYSTEM_RULE)",
       tier: 2,
       async run(client, fixtures) {
         await withFixtures(client, fixtures, async (kit) => {
@@ -1024,6 +1135,105 @@ export function tier2Scenarios(): Scenario[] {
           assert(
             reparented.parentId === branch.id,
             'updateSystemDepartment: an editor holding audit:read may reparent'
+          )
+        })
+      },
+    },
+    {
+      name: "AGENTS.md: reparenting or enabling a department is checked against the editor's pre-change grants: capabilities and routes of reactivated accounts (updateSystemDepartment → 403 SYSTEM_RULE)",
+      tier: 2,
+      async run(client, fixtures) {
+        await withFixtures(client, fixtures, async (kit) => {
+          await kit.asAdmin()
+          const menu = (await listAll(client, 'listSystemMenus')).find(
+            (record) =>
+              record.kind === 'page' && record.routeId === USERS_ROUTE_ID
+          )
+          assert(
+            menu,
+            `listSystemMenus: no page menu for route ${USERS_ROUTE_ID}`
+          )
+          const office = await kit.department()
+          const closed = await kit.department()
+          const team = await kit.department({ parentId: closed.id })
+          const paused = await kit.department()
+          // Self scopes only, so no department scope widens: whatever the
+          // editor is refused comes from capabilities or routes.
+          const writerRole = await kit.role({
+            permissions: ['users:write'],
+            scope: 'self',
+          })
+          const readerRole = await kit.role({
+            permissions: ['users:read'],
+            scope: 'self',
+            menuIds: [menu.id],
+          })
+          // Holds users:read (all) but neither users:write nor the users menu.
+          const editorRole = await kit.role({
+            permissions: [
+              'system:departments:read',
+              'system:departments:write',
+              'users:read',
+            ],
+            scope: 'all',
+          })
+          await kit.account({ departmentId: team.id, roleIds: [writerRole.id] })
+          await kit.account({
+            departmentId: paused.id,
+            roleIds: [readerRole.id],
+          })
+          const editor = await kit.account({
+            departmentId: office.id,
+            roleIds: [editorRole.id],
+          })
+          // Deactivate both accounts: `team` sits under a disabled parent.
+          const setEnabled = async (
+            department: DepartmentRecord,
+            enabled: boolean
+          ) =>
+            client.call('updateSystemDepartment', {
+              params: { id: department.id },
+              body: { ...departmentBody(department), enabled },
+            })
+          for (const department of [closed, paused])
+            expectSuccess(
+              await setEnabled(department, false),
+              'updateSystemDepartment'
+            )
+          const attempts: [string, () => ReturnType<typeof setEnabled>][] = [
+            [
+              'moving a department out from under a disabled parent (reactivates users:write)',
+              () =>
+                client.call('updateSystemDepartment', {
+                  params: { id: team.id },
+                  body: { ...departmentBody(team), parentId: office.id },
+                }),
+            ],
+            [
+              'enabling the disabled parent (reactivates users:write)',
+              () => setEnabled({ ...closed, enabled: false }, true),
+            ],
+            [
+              'enabling a department (reactivates the users route)',
+              () => setEnabled({ ...paused, enabled: false }, true),
+            ],
+          ]
+
+          await kit.signIn(editor.credentials)
+          for (const [label, attempt] of attempts) {
+            try {
+              expectError(await attempt(), 403, 'SYSTEM_RULE')
+            } catch (error) {
+              throw new ContractAssertionError(
+                `updateSystemDepartment ${label}: ${reason(error)}`
+              )
+            }
+          }
+
+          await kit.asAdmin()
+          expectSuccess(
+            await setEnabled({ ...paused, enabled: false }, true),
+            'updateSystemDepartment'
           )
         })
       },
