@@ -39,6 +39,7 @@
 | `pnpm format:check` | Prettier | 每个 PR |
 | `pnpm contract:check` | OpenAPI 文件与契约一致 | 每个 PR |
 | `pnpm test` | Vitest 浏览器模式 | 每个 PR |
+| `pnpm test:conformance` | 一致性套件的 Node 适配器自检 | 每个 PR |
 | `pnpm build` | 构建、`tsc -b` 与生产产物检查（禁止 Mock 进入生产包） | 每个 PR |
 | `pnpm knip` | 未使用的文件、导出与依赖（先 `pnpm build` 生成路由树） | 每个 PR |
 | `pnpm test:e2e` | 桌面/手机 E2E 与可访问性基线 | 改动页面、路由、请求层或契约时 |

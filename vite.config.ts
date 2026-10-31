@@ -97,6 +97,8 @@ export default defineConfig(({ mode, command }) => {
     },
     test: {
       include: ['src/**/*.test.{ts,tsx}'],
+      // Node-only tests (node:http, cookie jar) run with `pnpm test:conformance`.
+      exclude: ['**/node_modules/**', 'src/**/*.node.test.ts'],
       silent: 'passed-only',
       unstubEnvs: true,
       browser: {

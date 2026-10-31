@@ -11,6 +11,11 @@ const contractSources = import.meta.glob(['./*.ts', '!./*.test.ts'], {
   import: 'default',
   eager: true,
 }) as Record<string, string>
+// The conformance suite follows the same rules: a Node runner loads it too.
+const conformanceSources = import.meta.glob(
+  ['./conformance/*.ts', '!./conformance/*.test.ts'],
+  { query: '?raw', import: 'default', eager: true }
+) as Record<string, string>
 const mockSources = import.meta.glob('../mocks/**/*.ts', {
   query: '?raw',
   import: 'default',
@@ -176,8 +181,24 @@ describe('contract directory', () => {
     }
   })
 
+  it('keeps the conformance suite free of aliases, Vite, browser and Node APIs', () => {
+    const files = Object.entries(conformanceSources)
+    expect(files.length).toBeGreaterThanOrEqual(6)
+    for (const [file, source] of files) {
+      for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
+        expect(match[1], file).toMatch(/^(zod|\.\.?\/[a-z-]+\.ts)$/)
+      }
+      expect(source, file).not.toMatch(
+        /import\.meta|\b(window|document|localStorage|sessionStorage|process)\./
+      )
+    }
+  })
+
   it('carries no demo identifiers that the production check forbids', () => {
-    for (const [file, source] of Object.entries(contractSources)) {
+    for (const [file, source] of Object.entries({
+      ...contractSources,
+      ...conformanceSources,
+    })) {
       expect(source, file).not.toMatch(
         /mock_session|Demo1234|admin@example\.com/i
       )
