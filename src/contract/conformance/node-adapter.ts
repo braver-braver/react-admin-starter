@@ -45,6 +45,20 @@ export class CookieJar {
     return this.#cookies.has(name)
   }
 
+  /** The jar's cookies as `name=value; …`, to put back later with `load`. */
+  save(): string | undefined {
+    return this.header()
+  }
+
+  load(saved: string | undefined) {
+    this.#cookies.clear()
+    for (const pair of saved?.split('; ') ?? []) {
+      const separator = pair.indexOf('=')
+      if (separator > 0)
+        this.#cookies.set(pair.slice(0, separator), pair.slice(separator + 1))
+    }
+  }
+
   clear() {
     this.#cookies.clear()
   }
@@ -66,5 +80,11 @@ export function createNodeClient(
     },
     forget: () => jar.clear(),
   })
-  return Object.assign(client, { jar })
+  return Object.assign(client, {
+    jar,
+    sessionCookies: {
+      save: () => jar.save(),
+      restore: (saved: string | undefined) => jar.load(saved),
+    },
+  })
 }
