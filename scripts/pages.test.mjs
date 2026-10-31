@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import * as assembleModule from './assemble-pages.mjs'
 import { assemblePages } from './assemble-pages.mjs'
 
 function fixture(t) {
@@ -118,4 +119,24 @@ test('invalid tags, paths, overlapping output and symlinks fail before publishin
   const linked = f.build('latest')
   symlinkSync('/etc/passwd', join(linked.buildDir, 'secret'))
   assert.throws(() => assemblePages(linked), /Symlink/)
+})
+
+test('every name a workflow imports from a script is exported', async () => {
+  const workflows = ['ci.yml', 'pages.yml'].map((name) =>
+    readFileSync(
+      new URL(`../.github/workflows/${name}`, import.meta.url),
+      'utf8'
+    )
+  )
+  const imports = workflows.flatMap((text) =>
+    [
+      ...text.matchAll(
+        /import \{([^}]+)\} from '\.\/scripts\/assemble-pages\.mjs'/g
+      ),
+    ].flatMap((match) => match[1].split(',').map((name) => name.trim()))
+  )
+  assert.ok(imports.includes('releasePattern'))
+  for (const name of imports) {
+    assert.ok(name in assembleModule, `assemble-pages.mjs must export ${name}`)
+  }
 })

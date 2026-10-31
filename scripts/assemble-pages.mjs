@@ -11,7 +11,12 @@ import {
 import { basename, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const releasePattern = /^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/
+/**
+ * Release tag format. Imported by .github/workflows/pages.yml, which knip
+ * cannot see, hence the tag.
+ * @public
+ */
+export const releasePattern = /^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/
 function validateMetadata(metadata) {
   if (
     !metadata ||

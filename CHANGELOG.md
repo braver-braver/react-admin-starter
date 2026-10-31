@@ -30,6 +30,7 @@ This file distinguishes **React Admin Starter** development from the release his
 - Added desktop/mobile UI checks, privilege-escalation regression coverage, production mock isolation and published Pages browser smoke tests.
 - Made `pnpm knip` pass and run in CI: knip now sees the route files, the Playwright config and E2E specs and the demo server script; removed three unused components and the unused `recharts` and `date-fns` dependencies; dependencies used only by the kept shadcn primitives are listed with the reason. `pnpm lint` is warning-free ([#45](https://github.com/braver-braver/react-admin-starter/issues/45), M3-T2).
 - Added a mock contract guard: every mocked `/api/v1` response is checked against the operation registry (declared status, `{ data }` body matching the schema, declared error code), violations fail the handler tests, and a route test keeps the mock handlers and the registry in sync. All 36 operations are now exercised over HTTP with a success and a declared error. The guard found no existing violation ([#34](https://github.com/braver-braver/react-admin-starter/issues/34), M1-T8).
+- Fixed the Pages release workflow: M3-T2 had dropped the `export` of `releasePattern` from `scripts/assemble-pages.mjs`, which `pages.yml` imports (knip cannot see workflow files), so every Pages publish after #68 failed at its first step. The export is back with a `@public` tag, and `pnpm test:pages` now checks that every name a workflow imports from that script is exported.
 
 ### Migration notes
 
