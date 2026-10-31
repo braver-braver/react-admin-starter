@@ -32,7 +32,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 ## Roadmap
 
-开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-10-29）。
+开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-10-31）。
 
 <!-- prettier-ignore -->
 | 里程碑 | 主要交付与验收标准 | 状态 | 跟踪 |
@@ -44,11 +44,12 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 | v0.2 · 系统管理与统一授权 | 账号、角色、权限、菜单、部门管理；动态路由、按能力的数据范围及越权回归测试 | 已完成 · 已合并 | [#20](https://github.com/braver-braver/react-admin-starter/issues/20) · [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21) |
 | Pages 演示基础设施 | 独立静态 Mock 演示、`latest` 在线验证、Release 版本快照构建与隔离测试 | 代码已完成 · 线上 latest 已验收 | [#14](https://github.com/braver-braver/react-admin-starter/issues/14) · [PR #16](https://github.com/braver-braver/react-admin-starter/pull/16) |
 | 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 已完成 · 已合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
-| v1.0 · API 契约稳定化 | 对齐 OpenAPI、Zod、MSW 与文档；核验会话、CSRF、401/403、动态导航和数据范围契约，补齐真实后端接入指南 | 计划中 · 待拆分任务 | [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.json) |
+| v1.0 · M1 API 契约冻结 | Zod 契约为唯一来源；生成 OpenAPI 并在 CI 检查漂移；路径统一为 `/api/v1`；客户端经注册表发请求；Mock 契约守卫；冻结规则 | 已完成 · 已合并 | [M1](https://github.com/braver-braver/react-admin-starter/milestone/1) · [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.json) |
+| v1.0 · M2 一致性套件与接入指南 | 同一套用例跑 Mock 与真实后端（Tier 1/2）；替身服务器自检；生产构建加同源 API 的 E2E；后端接入指南 | 下一步 · 已拆分任务 | [M2](https://github.com/braver-braver/react-admin-starter/milestone/2) |
 | v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 计划中 · 尚无 Release | [工程规范](AGENTS.md) · [发布说明](docs/pages-demo.md) |
 | Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 待验收 · 需真实 Release | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) |
 
-**下一步顺序：** 验收最新 Pages 导航 → 冻结 v1.0 API 契约与接入文档 → 对齐版本并发布真实 Release → 完成 #15 的版本快照验收。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
+**下一步顺序：** 完成 M2 契约一致性套件与后端接入指南 → M3 发布工程（版本、CHANGELOG、发布检查）→ 发布真实 Release 并完成 #15 的版本快照验收。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
