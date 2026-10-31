@@ -1,29 +1,42 @@
-## Description
+## 说明
 
-<!-- A clear and concise description of what the pull request does. Include any relevant motivation and background. -->
+<!-- 这个 PR 做了什么、为什么。一个 PR 只对应一个任务。 -->
 
-## Types of changes
+- 任务编号：<!-- 例如 M1-T5；没有则写“无” -->
+- 关联 Issue：Closes #
 
-<!-- What types of changes does your code introduce to shadcn-admin? Put an `x` in the boxes that apply -->
+## 变更类型
 
-- [ ] Bug Fix (fixes an issue)
-- [ ] New Feature (adds functionality)
-- [ ] Refactor (improves code structure without changing behavior)
-- [ ] Breaking Change (incompatible change to existing behavior or public API)
-- [ ] Others (any other types not listed above)
+- [ ] 缺陷修复
+- [ ] 新功能
+- [ ] 重构（不改变行为）
+- [ ] 契约变更（`src/contract/` 有改动，已运行 `pnpm contract:generate`）
+- [ ] **Breaking Change**（对现有行为或公共 API 不兼容，已写入 CHANGELOG 的 Migration notes）
+- [ ] 文档
+- [ ] 其他：
 
-## Checklist
+## 对照过的 Mock 行为
 
-<!-- Please follow this checklist and put an x in each of the boxes, like this: [x]. You can also fill these out after creating the PR. This is simply a reminder of what we are going to look for before merging your code. -->
+<!-- 改动涉及接口时，写明对照了哪些 Mock 行为；没有写“无”。 -->
 
-- [ ] I have read the [Contributing Guide](https://github.com/satnaing/shadcn-admin/blob/main/.github/CONTRIBUTING.md)
+## 行为变化清单
 
-## Further comments
+<!-- 逐条列出对用户或对接方可见的行为变化；没有写“无”。 -->
 
-<!-- If this is a relatively large or complex change, kick off the discussion by explaining why you chose the solution you did and what alternatives you considered, etc... -->
+## 必跑命令
 
-## Related Issue
+- [ ] `pnpm lint`（0 错误，不新增警告）
+- [ ] `pnpm format:check`
+- [ ] `pnpm contract:check`
+- [ ] `pnpm test`
+- [ ] `pnpm build`
+- [ ] `pnpm knip`
+- [ ] 按需：`pnpm test:e2e`（页面、路由、请求层、契约）、`pnpm test:pages` / `pnpm test:demo`（`scripts/`、`pages.yml`、构建配置）
 
-<!-- If this PR is related to an existing issue, link to it here. -->
+<!-- 在这里贴结果摘要，例如用例数、是否全绿。 -->
 
-Closes: #<!-- Issue number, if applicable -->
+## 确认
+
+- [ ] 提交信息符合 Conventional Commits，破坏性变更带 `!`
+- [ ] 改了契约或行为时，已同步更新 `docs/` 与 `CHANGELOG.md`
+- [ ] 已读过[贡献指南](./CONTRIBUTING.md)
