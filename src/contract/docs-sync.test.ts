@@ -6,7 +6,8 @@ import { systemResources } from './permissions.ts'
 /**
  * M1-T9: the operation table in docs/auth-and-api.md must list exactly the
  * registry operations. The five system resources share one row per action,
- * written with `{resource}` / `{Resource}` placeholders.
+ * written with `{resource}` / `{Resource}` placeholders; the test expands
+ * those rows to every resource, so each concrete operation is compared.
  */
 const docs = Object.values(
   import.meta.glob('/docs/auth-and-api.md', {
@@ -24,16 +25,13 @@ const resourceNames: Record<string, string> = {
   departments: 'Department',
 }
 
-function documentedForm(op: Operation) {
-  let path = op.path as string
-  let id = op.id
-  for (const resource of systemResources) {
-    if (path.startsWith(`/system/${resource}`)) {
-      path = path.replace(`/system/${resource}`, '/system/{resource}')
-      id = id.replace(resourceNames[resource], '{Resource}')
-    }
-  }
-  return `${op.method} ${API_PREFIX}${path} ${id}`
+/** A documented row, with `{resource}` rows expanded to each resource. */
+function expand(method: string, path: string, id: string): string[] {
+  if (!path.includes('{resource}')) return [`${method} ${path} ${id}`]
+  return systemResources.map(
+    (resource) =>
+      `${method} ${path.replace('{resource}', resource)} ${id.replace('{Resource}', resourceNames[resource])}`
+  )
 }
 
 describe('docs/auth-and-api.md operation table', () => {
@@ -41,15 +39,15 @@ describe('docs/auth-and-api.md operation table', () => {
     expect(docs.length).toBeGreaterThan(1000)
   })
 
-  it('lists exactly the registry operations', () => {
-    const rows = [
+  it('lists exactly the registry operations, one per resource', () => {
+    const documented = [
       ...docs.matchAll(
         /^\| (GET|POST|PUT|PATCH|DELETE) \| (\/api\/\S+) \| (\S+) \|/gm
       ),
-    ].map(([, method, path, id]) => `${method} ${path} ${id}`)
-    const expected = [
-      ...new Set((operations as readonly Operation[]).map(documentedForm)),
-    ]
-    expect([...rows].sort()).toEqual([...expected].sort())
+    ].flatMap(([, method, path, id]) => expand(method, path, id))
+    const registered = (operations as readonly Operation[]).map(
+      (op) => `${op.method} ${API_PREFIX}${op.path} ${op.id}`
+    )
+    expect(documented.sort()).toEqual(registered.sort())
   })
 })
