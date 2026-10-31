@@ -123,9 +123,7 @@ describe('responses tolerate fields added by a backend', () => {
   it('parses system lists, users, audit logs and sessions with extra fields', () => {
     const list = systemListOf(accountSchema).parse({
       items: [{ ...records.accounts.record, extra: true }],
-      total: 1,
-      page: 1,
-      pageSize: 10,
+      meta,
       extra: true,
     })
     expect(list.items).toHaveLength(1)

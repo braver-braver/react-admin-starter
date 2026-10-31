@@ -102,9 +102,12 @@ async function handle({
     return HttpResponse.json({
       data: {
         items: items.slice((page - 1) * pageSize, page * pageSize),
-        total: items.length,
-        page,
-        pageSize,
+        meta: {
+          page,
+          pageSize,
+          total: items.length,
+          totalPageCount: Math.max(1, Math.ceil(items.length / pageSize)),
+        },
       },
     })
   }

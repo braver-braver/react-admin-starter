@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageSizeQuery } from './common.ts'
+import { listEnvelope, pageSizeQuery } from './common.ts'
 import { systemResources } from './permissions.ts'
 
 export const resourceSchema = z.enum(systemResources)
@@ -139,22 +139,11 @@ export type Account = z.infer<typeof accountSchema>
 export type Role = z.infer<typeof roleSchema>
 export type Menu = z.infer<typeof menuSchema>
 export const navigationSchema = z.array(menuSchema)
-export const systemListSchema = z.object({
-  items: z.array(systemRecordSchema),
-  total: z.number(),
-  page: z.number(),
-  pageSize: z.number(),
-})
 export const optionsSchema = z.object({ items: z.array(systemRecordSchema) })
 
-/** Flat list envelope of GET /api/system/{resource}, narrowed to one resource. */
-export const systemListOf = <T extends z.ZodType>(item: T) =>
-  z.object({
-    items: z.array(item),
-    total: z.number(),
-    page: z.number(),
-    pageSize: z.number(),
-  })
+/** List envelope of GET /api/system/{resource}, narrowed to one resource. */
+export const systemListOf = <T extends z.ZodType>(item: T) => listEnvelope(item)
+export const systemListSchema = systemListOf(systemRecordSchema)
 
 /** GET /api/system/{resource} query string. `pageSize` above 100 is clamped to 100. */
 export const systemListQuerySchema = z.object({

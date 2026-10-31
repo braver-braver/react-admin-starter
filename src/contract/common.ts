@@ -49,3 +49,10 @@ export const pageMetaSchema = z.object({
   total: z.number(),
   totalPageCount: z.number(),
 })
+
+/**
+ * The one envelope of every paged list: `{ items, meta }`. Tolerant of extra
+ * fields, like all responses.
+ */
+export const listEnvelope = <T extends z.ZodType>(item: T) =>
+  z.object({ items: z.array(item), meta: pageMetaSchema })

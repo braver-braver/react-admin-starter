@@ -47,7 +47,7 @@ pnpm dev
 | GET | /api/auth/permissions | `{roles,permissions}` | 需要 permissions:read；否则 403 |
 | GET | /api/auth/navigation | Menu[] | 返回当前账号启用且授权的菜单；停用菜单同时撤销路由访问 |
 | GET | /api/system/options | SystemRecord[] | 需要至少一个 system:{resource}:read；只返回对应资源已授权的角色/权限/菜单/部门记录（部门进一步按范围过滤） |
-| GET | /api/system/{resource} | `{items,total,page,pageSize}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
+| GET | /api/system/{resource} | `{items,meta}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
 | POST | /api/system/{resource} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；校验引用、层级与越权后创建 |
 | PUT | /api/system/{resource}/{id} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；保护记录返回 409 |
 | DELETE | /api/system/{resource}/{id} | `{success:true}` | 需要 `system:{resource}:write` 与 CSRF；仍被引用时返回 409 |
@@ -62,7 +62,7 @@ pnpm dev
 | POST | /api/uploads | UploadedFile | multipart `file`；仅图片、≤2MB；需要 users:write 与 CSRF |
 | GET | /api/audit-logs | `{items,meta}` | 需要 audit:read；按 action 过滤，最新在前 |
 
-列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），不接受 `status[]` 写法；`pageSize` 超过 100 按 100 处理；返回 `meta: {page,pageSize,total,totalPageCount}`。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
+列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），不接受 `status[]` 写法；`pageSize` 超过 100 按 100 处理；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
 
 上传契约返回 `{id,name,url,contentType,size}`。演示环境用浏览器对象 URL 直接预览，刷新后失效；真实服务应返回持久化下载地址，并在服务端再次校验类型与大小。
 

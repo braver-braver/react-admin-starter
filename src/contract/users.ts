@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
   idListSchema,
-  pageMetaSchema,
+  listEnvelope,
   pageSizeQuery,
   wireDate,
 } from './common.ts'
@@ -41,10 +41,7 @@ export const userSchema = z.object({
 export type User = z.infer<typeof userSchema>
 
 /** 分页列表响应：分页、筛选、排序全部由服务端计算 */
-export const userListResponseSchema = z.object({
-  items: z.array(userSchema),
-  meta: pageMetaSchema,
-})
+export const userListResponseSchema = listEnvelope(userSchema)
 export type UserListResponse = z.infer<typeof userListResponseSchema>
 
 // ---------------------------------------------------------------- requests

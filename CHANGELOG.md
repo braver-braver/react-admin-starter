@@ -19,11 +19,26 @@ This file distinguishes **React Admin Starter** development from the release his
 - Stated the system-management validation rules in the contract so the generated OpenAPI document can carry them: id lists are marked `uniqueItems`, and the rules that JSON Schema cannot express (a `custom` data scope needs departments, account emails are lower-cased, the initial password is required only on create) are written as descriptions. A test per rule checks both the described constraint and that the runtime enforces it ([#28](https://github.com/braver-braver/react-admin-starter/issues/28), M1-T3).
 - Moved the request-side rules for users into the contract: user create/update bodies, invites, bulk status changes and the users/audit list queries are now Zod schemas registered on their operations, and the client and the mock handlers reuse them instead of hand-written checks. Behaviour changes: the audit list now caps `pageSize` at 100 like the users list (decision D3), the mock no longer keeps any `password` sent with a business-user body, and a bulk request whose `ids` is not an array selects nothing (non-string entries inside the array are skipped, as before). The list queries clamp `pageSize` above 100 to 100 and fall back to `username` for an unknown `sortBy`, in the contract as well as in the mock (decisions D3 and D6). Error codes and messages are unchanged ([#30](https://github.com/braver-braver/react-admin-starter/issues/30), M1-T4).
 - Fixed the request conventions for list queries and headers in the contract, the docs and the mock: multi-value query parameters use repeated keys only (`status=a&status=b`; `status[]`, `role[]` and `action[]` are no longer read), and every write (POST, PUT, PATCH, DELETE) must send `X-Requested-With: ReactAdminStarter`, otherwise it gets 403 `REQUEST_HEADER_REQUIRED`. The header is checked before the session, so an anonymous write without it now gets that 403 rather than 401 ([#32](https://github.com/braver-braver/react-admin-starter/issues/32), M1-T6).
+- Unified every paged list on one envelope, `{ items, meta: { page, pageSize, total, totalPageCount } }`, built from a single `listEnvelope` in the contract. The system-management lists were the last ones using the flat shape; see the migration notes below ([#29](https://github.com/braver-braver/react-admin-starter/issues/29), M1-T3b, decision D2). Breaking change.
 
 ### Security and quality
 
 - Enforced operation-specific scope checks, delegated permission and route ceilings, protected recovery records and session revocation in the mock reference API.
 - Added desktop/mobile UI checks, privilege-escalation regression coverage, production mock isolation and published Pages browser smoke tests.
+
+### Migration notes
+
+Breaking changes for anyone integrating against the API, listed per change.
+
+- **System-management list responses** (`GET /api/system/{accounts,roles,permissions,menus,departments}`), M1-T3b:
+  - `data.total` → `data.meta.total`
+  - `data.page` → `data.meta.page`
+  - `data.pageSize` → `data.meta.pageSize`
+  - new: `data.meta.totalPageCount` (always at least 1)
+  - `data.items` is unchanged. The users and audit-log lists already used this shape.
+- **Audit-log list**, M1-T4: `pageSize` is capped at 100 like the other lists; larger values are clamped, not rejected.
+- **Write requests**, M1-T6: every POST/PUT/PATCH/DELETE must send `X-Requested-With: ReactAdminStarter`; without it the server answers 403 `REQUEST_HEADER_REQUIRED` before any session check (an anonymous write used to get 401).
+- **Multi-value query parameters**, M1-T6: use repeated keys (`status=a&status=b`); the `status[]`, `role[]` and `action[]` spellings are no longer read.
 
 ### Documentation
 
