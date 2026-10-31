@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { type Operation, operations } from '../operations.ts'
-import { genericScenarios } from './generic.ts'
+import { operationPath } from '../request.ts'
+import { genericScenarios, placeholderArgs } from './generic.ts'
 import { scenarios } from './scenarios.ts'
 
 const registry: readonly Operation[] = operations
@@ -51,5 +52,18 @@ describe('registry-derived scenarios (M2-T2)', () => {
     const registered = scenarios.filter((s) => s.name.startsWith('generic: '))
     expect(registered).toHaveLength(generic.length)
     expect(registered.every((s) => s.tier === 1)).toBe(true)
+  })
+
+  it('fills every path parameter, whatever its name', () => {
+    const op = {
+      ...registry.find((op) => op.id === 'updateUser')!,
+      path: '/widgets/{widgetId}/parts/{partId}',
+    } as Operation
+    const args = placeholderArgs(op)
+    expect(Object.keys(args.params ?? {}).sort()).toEqual([
+      'partId',
+      'widgetId',
+    ])
+    expect(() => operationPath(op, args)).not.toThrow()
   })
 })

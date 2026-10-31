@@ -12,9 +12,17 @@ import type { Scenario } from './scenarios.ts'
 
 const PLACEHOLDER_ID = 'conformance-missing-id'
 
-function placeholderArgs(op: Operation): CallArgs {
+/** Arguments that reach the access checks: every path parameter, a body. */
+export function placeholderArgs(op: Operation): CallArgs {
+  const names = [...op.path.matchAll(/\{(\w+)\}/g)].map((match) => match[1])
   return {
-    ...(op.path.includes('{') ? { params: { id: PLACEHOLDER_ID } } : {}),
+    ...(names.length
+      ? {
+          params: Object.fromEntries(
+            names.map((name) => [name, PLACEHOLDER_ID])
+          ),
+        }
+      : {}),
     ...(op.multipart ? { body: new FormData() } : op.body ? { body: {} } : {}),
   }
 }
