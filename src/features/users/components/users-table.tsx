@@ -24,13 +24,13 @@ import { DataTablePagination, DataTableToolbar } from '@/components/data-table'
 import { Permission } from '@/components/permission'
 import { roles } from '../data/data'
 import {
-  type User,
   type UserRole,
   type UserSortKey,
   type UserStatus,
 } from '../data/schema'
 import { usersQueryOptions } from '../queries'
 import { DataTableBulkActions } from './data-table-bulk-actions'
+import { getUserRowId } from './user-row-id'
 import { usersColumns as columns } from './users-columns'
 
 type DataTableProps = {
@@ -42,10 +42,6 @@ type DataTableProps = {
  * 服务端驱动的用户列表：分页、筛选、排序全部由 URL 状态触发、
  * /api/v1/users 计算；TanStack Table 只负责渲染当前页。
  */
-export function getUserRowId(user: User) {
-  return user.id
-}
-
 export function UsersTable({ search, navigate }: DataTableProps) {
   const user = useAuthStore((state) => state.auth.user)
   // Local UI-only states

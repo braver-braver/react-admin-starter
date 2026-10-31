@@ -57,7 +57,7 @@ flowchart LR
 
 ## 系统 API
 
-统一使用现有 `{data: ...}` / `{error: {code, message}}` 响应和 Cookie 会话。`docs/api.openapi.yaml` 与 Zod 契约共同描述接入边界。
+统一使用现有 `{data: ...}` / `{error: {code, message}}` 响应和 Cookie 会话。接入边界以 `src/contract/` 的 Zod 契约为准，`docs/api.openapi.json` 由它生成。
 
 | 接口 | 要求 |
 | --- | --- |

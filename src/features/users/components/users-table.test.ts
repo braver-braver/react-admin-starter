@@ -5,7 +5,7 @@ import {
 } from '@tanstack/react-table'
 import { describe, expect, it } from 'vitest'
 import { type User } from '../data/schema'
-import { getUserRowId } from './users-table'
+import { getUserRowId } from './user-row-id'
 
 const first: User = {
   id: 'usr-a',
