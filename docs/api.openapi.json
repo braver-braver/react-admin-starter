@@ -6000,7 +6000,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "format": "email"
           },
           "password": {
             "type": "string",

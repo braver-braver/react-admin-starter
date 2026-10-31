@@ -171,6 +171,14 @@ describe('generated OpenAPI document', () => {
     }
   })
 
+  it('keeps the email format of the login body, which Zod checks in a pipe', () => {
+    expect(schemas.LoginRequest.properties.email).toMatchObject({
+      type: 'string',
+      format: 'email',
+      minLength: 1,
+    })
+  })
+
   it('carries no Zod artefacts: $schema, $id or safe-integer bounds', () => {
     const text = JSON.stringify(doc)
     expect(text).not.toContain('"$schema"')
