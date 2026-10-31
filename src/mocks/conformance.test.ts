@@ -2,6 +2,7 @@ import { createBrowserClient } from '@/contract/conformance/browser-adapter'
 import {
   type Fixtures,
   runScenarios,
+  type Scenario,
   scenarios,
 } from '@/contract/conformance/scenarios'
 import { HttpResponse, http } from 'msw'
@@ -24,7 +25,6 @@ import {
   mockSessionSetCookie,
 } from './handlers/auth'
 
-/** M2-T1: the conformance scenarios run on the mock through the browser adapter. */
 const fixtures: Fixtures = {
   admin: { email: 'admin@example.com', password: DEMO_PASSWORD },
   viewer: { email: 'viewer@example.com', password: DEMO_PASSWORD },
@@ -62,24 +62,88 @@ afterAll(async () => {
   await worker.stop()
 })
 
+const newClient = () =>
+  createBrowserClient({ resetSession: resetMockSessions, sessionCookies })
+
+/**
+ * Records as JSON with sorted keys and sorted id lists: neither field order
+ * nor list order is data (the mock rebuilds the admin role's menu ids in
+ * record order, and an edited record moves to the end).
+ */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).sort().join(',')}]`
+  if (value && typeof value === 'object')
+    return `{${Object.keys(value)
+      .sort()
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`
+      )
+      .join(',')}}`
+  return JSON.stringify(value)
+}
+
+/** The mock data scenarios may touch, audit entries aside. */
+function mockData() {
+  const db = systemStore()
+  return {
+    records: db.records.map(canonical).sort(),
+    credentials: Object.entries(db.credentials)
+      .map(([id, credential]) => `${id}@${credential.version}`)
+      .sort(),
+    users: usersStore.map(canonical).sort(),
+  }
+}
+
+const derived = (s: Scenario) => s.name.startsWith('generic: ')
+const groups: [string, Scenario[]][] = [
+  ['Tier 1', scenarios.filter((s) => s.tier === 1 && !derived(s))],
+  ['Tier 2', scenarios.filter((s) => s.tier === 2)],
+  ['derived access checks (Tier 1)', scenarios.filter(derived)],
+]
+
+/**
+ * M2-T4: the Mock runner. Every registered scenario is one test, run in
+ * order with a fresh, signed-out client (as `runScenarios` does), while the
+ * contract guard checks each mocked response; a violation fails the scenario
+ * that caused it.
+ */
 describe('conformance scenarios on the mock (browser adapter)', () => {
-  it('passes every scenario, and the mock stays within the contract', async () => {
+  let before: ReturnType<typeof mockData>
+  beforeAll(() => {
     worker.use(cookieHandler)
-    const results = await runScenarios(
-      scenarios,
-      () =>
-        createBrowserClient({
-          resetSession: resetMockSessions,
-          sessionCookies,
-        }),
-      fixtures
-    ).finally(() => worker.resetHandlers())
-    await settleContractChecks()
-    const violations = [...contractViolations]
-    resetContractGuard()
-    expect(results.filter((result) => !result.ok)).toEqual([])
-    expect(results.length).toBeGreaterThan(0)
-    expect(violations).toEqual([])
+    before = mockData()
+  })
+  afterAll(() => {
+    worker.resetHandlers()
+  })
+
+  it('runs every registered scenario, in Tier 1, Tier 2 and derived groups', () => {
+    expect(groups.flatMap(([, list]) => list)).toHaveLength(scenarios.length)
+    for (const [label, list] of groups)
+      expect(list.length, label).toBeGreaterThan(0)
+  })
+
+  for (const [label, list] of groups) {
+    describe(label, () => {
+      for (const scenario of list) {
+        it(scenario.name, async () => {
+          resetContractGuard()
+          const client = newClient()
+          await client.forget()
+          try {
+            await scenario.run(client, fixtures)
+          } finally {
+            await settleContractChecks()
+          }
+          expect(contractViolations).toEqual([])
+        })
+      }
+    })
+  }
+
+  it('leaves the mock data as it found it (the scenarios clean up)', () => {
+    expect(mockData()).toEqual(before)
   })
 })
 
@@ -173,11 +237,7 @@ describe('the suite catches a non-conformant back end', () => {
     try {
       const results = await runScenarios(
         scenarios.filter((s) => s.tier === 2),
-        () =>
-          createBrowserClient({
-            resetSession: resetMockSessions,
-            sessionCookies,
-          }),
+        newClient,
         fixtures
       )
       expect(
