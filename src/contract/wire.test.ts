@@ -251,3 +251,25 @@ describe('timestamps', () => {
     )
   })
 })
+
+describe('page metadata is validated, not trusted', () => {
+  const valid = { items: [], meta }
+  it('accepts consistent metadata', () => {
+    expect(userListResponseSchema.safeParse(valid).success).toBe(true)
+    expect(systemListOf(accountSchema).safeParse(valid).success).toBe(true)
+  })
+
+  it.each([
+    ['totalPageCount of 0', { totalPageCount: 0 }],
+    ['a fractional totalPageCount', { totalPageCount: 1.5 }],
+    ['a negative total', { total: -1 }],
+    ['page 0', { page: 0 }],
+    ['pageSize above 100', { pageSize: 101 }],
+    ['a fractional pageSize', { pageSize: 10.5 }],
+  ])('rejects %s in every list envelope', (_label, patch) => {
+    const body = { items: [], meta: { ...meta, ...patch } }
+    expect(userListResponseSchema.safeParse(body).success).toBe(false)
+    expect(auditListResponseSchema.safeParse(body).success).toBe(false)
+    expect(systemListOf(accountSchema).safeParse(body).success).toBe(false)
+  })
+})

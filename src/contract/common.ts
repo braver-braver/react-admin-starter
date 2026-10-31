@@ -44,10 +44,10 @@ export const pageSizeQuery = z
 
 /** Pagination metadata of server-paged lists. */
 export const pageMetaSchema = z.object({
-  page: z.number(),
-  pageSize: z.number(),
-  total: z.number(),
-  totalPageCount: z.number(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(MAX_PAGE_SIZE),
+  total: z.number().int().min(0),
+  totalPageCount: z.number().int().min(1),
 })
 
 /**

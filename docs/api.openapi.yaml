@@ -726,7 +726,7 @@ components:
       required: [page, pageSize, total, totalPageCount]
       properties:
         page: { type: integer, minimum: 1 }
-        pageSize: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100 }
         total: { type: integer, minimum: 0 }
         totalPageCount: { type: integer, minimum: 1 }
     UserList:
