@@ -4,11 +4,20 @@ import { systemResources } from './permissions.ts'
 
 export const resourceSchema = z.enum(systemResources)
 const id = z.string().min(1).max(100)
+/**
+ * Clients send the name already trimmed (decision D7): the runtime trims
+ * before checking the length, while the generated `maxLength` counts the raw
+ * string, so a trimmed value satisfies both.
+ */
 const name = z
   .string()
   .trim()
   .min(1, '请输入名称。')
   .max(80, '名称最多 80 字。')
+  .meta({
+    description:
+      'Send the value already trimmed: at most 80 characters after trimming, and not blank.',
+  })
 const code = z
   .string()
   .regex(

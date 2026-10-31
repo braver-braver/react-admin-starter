@@ -1,7 +1,13 @@
 import { z } from 'zod'
 
 export const loginSchema = z.object({
-  email: z.string().min(1, '请输入邮箱。').pipe(z.email('请输入有效邮箱。')),
+  // The JSON Schema of a pipe shows only its input side, so the input states
+  // the email format that the second stage enforces.
+  email: z
+    .string()
+    .min(1, '请输入邮箱。')
+    .meta({ format: 'email' })
+    .pipe(z.email('请输入有效邮箱。')),
   password: z.string().min(1, '请输入密码。'),
 })
 
