@@ -3,7 +3,9 @@ import type { KnipConfig } from 'knip'
 const config: KnipConfig = {
   entry: [
     // TanStack Router consumes each route file's `Route` export through the
-    // generated, git-ignored src/routeTree.gen.ts, which knip does not read.
+    // generated, git-ignored src/routeTree.gen.ts. Run `pnpm build` (or the
+    // dev server) once so that file exists before `pnpm knip`; CI runs knip
+    // after the build for that reason.
     'src/routes/**/*.tsx',
     // Started by the demo Playwright config's webServer command.
     'scripts/serve-demo.mjs',
