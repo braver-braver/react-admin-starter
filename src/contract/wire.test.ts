@@ -123,9 +123,7 @@ describe('responses tolerate fields added by a backend', () => {
   it('parses system lists, users, audit logs and sessions with extra fields', () => {
     const list = systemListOf(accountSchema).parse({
       items: [{ ...records.accounts.record, extra: true }],
-      total: 1,
-      page: 1,
-      pageSize: 10,
+      meta,
       extra: true,
     })
     expect(list.items).toHaveLength(1)
@@ -251,5 +249,27 @@ describe('timestamps', () => {
     expect(wireDate.encode(new Date('2026-10-30T10:00:00Z'))).toBe(
       '2026-10-30T10:00:00.000Z'
     )
+  })
+})
+
+describe('page metadata is validated, not trusted', () => {
+  const valid = { items: [], meta }
+  it('accepts consistent metadata', () => {
+    expect(userListResponseSchema.safeParse(valid).success).toBe(true)
+    expect(systemListOf(accountSchema).safeParse(valid).success).toBe(true)
+  })
+
+  it.each([
+    ['totalPageCount of 0', { totalPageCount: 0 }],
+    ['a fractional totalPageCount', { totalPageCount: 1.5 }],
+    ['a negative total', { total: -1 }],
+    ['page 0', { page: 0 }],
+    ['pageSize above 100', { pageSize: 101 }],
+    ['a fractional pageSize', { pageSize: 10.5 }],
+  ])('rejects %s in every list envelope', (_label, patch) => {
+    const body = { items: [], meta: { ...meta, ...patch } }
+    expect(userListResponseSchema.safeParse(body).success).toBe(false)
+    expect(auditListResponseSchema.safeParse(body).success).toBe(false)
+    expect(systemListOf(accountSchema).safeParse(body).success).toBe(false)
   })
 })

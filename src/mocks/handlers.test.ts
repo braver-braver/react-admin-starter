@@ -486,6 +486,55 @@ describe('upload handlers', () => {
   })
 })
 
+describe('list envelope', () => {
+  const lists = [
+    '/api/users',
+    '/api/audit-logs',
+    '/api/system/accounts',
+    '/api/system/roles',
+    '/api/system/permissions',
+    '/api/system/menus',
+    '/api/system/departments',
+  ]
+
+  it.each(lists)(
+    '%s returns { items, meta } and nothing else',
+    async (path) => {
+      await loginSession()
+      const response = await fetch(`${path}?page=1&pageSize=2`)
+      expect(response.status).toBe(200)
+      const { data } = (await response.json()) as {
+        data: Record<string, unknown>
+      }
+      expect(Object.keys(data).sort()).toEqual(['items', 'meta'])
+      const meta = data.meta as Record<string, number>
+      expect(Object.keys(meta).sort()).toEqual([
+        'page',
+        'pageSize',
+        'total',
+        'totalPageCount',
+      ])
+      expect(meta.page).toBe(1)
+      expect(meta.pageSize).toBe(2)
+      expect(meta.totalPageCount).toBe(Math.max(1, Math.ceil(meta.total / 2)))
+      expect((data.items as unknown[]).length).toBeLessThanOrEqual(2)
+    }
+  )
+
+  it('reports at least one page for an empty system list', async () => {
+    await loginSession()
+    const response = await fetch('/api/system/roles?search=zzzz-no-match')
+    const { data } = (await response.json()) as {
+      data: {
+        items: unknown[]
+        meta: { total: number; totalPageCount: number }
+      }
+    }
+    expect(data.items).toEqual([])
+    expect(data.meta).toMatchObject({ total: 0, totalPageCount: 1 })
+  })
+})
+
 describe('request headers and multi-value query keys', () => {
   const writes: [string, string, object | undefined][] = [
     ['POST', '/api/users', {}],

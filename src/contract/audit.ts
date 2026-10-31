@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { pageMetaSchema, pageSizeQuery, wireDate } from './common.ts'
+import { listEnvelope, pageSizeQuery, wireDate } from './common.ts'
 
 /** 审计动作白名单：与服务端契约、mock 流水共用同一份定义 */
 export const auditActionValues = [
@@ -30,10 +30,7 @@ export const auditLogSchema = z.object({
 })
 export type AuditLog = z.infer<typeof auditLogSchema>
 
-export const auditListResponseSchema = z.object({
-  items: z.array(auditLogSchema),
-  meta: pageMetaSchema,
-})
+export const auditListResponseSchema = listEnvelope(auditLogSchema)
 export type AuditListResponse = z.infer<typeof auditListResponseSchema>
 
 /** GET /api/audit-logs query string. `pageSize` above 100 is clamped to 100. */

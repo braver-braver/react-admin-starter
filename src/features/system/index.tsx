@@ -291,7 +291,7 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
             }}
           />
           <span className='text-sm text-muted-foreground tabular-nums'>
-            共 {query.data?.total ?? 0} 条
+            共 {query.data?.meta.total ?? 0} 条
           </span>
           <Button
             variant='ghost'
@@ -413,13 +413,12 @@ export function SystemPage({ resource }: { resource: SystemResource }) {
             上一页
           </Button>
           <span className='text-sm tabular-nums'>
-            第 {page} / {Math.max(1, Math.ceil((query.data?.total ?? 0) / 10))}{' '}
-            页
+            第 {page} / {query.data?.meta.totalPageCount ?? 1} 页
           </span>
           <Button
             variant='outline'
             size='sm'
-            disabled={page * 10 >= (query.data?.total ?? 0)}
+            disabled={page >= (query.data?.meta.totalPageCount ?? 1)}
             onClick={() => setPage(page + 1)}
           >
             下一页

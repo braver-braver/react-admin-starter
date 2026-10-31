@@ -726,7 +726,7 @@ components:
       required: [page, pageSize, total, totalPageCount]
       properties:
         page: { type: integer, minimum: 1 }
-        pageSize: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100 }
         total: { type: integer, minimum: 0 }
         totalPageCount: { type: integer, minimum: 1 }
     UserList:
@@ -1084,22 +1084,14 @@ components:
         - $ref: "#/components/schemas/SystemDepartmentWrite"
     SystemList:
       type: "object"
-      required: ["items", "page", "pageSize", "total"]
+      required: ["items", "meta"]
       properties:
         items:
           type: "array"
           items:
             $ref: "#/components/schemas/SystemRecord"
-        page:
-          type: "integer"
-          minimum: 1
-        pageSize:
-          type: "integer"
-          minimum: 1
-          maximum: 100
-        total:
-          type: "integer"
-          minimum: 0
+        meta:
+          $ref: "#/components/schemas/PageMeta"
     SystemOptions:
       type: "object"
       required: ["items"]
