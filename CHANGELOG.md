@@ -49,6 +49,7 @@ Breaking changes for anyone integrating against the API, listed per change.
 - Documented the production API/security boundary in [architecture](docs/architecture.md) and [authentication](docs/auth-and-api.md).
 
 ---
+- Replaced the upstream contribution guide, pull-request template and issue templates with this project's rules (Chinese): issue first, implementation plan, one task per PR, Conventional Commits, contract changes via `pnpm contract:generate`, required commands, separate author and reviewer, merge only on the maintainer's instruction after every review comment is answered. Issue templates: bug, feature (with contract impact) and contract/back-end integration questions ([#44](https://github.com/braver-braver/react-admin-starter/issues/44), M3-T1).
 
 ## Historical upstream changelog — shadcn-admin only
 

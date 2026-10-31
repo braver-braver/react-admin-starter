@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Shadcn-Admin Discussions
-    url: https://github.com/satnaing/shadcn-admin/discussions
-    about: Please ask and answer questions here.
+  - name: 项目说明（README）
+    url: https://github.com/braver-braver/react-admin-starter#readme
+    about: 使用方式、路线图与常见问题。
+  - name: 接口与认证文档
+    url: https://github.com/braver-braver/react-admin-starter/blob/main/docs/auth-and-api.md
+    about: 会话、CSRF、错误码与接口列表。
