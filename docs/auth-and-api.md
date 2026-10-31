@@ -68,7 +68,7 @@ pnpm dev
 
 `{resource}` 为 `accounts`、`roles`、`permissions`、`menus`、`departments`，对应的 `{Resource}` 为 `Account`、`Role`、`Permission`、`Menu`、`Department`（如 `listSystemAccounts`、`createSystemRole`）。每个操作可能返回的错误码按状态码列在 [OpenAPI](api.openapi.json) 中；所有写操作缺少 `X-Requested-With` 时返回 403 `REQUEST_HEADER_REQUIRED`。
 
-列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），键名不带方括号；`pageSize` 超过 100 按 100 处理；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
+列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），键名不带方括号；`pageSize` 超过 100 按 100 处理，`page`、`pageSize` 的非法值按默认值处理，`page` 超过最后一页时可以按最后一页处理，也可以返回空的 `items`；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
 
 上传契约返回 `{id,name,url,contentType,size}`。演示环境用浏览器对象 URL 直接预览，刷新后失效；真实服务应返回持久化下载地址，并在服务端再次校验类型与大小。
 

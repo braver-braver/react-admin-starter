@@ -13,7 +13,7 @@
 1. **路由与通用访问检查**（第 3 节）：所有接口都在 `/api/v1` 下。对每个请求，依次检查来源标识、会话、能力和 CSRF。派生的访问检查场景（名称以 `generic:` 开头）只验证这一层，即使业务逻辑还没写也能通过。
 2. **认证**：`login`、`getSession`、`logout`（第 2 节），以及 `getPermissions`、`getNavigation`。
 3. **业务用户**：`listUsers`、`createUser`、`updateUser`、`deleteUser`、`batchDeleteUsers`、`updateUsersStatus`（第 6 节），以及 `inviteUser`、`inviteUsersBatch`。
-4. **上传**：`uploadFile`（第 7 节）。**审计**：`listAuditLogs`，并给写操作留痕（第 8 节）。到这一步，`pnpm test:contract --tier 1` 应该全部通过。
+4. **上传**：`uploadFile`（第 7 节）。**审计**：`listAuditLogs`，并给写操作留痕（第 8 节）。到这一步，`pnpm test:contract -- --tier 1` 应该全部通过。
 5. **系统管理**：账号、角色、权限、菜单、部门的增删改查和 `getSystemOptions`，同时按第 5 节实现数据范围、委派上限和保护规则。然后在可丢弃的数据库上设置 `CONTRACT_TIER2=1`，跑通 Tier 2。
 6. **同源部署**（第 9 节）。
 
@@ -26,9 +26,9 @@
 | Cookie 属性 | `HttpOnly; Secure; SameSite=Lax`。名称自定（OpenAPI 里写的 `session` 只是示意）。`Path` 至少覆盖 `/api/`，通常用 `/`。本地 http 调试可以不加 `Secure`，生产必须加。 |
 | 内容 | 不透明的随机会话 ID（至少 128 位），会话数据保存在服务端。不要把角色、权限或部门放进 Cookie 让前端信任。 |
 | 过期 | 设置合理的 `Max-Age` 或 `Expires`，服务端同时记录过期时间。过期或未知的会话一律视为未登录。 |
-| 登录 | `login` 只做第 3 节的第 1 步检查：即使请求带着有效的旧会话 Cookie，也不检查会话和 CSRF。成功时**签发新的会话 ID**（会话轮换），并作废请求带来的旧会话。邮箱不存在、密码错误、账号已停用、账号所在部门（或其上级）已停用，都返回 401 `INVALID_CREDENTIALS`，且**不得**设置任何会话 Cookie。请求体不是 JSON 时返回 400 `INVALID_REQUEST`，缺少邮箱或密码时返回 400 `INVALID_CREDENTIALS_FORMAT`。邮箱比较不区分大小写。 |
+| 登录 | `login` 只做第 3 节的第 1 步检查：即使请求带着有效的旧会话 Cookie，也不检查会话和 CSRF。成功时**签发新的会话 ID**（会话轮换），并作废请求带来的旧会话。邮箱不存在、密码错误、账号已停用、账号所在部门（或其上级）已停用，都返回 401 `INVALID_CREDENTIALS`，且**不得**设置任何会话 Cookie。请求体不是 JSON 时返回 400 `INVALID_REQUEST`，邮箱或密码缺失、为空，或邮箱格式不合法时，返回 400 `INVALID_CREDENTIALS_FORMAT`。邮箱比较不区分大小写。 |
 | 退出 | `logout` 需要 CSRF。必须**在服务端吊销**会话，并用 `Max-Age=0` 清除 Cookie。之后即使有人把旧 Cookie 原样带回来，`getSession` 也必须返回 401（Tier 1 会这样回放检查）。 |
-| 吊销 | 停用账号、删除账号、重置密码时，该账号的所有现有会话立即失效。**停用后再启用，也不能恢复旧会话**（Tier 2）。 |
+| 吊销 | 停用账号、删除账号、重置密码时，该账号的所有现有会话立即失效；停用账号所在的部门（或其上级部门）时，其中账号的会话也立即失效。**停用后再启用，也不能恢复旧会话**（Tier 2）。 |
 | 权限时效 | `getSession` 和每个接口都按服务端当前的账号、角色和部门重新计算权限，不能信任会话创建时缓存的权限。 |
 | 响应头 | 接口响应建议加 `Cache-Control: no-store`。 |
 
@@ -84,6 +84,7 @@
   - `updateUsersStatus` 返回 422 `INVALID_STATUS`；
   - `batchDeleteUsers`、`inviteUsersBatch` 视为 `ids` 为空，返回计数 0；
   - 系统管理返回 422 `INVALID_FIELDS`。
+  - 按 id 操作时，先查记录：记录不存在就返回 404（`USER_NOT_FOUND` 或 `SYSTEM_RULE`），不再校验请求体。
 
 错误码表（每个操作的可用子集见 OpenAPI 中各状态码的响应，以及 `components.schemas.ErrorCode`）：
 
@@ -91,9 +92,9 @@
 | 错误码 | 状态码 | 含义 |
 | --- | --- | --- |
 | `UNAUTHENTICATED` | 401 | 没有有效会话：缺失、过期、已吊销或未知的 Cookie |
-| `INVALID_CREDENTIALS` | 401 | 登录失败：邮箱不存在或密码错误 |
-| `INVALID_REQUEST` | 400 | 请求体不是合法 JSON |
-| `INVALID_CREDENTIALS_FORMAT` | 400 | 登录请求体不含有效的邮箱和密码 |
+| `INVALID_CREDENTIALS` | 401 | 登录失败：邮箱不存在、密码错误，或账号、所在部门已停用 |
+| `INVALID_REQUEST` | 400 | `login` 的请求体不是合法 JSON（其他操作见上文） |
+| `INVALID_CREDENTIALS_FORMAT` | 400 | 登录请求体缺少邮箱或密码、为空，或邮箱格式不合法 |
 | `REQUEST_HEADER_REQUIRED` | 403 | 缺少 `X-Requested-With: ReactAdminStarter` |
 | `INVALID_CSRF_TOKEN` | 403 | 已登录的写请求缺少或带错了 `X-CSRF-Token` |
 | `FORBIDDEN` | 403 | 会话缺少该操作要求的能力 |
@@ -185,6 +186,7 @@
   - 顶级菜单的 `parentId` 是空字符串；
   - 目录（`kind: directory`）的 `routeId` 是空字符串；
   - 页面的 `routeId` 是上表中的页面 id。
+  - 目录隐藏时，它下面的页面也不出现在导航中（仍然可以直接打开）；目录停用时，它下面的页面同时被撤销。
 - 菜单“隐藏”只影响导航，不撤销页面和接口；“停用”才会撤销页面。菜单从来不会授予或撤销**接口**权限，接口始终按能力和数据范围独立检查（Tier 2 会验证）。
 
 ## 6. 分页、筛选与排序
@@ -196,12 +198,12 @@
 ```
 
 - `page` 从 1 开始，`pageSize` 默认 10。非法值（0、负数、非数字）按默认值处理，**不报错**。
-- `pageSize` 超过 100 时按 100 处理；`page` 超过最后一页时按最后一页处理。
+- `pageSize` 超过 100 时按 100 处理。`page` 超过最后一页时，可以按最后一页处理（Mock 的用户和审计列表这样做），也可以返回空的 `items`（Mock 的系统资源列表这样做），两种都可以接受。
 - `totalPageCount` 至少为 1；`meta` 回显**实际使用的** `page` 和 `pageSize`。
 - 多值参数使用**重复键**，例如 `status=active&status=inactive`，键名不带 `[]`。
 - `listUsers` 的参数：
   - `username`：在用户名、邮箱、姓名、电话中做子串匹配，不区分大小写；
-  - “姓名”即 `fullName`，按中文习惯拼成 `lastName + firstName`，中间不加空格；
+  - “姓名”即 `fullName`，按中文习惯拼成 `lastName + firstName`，中间不加空格；因为是子串匹配，单独搜姓或名也能找到；
   - `status`、`role`：多值筛选；
   - `sortBy`：取值为 `username`、`fullName`、`email`、`phoneNumber`、`status`、`role`、`createdAt`、`updatedAt`，其他值**回退到 `username`**，不报错；
   - `sortOrder`：`asc` 或 `desc`；字符串按中文排序规则比较（如 ICU 的 `zh-Hans-CN` 排序）。
@@ -240,7 +242,7 @@
 
 ## 8. 审计
 
-`listAuditLogs` 需要 `audit:read`，按 `createdAt` **最新在前**排序，支持重复键的 `action` 筛选。返回的条目同样按 `audit:read` 的数据范围过滤：每条记录归属于操作者的部门和账号，范围的判断方式与业务记录相同。
+`listAuditLogs` 需要 `audit:read`，按 `createdAt` **最新在前**排序，支持重复键的 `action` 筛选。返回的条目同样按 `audit:read` 的数据范围过滤：每条记录归属于操作者的部门和账号，范围的判断方式与业务记录相同。这两个归属字段不在 `AuditLog` 的响应里，需要后端在存储时自己保留。
 
 条目字段为 `{ id, createdAt, actorName, actorEmail, action, target, detail, ip }`。`action` 的取值：
 
