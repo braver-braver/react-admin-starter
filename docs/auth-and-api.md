@@ -92,6 +92,8 @@ pnpm build
 
 测试覆盖 API 格式与错误、MSW 会话与 CSRF、用户 CRUD 的服务端分页/筛选/排序、批量操作与写权限拒绝、上传类型与权限校验、审计流水与 audit:read、登录和退出交互、路由和菜单权限、旧请求竞争。真实后端的 HttpOnly、服务端授权、会话吊销与跨标签页一致性仍须后端集成验收。
 
+**Mock 契约守卫：** 开发、演示与测试中，`src/mocks/contract-guard.ts` 按操作注册表检查每个 Mock 响应：状态码必须是该操作声明过的，成功体必须符合 `{ data }` 与对应 schema，错误码必须是该状态下声明过的；违规在控制台报 `[contract-guard]`，测试中直接失败。`src/mocks/handlers.test.ts` 还校验 Mock 路由与注册表双向一致，并要求全部 36 个操作都至少走过一次成功路径和一次声明的错误路径。守卫只由 `mocks/browser.ts` 引入，不进入普通生产构建。
+
 ## 系统管理会话扩展
 
 会话现在同时返回 `routes`、`departmentId` 与按能力代码索引的 `dataScopes`。`dataScope` 是总体摘要，操作鉴权必须读取对应能力的范围。前端从 `/api/v1/auth/navigation` 加载侧栏与命令搜索，受保护路由默认拒绝未下发的路径。账号密码重置、停用/再启用及删除会吊销旧会话；角色授权在每次 Mock API 请求时重算。后端升级必须实现这些字段与接口，详见 [系统管理与统一授权](system-management.md)。

@@ -1,5 +1,22 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { type Operation, operations } from '@/contract/operations'
+import { HttpResponse, http, matchRequestUrl } from 'msw'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import { worker } from './browser'
+import {
+  contractViolations,
+  observedStatuses,
+  resetContractGuard,
+  settleContractChecks,
+} from './contract-guard'
 import {
   accountById,
   changeSystem,
@@ -28,6 +45,14 @@ beforeEach(() => {
   worker.resetHandlers()
   resetMockSessions()
   resetSystemStore()
+})
+
+// Every mocked response must match the operation registry (M1-T8).
+afterEach(async () => {
+  await settleContractChecks()
+  const violations = [...contractViolations]
+  resetContractGuard()
+  expect(violations).toEqual([])
 })
 
 afterAll(async () => {
@@ -910,5 +935,233 @@ describe('system and department API enforcement', () => {
       true
     )
     expect(accountById(account.id)?.roleIds).toContain(role.id)
+  })
+})
+
+const registry: readonly Operation[] = operations
+const sampleUrl = (op: Operation) =>
+  new URL(`${apiBase}${op.path.replace(/\{\w+\}/g, 'x')}`, location.origin)
+
+describe('every operation over HTTP (M1-T8 coverage)', () => {
+  const unique = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`
+  const json = async (response: Response) =>
+    (await response.json()) as { data: { id: string } }
+
+  const resources = {
+    accounts: (n: string) => ({
+      create: {
+        name: '覆盖测试账号',
+        email: `cover.${n}@example.com`,
+        enabled: true,
+        departmentId: 'root',
+        roleIds: ['viewer'],
+        password: 'Cover1234!',
+      },
+      update: {
+        name: '覆盖测试账号（改）',
+        email: `cover.${n}@example.com`,
+        enabled: true,
+        departmentId: 'root',
+        roleIds: ['viewer'],
+      },
+    }),
+    roles: (n: string) => {
+      const body = {
+        name: '覆盖测试角色',
+        code: `cover_role_${n}`,
+        enabled: true,
+        permissionIds: ['users:read'],
+        menuIds: [],
+        scope: 'all',
+        departmentIds: [],
+      }
+      return { create: body, update: { ...body, name: '覆盖测试角色（改）' } }
+    },
+    permissions: (n: string) => {
+      const body = {
+        name: '覆盖测试权限',
+        code: `cover:perm_${n}`,
+        description: '',
+      }
+      return { create: body, update: { ...body, name: '覆盖测试权限（改）' } }
+    },
+    menus: () => {
+      const body = {
+        name: '覆盖测试目录',
+        parentId: '',
+        kind: 'directory',
+        routeId: '',
+        enabled: true,
+        visible: true,
+        order: 99,
+      }
+      return { create: body, update: { ...body, name: '覆盖测试目录（改）' } }
+    },
+    departments: (n: string) => {
+      const body = {
+        name: '覆盖测试部门',
+        code: `cover-dept-${n}`,
+        parentId: 'root',
+        enabled: true,
+      }
+      return { create: body, update: { ...body, name: '覆盖测试部门（改）' } }
+    },
+  } as const
+
+  it.each(Object.keys(resources) as (keyof typeof resources)[])(
+    'creates, updates and deletes a %s record',
+    async (resource) => {
+      const session = await loginSession()
+      const { create, update } = resources[resource](unique())
+      const created = await fetch(`/api/v1/system/${resource}`, {
+        method: 'POST',
+        headers: writeHeaders(session.csrfToken),
+        body: JSON.stringify(create),
+      })
+      expect(created.status).toBe(201)
+      const { id } = (await json(created)).data
+      const updated = await fetch(`/api/v1/system/${resource}/${id}`, {
+        method: 'PUT',
+        headers: writeHeaders(session.csrfToken),
+        body: JSON.stringify(update),
+      })
+      expect(updated.status).toBe(200)
+      const deleted = await fetch(`/api/v1/system/${resource}/${id}`, {
+        method: 'DELETE',
+        headers: writeHeaders(session.csrfToken),
+      })
+      expect(deleted.status).toBe(200)
+    }
+  )
+
+  it('answers every write without X-Requested-With and every read without a session with a declared error', async () => {
+    for (const op of registry.filter((op) => op.method !== 'GET')) {
+      const response = await fetch(sampleUrl(op), {
+        method: op.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: op.multipart ? undefined : '{}',
+      })
+      expect(response.status, op.id).toBe(403)
+    }
+    for (const op of registry.filter(
+      (op) => op.method === 'GET' && op.auth === 'session'
+    )) {
+      expect((await fetch(sampleUrl(op))).status, op.id).toBe(401)
+    }
+  })
+
+  it('invites one user, invites selected users and deletes selected users', async () => {
+    const session = await loginSession()
+    const n = unique()
+    const invited = await fetch('/api/v1/users/invite', {
+      method: 'POST',
+      headers: writeHeaders(session.csrfToken),
+      body: JSON.stringify({
+        email: `invite.${n}@example.com`,
+        role: 'cashier',
+      }),
+    })
+    expect(invited.status).toBe(201)
+    const created = await fetch('/api/v1/users', {
+      method: 'POST',
+      headers: writeHeaders(session.csrfToken),
+      body: JSON.stringify({
+        firstName: '批量',
+        lastName: '用户',
+        username: `batch_${n}`,
+        email: `batch.${n}@example.com`,
+        phoneNumber: '+8613800000077',
+        role: 'cashier',
+      }),
+    })
+    expect(created.status).toBe(201)
+    const { id } = (await json(created)).data
+    const batchInvite = await fetch('/api/v1/users/invite-batch', {
+      method: 'POST',
+      headers: writeHeaders(session.csrfToken),
+      body: JSON.stringify({ ids: [id] }),
+    })
+    expect(batchInvite.status).toBe(200)
+    expect(await batchInvite.json()).toEqual({ data: { invitedCount: 1 } })
+    const batchDelete = await fetch('/api/v1/users/batch-delete', {
+      method: 'POST',
+      headers: writeHeaders(session.csrfToken),
+      body: JSON.stringify({ ids: [id] }),
+    })
+    expect(batchDelete.status).toBe(200)
+    expect(await batchDelete.json()).toEqual({ data: { deletedCount: 1 } })
+  })
+})
+
+describe('mock contract guard (M1-T8)', () => {
+  it('reports a success body that breaks the contract and an undeclared status', async () => {
+    // The guard logs each violation; these two are expected.
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await loginSession()
+    worker.use(
+      http.get(`${apiBase}/users`, () =>
+        HttpResponse.json({ data: { rows: [] } })
+      ),
+      http.get(`${apiBase}/audit-logs`, () =>
+        HttpResponse.json(
+          { error: { code: 'NOPE', message: 'x' } },
+          { status: 418 }
+        )
+      )
+    )
+    await fetch('/api/v1/users')
+    await fetch('/api/v1/audit-logs')
+    await settleContractChecks()
+    const problems = contractViolations.map(
+      (v) => `${v.operation}: ${v.problem}`
+    )
+    resetContractGuard()
+    log.mockRestore()
+    expect(problems).toEqual([
+      expect.stringMatching(/^listUsers: success body does not match/),
+      'listAuditLogs: status 418 is not declared',
+    ])
+  })
+
+  it('every registry operation has a mock handler, and every handler serves a registry operation', () => {
+    const handled = (op: Operation) =>
+      handlers.some(
+        (handler) =>
+          (handler.info.method instanceof RegExp
+            ? handler.info.method.test(op.method)
+            : handler.info.method === op.method) &&
+          typeof handler.info.path !== 'function' &&
+          matchRequestUrl(sampleUrl(op), handler.info.path, location.origin)
+            .matches
+      )
+    expect(registry.filter((op) => !handled(op)).map((op) => op.id)).toEqual([])
+    const unused = handlers.filter(
+      (handler) =>
+        !registry.some(
+          (op) =>
+            typeof handler.info.path !== 'function' &&
+            matchRequestUrl(sampleUrl(op), handler.info.path, location.origin)
+              .matches
+        )
+    )
+    expect(unused.map((handler) => String(handler.info.path))).toEqual([])
+  })
+})
+
+// Runs last: the earlier tests in this file must have exercised every
+// operation's success response and at least one declared error.
+describe('mock contract coverage (M1-T8)', () => {
+  it('saw a success and a declared error for every registry operation', () => {
+    const missing = registry.flatMap((op) => {
+      const seen = observedStatuses.get(op.id) ?? new Set<number>()
+      const declared = Object.keys(op.errors).map(Number)
+      return [
+        ...(seen.has(op.success.status) ? [] : [`${op.id}: success`]),
+        ...(declared.some((status) => seen.has(status))
+          ? []
+          : [`${op.id}: error`]),
+      ]
+    })
+    expect(missing).toEqual([])
   })
 })

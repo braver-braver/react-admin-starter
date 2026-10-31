@@ -26,6 +26,7 @@ This file distinguishes **React Admin Starter** development from the release his
 
 - Enforced operation-specific scope checks, delegated permission and route ceilings, protected recovery records and session revocation in the mock reference API.
 - Added desktop/mobile UI checks, privilege-escalation regression coverage, production mock isolation and published Pages browser smoke tests.
+- Added a mock contract guard: every mocked `/api/v1` response is checked against the operation registry (declared status, `{ data }` body matching the schema, declared error code), violations fail the handler tests, and a route test keeps the mock handlers and the registry in sync. All 36 operations are now exercised over HTTP with a success and a declared error. The guard found no existing violation ([#34](https://github.com/braver-braver/react-admin-starter/issues/34), M1-T8).
 
 ### Migration notes
 
