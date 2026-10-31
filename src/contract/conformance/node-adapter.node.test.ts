@@ -97,6 +97,7 @@ function startServer(
 }
 
 const loginScenario = scenarios.filter((s) => s.name.startsWith('login:'))
+const tier1 = scenarios.filter((s) => s.tier === 1)
 
 describe('Node adapter against a stand-in back end', () => {
   let correct: { server: Server; url: string }
@@ -120,6 +121,19 @@ describe('Node adapter against a stand-in back end', () => {
     assert.deepEqual(
       results.map((r) => [r.name, r.ok, r.error]),
       [[loginScenario[0].name, true, undefined]]
+    )
+  })
+
+  it('passes every Tier 1 scenario so far, each starting signed out', async () => {
+    const results = await runScenarios(
+      tier1,
+      () => createNodeClient(correct.url),
+      fixtures
+    )
+    assert.ok(results.length >= 2)
+    assert.deepEqual(
+      results.filter((r) => !r.ok),
+      []
     )
   })
 
@@ -157,6 +171,16 @@ describe('CookieJar', () => {
         'c='
       )
     )
+    assert.equal(jar.header(), undefined)
+  })
+
+  it('gives Max-Age precedence over Expires', () => {
+    const jar = new CookieJar()
+    jar.store(
+      response('a=1; Max-Age=3600; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
+    )
+    assert.equal(jar.header(), 'a=1')
+    jar.store(response('a=1; Max-Age=0; Expires=Fri, 01 Jan 2100 00:00:00 GMT'))
     assert.equal(jar.header(), undefined)
   })
 })

@@ -16,13 +16,19 @@ export class CookieJar {
       if (separator <= 0) continue
       const name = pair.slice(0, separator).trim()
       const value = pair.slice(separator + 1).trim()
-      const expired = attributes.some((attribute) => {
-        const [key, raw = ''] = attribute.split('=')
-        const option = key.trim().toLowerCase()
-        if (option === 'max-age') return Number(raw.trim()) <= 0
-        if (option === 'expires') return Date.parse(raw.trim()) <= Date.now()
-        return false
-      })
+      // Max-Age wins over Expires when both are present and valid (RFC 6265).
+      const options = new Map(
+        attributes.map((attribute) => {
+          const [key, ...rest] = attribute.split('=')
+          return [key.trim().toLowerCase(), rest.join('=').trim()] as const
+        })
+      )
+      const maxAge = Number(options.get('max-age'))
+      const expires = Date.parse(options.get('expires') ?? '')
+      const expired =
+        options.has('max-age') && Number.isFinite(maxAge)
+          ? maxAge <= 0
+          : Number.isFinite(expires) && expires <= Date.now()
       if (expired || value === '') this.#cookies.delete(name)
       else this.#cookies.set(name, value)
     }

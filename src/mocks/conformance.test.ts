@@ -35,7 +35,7 @@ describe('conformance scenarios on the mock (browser adapter)', () => {
   it('passes every scenario, and the mock stays within the contract', async () => {
     const results = await runScenarios(
       scenarios,
-      () => createBrowserClient(),
+      () => createBrowserClient({ resetSession: resetMockSessions }),
       fixtures
     )
     await settleContractChecks()

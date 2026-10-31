@@ -1,4 +1,4 @@
-import { assert, expectSuccess } from './assert.ts'
+import { assert, expectError, expectSuccess } from './assert.ts'
 import { type ContractClient } from './client.ts'
 
 /**
@@ -43,7 +43,10 @@ export type ScenarioResult = {
   error?: string
 }
 
-/** Runs scenarios one by one, each with a fresh client. */
+/**
+ * Runs scenarios one by one, each with a fresh, signed-out client: the client
+ * is created and `forget()` is called before the scenario starts.
+ */
 export async function runScenarios(
   list: readonly Scenario[],
   newClient: () => ContractClient,
@@ -52,7 +55,9 @@ export async function runScenarios(
   const results: ScenarioResult[] = []
   for (const scenario of list) {
     try {
-      await scenario.run(newClient(), fixtures)
+      const client = newClient()
+      await client.forget()
+      await scenario.run(client, fixtures)
       results.push({ name: scenario.name, tier: scenario.tier, ok: true })
     } catch (error) {
       results.push({
@@ -86,5 +91,13 @@ defineScenario({
       session.user.id === login.user.id,
       'getSession: the cookie restores the same account'
     )
+  },
+})
+
+defineScenario({
+  name: 'getSession: without a session cookie returns 401 UNAUTHENTICATED',
+  tier: 1,
+  async run(client) {
+    expectError(await client.call('getSession'), 401, 'UNAUTHENTICATED')
   },
 })

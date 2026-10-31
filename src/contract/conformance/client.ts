@@ -27,14 +27,17 @@ export type ContractClient = {
   call(id: OperationId, args?: CallArgs): Promise<ContractResponse>
   /** The CSRF token remembered from the last response carrying a Session. */
   readonly csrfToken: string | undefined
-  /** Drops the session: cookies the client controls and the CSRF token. */
-  forget(): void
+  /**
+   * Drops the session (CSRF token and cookies), so the next call starts
+   * signed out. `runScenarios` calls it before every scenario.
+   */
+  forget(): Promise<void>
 }
 
 /** How a request reaches the API; adapters supply cookie handling. */
 export type Transport = {
   send(url: string, init: RequestInit): Promise<Response>
-  forget(): void
+  forget(): void | Promise<void>
 }
 
 const byId = new Map<string, Operation>(
@@ -53,9 +56,9 @@ export function createContractClient(
     get csrfToken() {
       return csrfToken
     },
-    forget() {
+    async forget() {
       csrfToken = undefined
-      transport.forget()
+      await transport.forget()
     },
     async call(id, args = {}) {
       const op = byId.get(id)
