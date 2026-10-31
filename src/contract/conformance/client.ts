@@ -33,12 +33,13 @@ export type ContractClient = {
    */
   forget(): Promise<void>
   /**
-   * Save and put back the session cookies. Only adapters that own their
-   * cookies (Node) offer it; a browser cannot replay an HttpOnly cookie.
+   * Save and put back the session cookies; restoring `undefined` drops them
+   * without signing out. Only adapters that own their cookies (Node, or the
+   * mock harness) offer it; a browser cannot replay an HttpOnly cookie.
    */
   readonly sessionCookies?: {
     save(): string | undefined
-    restore(saved: string | undefined): void
+    restore(saved: string | undefined): void | Promise<void>
   }
 }
 

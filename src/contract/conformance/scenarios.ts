@@ -2,14 +2,16 @@ import { type Operation, operations } from '../operations.ts'
 import { type ContractClient } from './client.ts'
 import { genericScenarios } from './generic.ts'
 import { tier1Scenarios } from './tier1.ts'
+import { tier2Scenarios } from './tier2.ts'
 
 /**
  * Conformance scenarios: written once, run against the mock (browser adapter)
  * and against any real back end (Node adapter). They use only the
  * `ContractClient` and throw `ContractAssertionError` on failure.
  *
- * Tier 1 is what every back end must pass; Tier 2 covers the full
- * authorization model and needs extra fixtures (see M2-T3).
+ * Tier 1 is what every back end must pass; Tier 2 covers the authorization
+ * rules of AGENTS.md and builds its own roles, departments and accounts
+ * through the system API (see docs/conformance-fixtures.md).
  */
 
 export type Credentials = { email: string; password: string }
@@ -76,6 +78,10 @@ export async function runScenarios(
 // ------------------------------------------------------------------ Tier 1
 
 for (const scenario of tier1Scenarios()) defineScenario(scenario)
+
+// ------------------------------------------------------------------ Tier 2
+
+for (const scenario of tier2Scenarios()) defineScenario(scenario)
 
 // ------------------------------------------------------- derived (Tier 1)
 
