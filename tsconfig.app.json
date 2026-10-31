@@ -29,5 +29,5 @@
   },
   "include": ["src"],
   // Node-only tests are type-checked by tsconfig.node.json.
-  "exclude": ["src/**/*.node.test.ts"]
+  "exclude": ["src/**/*.node.test.ts", "src/**/*.node.ts"]
 }

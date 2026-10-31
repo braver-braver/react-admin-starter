@@ -12,8 +12,13 @@ const contractSources = import.meta.glob(['./*.ts', '!./*.test.ts'], {
   eager: true,
 }) as Record<string, string>
 // The conformance suite follows the same rules: a Node runner loads it too.
+// `*.node.ts` helpers (the stand-in server) are Node-only and exempt.
 const conformanceSources = import.meta.glob(
-  ['./conformance/*.ts', '!./conformance/*.test.ts'],
+  [
+    './conformance/*.ts',
+    '!./conformance/*.test.ts',
+    '!./conformance/*.node.ts',
+  ],
   { query: '?raw', import: 'default', eager: true }
 ) as Record<string, string>
 const mockSources = import.meta.glob('../mocks/**/*.ts', {
