@@ -50,17 +50,24 @@
 
    按清单跑完检查，开 PR。
 2. **合并**：维护者审阅后合并发布 PR。
-3. **创建 Release**（维护者）：在 GitHub 的 Releases 页面点 “Draft a new release”：
-   - Tag 填 `v` 加版本号（例如 `v1.0.0-rc.1`），目标选 `main`，指向刚合并的提交；
+3. **创建 Release**（维护者）：Tag 必须指向**发布 PR 的合并提交**，不能写 `main`。合并之后 `main` 可能又进了别的提交，用分支名会把这些未列入 CHANGELOG 的改动带进不可覆写的 Release 和快照。先取出合并提交：
+   ```bash
+   # 84 换成发布 PR 的编号
+   gh api repos/braver-braver/react-admin-starter/pulls/84 --jq .merge_commit_sha
+   ```
+   命令行创建（推荐）：
+   ```bash
+   SHA=<上一步得到的 40 位提交 SHA>
+   gh release create v1.0.0-rc.1 --target "$SHA" --title v1.0.0-rc.1 --notes-file notes.md --prerelease
+   ```
+   或在 GitHub 的 Releases 页面点 “Draft a new release”：
+   - Tag 填 `v` 加版本号（例如 `v1.0.0-rc.1`）；
+   - Target 不要选 `main`，在 “Recent commits” 里选上面那个合并提交，并核对 SHA；
    - 标题同 Tag，说明粘贴 CHANGELOG 中该版本的章节；
    - rc 勾选 “Set as a pre-release”；
    - 点 Publish。
 
-   也可以用命令行：
-   ```bash
-   gh release create v1.0.0-rc.1 --target main --title v1.0.0-rc.1 --notes-file notes.md --prerelease
-   ```
-   agent 不创建 Tag 或 Release。
+   发布后核对 Tag 指向的提交：`git fetch --tags && git rev-parse v1.0.0-rc.1^{commit}`，结果应等于 `$SHA`。agent 不创建 Tag 或 Release。
 4. **自动构建**：Release 发布后，Pages 工作流从该 Tag 对应的提交构建演示，保存到 `pages-snapshots` 的 `releases/<tag>/`，同时保留 `latest` 和其他版本。
 
 ## 发布后验收
