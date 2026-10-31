@@ -23,6 +23,8 @@ pnpm dev
 
 ## 接入真实服务
 
+实现后端请按 [后端接入指南](backend-integration.md) 逐项完成：最小实现顺序、Cookie 会话、检查顺序、错误码、授权模型、部署方式，以及如何用 `pnpm test:contract` 验收。
+
 设置 `VITE_ENABLE_MOCKS=false` 可在开发时关闭模拟，再设置 `VITE_API_PROXY_TARGET=http://127.0.0.1:8000`（后端的源地址，不带路径）后，`pnpm dev` 和 `pnpm preview` 会把 `/api` 转发到该后端，使其成为同源 API；不设置时不启用代理。生产部署则让应用和 API 通过同一个反向代理提供服务。E2E 里的 `production-api` 项目就是这样运行的：普通生产构建加 `/api` 代理，后端是一致性套件的替身服务器（测试替身，不是参考后端），用来验证登录、刷新后恢复会话、退出都能走通。生产构建始终排除 MSW 及其处理器，即使设置 `VITE_ENABLE_MOCKS=true` 也无法开启模拟。普通生产构建的 Worker 脚本只由 Vite 开发中间件提供，不在 `public/` 或 `dist/` 中。单独的 `build:demo` 会将模拟 Worker 与接口放入 `dist-demo/`，通过 Hash 路由和按版本路径隔离的 Cookie/API/Worker 提供静态展示，但不会改变普通生产构建的安全边界。参见 [GitHub Pages 演示部署](pages-demo.md)。构建末尾自动检查产物，检测到 Worker、模拟会话标识或演示账户时构建失败。
 
 前端固定访问同源 `/api/v1`。部署时须让 `/api/*` 先路由到后端（按 `/api/` 前缀转发即可，将来新增的 `/api/v2` 也随之覆盖），再将前端路径回退至 `index.html`。仅部署静态文件不会自动获得认证能力：后端缺失或响应格式不符时会显示错误，无法进入管理页面。
@@ -66,7 +68,7 @@ pnpm dev
 
 `{resource}` 为 `accounts`、`roles`、`permissions`、`menus`、`departments`，对应的 `{Resource}` 为 `Account`、`Role`、`Permission`、`Menu`、`Department`（如 `listSystemAccounts`、`createSystemRole`）。每个操作可能返回的错误码按状态码列在 [OpenAPI](api.openapi.json) 中；所有写操作缺少 `X-Requested-With` 时返回 403 `REQUEST_HEADER_REQUIRED`。
 
-列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），键名不带方括号；`pageSize` 超过 100 按 100 处理；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
+列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），键名不带方括号；`pageSize` 超过 100 按 100 处理，`page`、`pageSize` 的非法值按默认值处理，`page` 超过最后一页时可以按最后一页处理，也可以返回空的 `items`；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
 
 上传契约返回 `{id,name,url,contentType,size}`。演示环境用浏览器对象 URL 直接预览，刷新后失效；真实服务应返回持久化下载地址，并在服务端再次校验类型与大小。
 

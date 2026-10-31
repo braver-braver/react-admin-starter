@@ -1,6 +1,6 @@
 # 一致性套件：后端夹具清单
 
-契约一致性套件（`src/contract/conformance/`）用同一组场景检查 Mock 和真实后端。本文列出后端在运行套件之前必须准备好的数据，以及如何用 `pnpm test:contract` 对真实后端运行。完整的接入步骤见后续的后端接入指南（M2-T8），它会引用本文。
+契约一致性套件（`src/contract/conformance/`）用同一组场景检查 Mock 和真实后端。本文列出后端在运行套件之前必须准备好的数据，以及如何用 `pnpm test:contract` 对真实后端运行。完整的接入步骤见 [后端接入指南](backend-integration.md)。
 
 ## 运行前提
 
@@ -44,13 +44,13 @@ pnpm test:contract -- --json contract-report.json
 
 ## 必须预置的三个账号
 
-运行器把它们作为 `Fixtures` 传入。Mock 的参考数据见 `src/mocks/data/system.ts`，三个账号的密码都是 `Demo1234!`。
+运行器把它们作为 `Fixtures` 传入。右列是开发用 Mock 的同名账号，仅供对照（Mock 里三个账号的密码都是 `Demo1234!`）。
 
 | 夹具 | 要求 | Mock 参考 |
 | --- | --- | --- |
 | `admin` | 内置恢复账号：`protected: true`，拥有全部权限，每项权限的数据范围都是全部（`scope: all`），能访问全部菜单。所在部门启用。 | `admin@example.com`，角色 `admin`（受保护），部门 `root` |
 | `viewer` | 只有 `users:read` 与 `permissions:read`，范围为全部；**没有**任何写权限，也没有 `audit:read`。 | `viewer@example.com`，角色 `viewer`，部门 `operations` |
-| `guest` | 没有任何权限（只能进入工作台），数据范围为本人。 | `guest@example.com`，角色 `guest`，部门 `operations` |
+| `guest` | 没有任何能力（只能进入工作台），因此 `dataScopes` 为空对象。 | `guest@example.com`，角色 `guest`，部门 `operations` |
 
 `login` 时邮箱不区分大小写；`admin` 的账号记录要能用邮箱在 `listSystemAccounts` 的 `search` 中查到。
 
