@@ -27,6 +27,7 @@ Build a lightweight, reusable, Chinese-first React admin starter independent of 
 - After v1.0.0, `/api/v1` accepts only backward-compatible changes: new operations, new optional request fields, new response fields, new error codes, and looser validation.
 - Breaking changes are: removing or renaming an operation, path, field or error code; changing a type, a status code or the meaning of a field; making an optional field required; tightening validation. They go to a new `/api/v2` prefix together with a major package version bump, a PR marked Breaking Change and a CHANGELOG Migration notes entry.
 - Before v1.0.0 breaking changes are allowed, but they must be declared the same way (Breaking Change in the PR, Migration notes in the CHANGELOG).
+- Versioning, release candidates, the pre-release checklist and the release steps are in docs/releasing.md. Agents prepare release PRs (version via `cz bump --version-files-only`, CHANGELOG by hand) but never create tags or GitHub Releases.
 
 ## Development practice
 - Pin the upstream source commit and package manager lockfile before modifications.
