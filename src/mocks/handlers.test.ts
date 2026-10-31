@@ -7,7 +7,8 @@ import {
   resetSystemStore,
   systemStore,
 } from './data/system'
-import { resetMockSessions } from './handlers'
+import { handlers, resetMockSessions } from './handlers'
+import { apiBase } from './handlers/auth'
 
 const requestedWith = { 'X-Requested-With': 'ReactAdminStarter' }
 
@@ -536,21 +537,19 @@ describe('list envelope', () => {
 })
 
 describe('versioned API prefix', () => {
-  it('serves /api/v1 and leaves the unversioned /api paths unhandled', async () => {
+  // Checked statically: a real request to an unhandled /api path would fall
+  // through to the Vite dev server, whose HTML fallback reloads the test page.
+  it('registers every mock handler under /api/v1, so unversioned /api paths are not served', () => {
+    expect(apiBase.endsWith('api/v1')).toBe(true)
+    expect(handlers.length).toBeGreaterThan(0)
+    for (const handler of handlers) {
+      expect(String(handler.info.path).startsWith(`${apiBase}/`)).toBe(true)
+    }
+  })
+
+  it('serves the versioned path', async () => {
     await loginSession()
-    const unhandled: string[] = []
-    const record = ({ request }: { request: Request }) => {
-      unhandled.push(new URL(request.url).pathname)
-    }
-    worker.events.on('request:unhandled', record)
-    try {
-      expect((await fetch('/api/v1/users')).status).toBe(200)
-      await fetch('/api/users').catch(() => null)
-      expect(unhandled).toContain('/api/users')
-      expect(unhandled).not.toContain('/api/v1/users')
-    } finally {
-      worker.events.removeListener('request:unhandled', record)
-    }
+    expect((await fetch('/api/v1/users')).status).toBe(200)
   })
 })
 
