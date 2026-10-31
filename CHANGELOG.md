@@ -57,6 +57,7 @@ Breaking changes for anyone integrating against the API, listed per change.
 
 ---
 - Replaced the upstream contribution guide, pull-request template and issue templates with this project's rules (Chinese): issue first, implementation plan, one task per PR, Conventional Commits, contract changes via `pnpm contract:generate`, required commands, separate author and reviewer, merge only on the maintainer's instruction after every review comment is answered. Issue templates: bug, feature (with contract impact) and contract/back-end integration questions; questions and ideas go to GitHub Discussions ([#44](https://github.com/braver-braver/react-admin-starter/issues/44), M3-T1).
+- Synced the docs with the frozen contract and wrote the compatibility rules: `AGENTS.md` now states that `src/contract` is the single source and what counts as a breaking change after v1.0 (new `/api/v2` prefix and major version); the operation table in `docs/auth-and-api.md` lists every operation with its `operationId`, and a test keeps it equal to the registry; `docs/architecture.md` and the README roadmap reflect M1 as done ([#35](https://github.com/braver-braver/react-admin-starter/issues/35), M1-T9).
 
 ## Historical upstream changelog — shadcn-admin only
 

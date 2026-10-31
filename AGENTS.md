@@ -21,6 +21,13 @@ Build a lightweight, reusable, Chinese-first React admin starter independent of 
 - Reparenting or enabling an existing department may indirectly widen descendant scopes; verify newly gained permissions, scopes and routes for affected accounts against the editor's pre-change grants.
 - Do not add a dependency when existing libraries or platform APIs suffice.
 
+## API compatibility (freeze rules)
+- The Zod contract in `src/contract` (schemas plus the operation registry) is the single source of the API. `docs/api.openapi.json` is generated from it with `pnpm contract:generate`; CI runs `pnpm contract:check` and fails on drift. The client calls operations through the registry, and the mock is checked against it.
+- Every path is under `API_PREFIX` (`/api/v1`); the `v1` is the API major version.
+- After v1.0.0, `/api/v1` accepts only backward-compatible changes: new operations, new optional request fields, new response fields, new error codes, and looser validation.
+- Breaking changes are: removing or renaming an operation, path, field or error code; changing a type, a status code or the meaning of a field; making an optional field required; tightening validation. They go to a new `/api/v2` prefix together with a major package version bump, a PR marked Breaking Change and a CHANGELOG Migration notes entry.
+- Before v1.0.0 breaking changes are allowed, but they must be declared the same way (Breaking Change in the PR, Migration notes in the CHANGELOG).
+
 ## Development practice
 - Pin the upstream source commit and package manager lockfile before modifications.
 - Keep changes focused and reviewable, use Conventional Commit messages.
