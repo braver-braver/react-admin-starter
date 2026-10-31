@@ -1,0 +1,1 @@
+import"./operations-BpZWqvGK.js";var e={"auth.sign_in":`登录`,"auth.sign_out":`退出登录`,"user.created":`创建用户`,"user.updated":`更新用户`,"user.deleted":`删除用户`,"user.batch_deleted":`批量删除`,"user.status_changed":`变更状态`,"user.invited":`邀请用户`,"user.batch_invited":`批量邀请`,"system.changed":`系统配置变更`};export{e as t};
