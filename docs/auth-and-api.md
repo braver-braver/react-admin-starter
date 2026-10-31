@@ -29,7 +29,7 @@ pnpm dev
 
 后端负责校验凭证、签发和吊销会话、会话期限、禁用账户、权限判断、限流及审计。生产会话 Cookie 应采用 `HttpOnly; Secure; SameSite=Lax`、适当 Path 和过期时间。登录后旋转会话 ID，退出后在服务端吊销；不要把演示账户或模拟令牌作为生产后门。
 
-所有写请求携带 `X-Requested-With: ReactAdminStarter`；已登录写请求还需 `X-CSRF-Token`。服务端必须验证来源 Origin 与 CSRF，禁止任意跨域源携带凭证访问。前端无法设置 HttpOnly Cookie，也无法替后端实施这些策略。
+所有写请求（POST、PUT、PATCH、DELETE）都必须携带 `X-Requested-With: ReactAdminStarter`，缺失一律返回 403 `REQUEST_HEADER_REQUIRED`，且先于登录与权限检查；已登录写请求还需 `X-CSRF-Token`。服务端必须验证来源 Origin 与 CSRF，禁止任意跨域源携带凭证访问。前端无法设置 HttpOnly Cookie，也无法替后端实施这些策略。
 
 ## 契约
 
@@ -62,7 +62,7 @@ pnpm dev
 | POST | /api/uploads | UploadedFile | multipart `file`；仅图片、≤2MB；需要 users:write 与 CSRF |
 | GET | /api/audit-logs | `{items,meta}` | 需要 audit:read；按 action 过滤，最新在前 |
 
-列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status[]`、`role[]`、`sortBy`、`sortOrder`；返回 `meta: {page,pageSize,total,totalPageCount}`。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
+列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），不接受 `status[]` 写法；`pageSize` 超过 100 按 100 处理；返回 `meta: {page,pageSize,total,totalPageCount}`。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
 
 上传契约返回 `{id,name,url,contentType,size}`。演示环境用浏览器对象 URL 直接预览，刷新后失效；真实服务应返回持久化下载地址，并在服务端再次校验类型与大小。
 

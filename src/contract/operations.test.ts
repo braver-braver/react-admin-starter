@@ -68,6 +68,14 @@ describe('operation registry', () => {
     }
   })
 
+  it('declares the missing-header error on every write (POST, PUT, PATCH, DELETE)', () => {
+    const writes = registry.filter((op) => op.method !== 'GET')
+    expect(writes.length).toBeGreaterThan(0)
+    for (const op of writes) {
+      expect(op.errors[403], op.id).toContain('REQUEST_HEADER_REQUIRED')
+    }
+  })
+
   it('declares only codes that the catalog allows for that status', () => {
     for (const op of registry) {
       for (const [status, codes] of Object.entries(op.errors)) {

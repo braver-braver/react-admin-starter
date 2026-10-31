@@ -20,6 +20,7 @@ import {
   currentSession,
   mockBase,
   requireCsrf,
+  requireRequestedWith,
   requirePermission,
 } from './auth'
 
@@ -45,9 +46,7 @@ const SORTABLE_KEYS = new Set<string>(userSortKeys)
 function parseUsersQuery(request: Request): UsersQuery {
   const { searchParams } = new URL(request.url)
   const multi = (key: string): string[] =>
-    [...searchParams.getAll(key), ...searchParams.getAll(`${key}[]`)].filter(
-      (value) => value !== ''
-    )
+    searchParams.getAll(key).filter((value) => value !== '')
   const positive = (key: string, fallback: number) => {
     const raw = Number(searchParams.get(key))
     return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback
@@ -180,6 +179,8 @@ export const usersHandlers = [
   }),
 
   http.post(`${mockBase}api/users`, async ({ request, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -225,6 +226,8 @@ export const usersHandlers = [
   }),
 
   http.put(`${mockBase}api/users/:id`, async ({ request, params, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -277,6 +280,8 @@ export const usersHandlers = [
   }),
 
   http.delete(`${mockBase}api/users/:id`, ({ request, params, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -302,6 +307,8 @@ export const usersHandlers = [
   http.post(
     `${mockBase}api/users/batch-delete`,
     async ({ request, cookies }) => {
+      const missingHeader = requireRequestedWith(request)
+      if (missingHeader) return missingHeader
       const session = currentSession(cookies)
       if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
       const denied =
@@ -341,6 +348,8 @@ export const usersHandlers = [
   ),
 
   http.patch(`${mockBase}api/users/status`, async ({ request, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -385,6 +394,8 @@ export const usersHandlers = [
   }),
 
   http.post(`${mockBase}api/users/invite`, async ({ request, cookies }) => {
+    const missingHeader = requireRequestedWith(request)
+    if (missingHeader) return missingHeader
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied =
@@ -436,6 +447,8 @@ export const usersHandlers = [
   http.post(
     `${mockBase}api/users/invite-batch`,
     async ({ request, cookies }) => {
+      const missingHeader = requireRequestedWith(request)
+      if (missingHeader) return missingHeader
       const session = currentSession(cookies)
       if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
       const denied =
