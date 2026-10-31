@@ -32,7 +32,7 @@
 | 依赖安全 | `pnpm audit --prod` | 结果原样贴进 PR；有高危漏洞时先修复或说明不受影响的理由 |
 | LICENSE 与上游署名 | `git log --oneline -- LICENSE`；`grep -n "satnaing/shadcn-admin" README.md` | LICENSE 自导入后没有改动；README 的署名段落仍在 |
 | 上游固定提交 | `grep -n "Pinned commit" docs/upstream.md` | 仍是 `e16c87f213a5ba5e45964e9b67c792105ec74d26` |
-| 版本号与 CHANGELOG | `node -p "require('./package.json').version"`；`grep -n "^## v" CHANGELOG.md \| head -3` | `package.json` 是要发布的版本；CHANGELOG 有该版本的章节，且位于上游历史段落之前 |
+| 版本号与 CHANGELOG | `pnpm release:check -- v1.0.0-rc.1 --skip-main` | 输出 `release:check v1.0.0-rc.1: ok`：Tag 格式正确、等于 `v` 加 `package.json` 的版本，CHANGELOG 有该版本的章节且位于上游历史段落之前。发布 PR 的提交还不在 `main` 上，所以这里跳过“属于 main”这一项 |
 
 ## 发布步骤
 
@@ -55,6 +55,11 @@
    # 84 换成发布 PR 的编号
    gh api repos/braver-braver/react-admin-starter/pulls/84 --jq .merge_commit_sha
    ```
+   用这个提交再跑一次完整检查，这次包括“属于 main”：
+   ```bash
+   git fetch origin main
+   pnpm release:check -- v1.0.0-rc.1 --commit <上一步得到的 40 位提交 SHA>
+   ```
    命令行创建（推荐）：
    ```bash
    SHA=<上一步得到的 40 位提交 SHA>
@@ -68,7 +73,7 @@
    - 点 Publish。
 
    发布后核对 Tag 指向的提交：`git fetch --tags && git rev-parse v1.0.0-rc.1^{commit}`，结果应等于 `$SHA`。agent 不创建 Tag 或 Release。
-4. **自动构建**：Release 发布后，Pages 工作流从该 Tag 对应的提交构建演示，保存到 `pages-snapshots` 的 `releases/<tag>/`，同时保留 `latest` 和其他版本。
+4. **自动构建**：Release 发布后，Pages 工作流先对 Tag 对应的提交运行同一个 `release:check`（工作流步骤 “Check the release tag against the tagged code”），任何一项不通过就在构建之前终止，不会写入 `pages-snapshots`。通过后才构建演示，保存到 `pages-snapshots` 的 `releases/<tag>/`，同时保留 `latest` 和其他版本。
 
 ## 发布后验收
 

@@ -25,6 +25,8 @@
     "test:e2e:ui": "pnpm build && playwright test --ui",
     "build:demo": "vite build --mode demo && tsc -b && node scripts/check-demo.mjs",
     "test:pages": "node --test scripts/pages.test.mjs",
+    "test:release": "node --test scripts/release.test.mjs",
+    "release:check": "node scripts/check-release.mjs",
     "test:demo": "node scripts/prepare-demo-test.mjs && playwright test --config playwright.demo.config.ts",
     "test:live": "playwright test --config playwright.live.config.ts"
   },

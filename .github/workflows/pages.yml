@@ -35,6 +35,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          # Full history, so the release check can tell whether the tag is on main.
+          fetch-depth: 0
       - name: Checkout the exact application commit
         uses: actions/checkout@v4
         with:
@@ -55,6 +57,11 @@ jobs:
           const target = version === 'latest' ? base : `${base}releases/${version}/`
           appendFileSync(process.env.GITHUB_ENV, `DEMO_BASE_PATH=${target}\nDEMO_SERVE_BASE=${base}\nDEMO_TARGET_VERSION=${version}\nDEMO_SERVE_DIR=.pages-upload\n`)
           NODE
+      # Before anything is built or written to pages-snapshots: the tag must be
+      # "v" + the tagged package.json version, have a CHANGELOG section and be on main.
+      - name: Check the release tag against the tagged code
+        if: github.event_name == 'release'
+        run: node scripts/check-release.mjs "$DEMO_VERSION" --dir app --repo . --commit "$GITHUB_SHA" --main origin/main
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
