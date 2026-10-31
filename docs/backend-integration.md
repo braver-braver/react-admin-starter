@@ -8,7 +8,7 @@
 
 ## 1. 最小可用实现顺序
 
-先让 Tier 1 全部通过，再做系统管理和 Tier 2。每一步都可以用 `pnpm test:contract --tier 1 --grep <场景名>` 单独验收（见第 11 节）。
+先让 Tier 1 全部通过，再做系统管理和 Tier 2。每一步都可以用 `pnpm test:contract -- --tier 1 --grep <场景名>` 单独验收（见第 11 节）。注意：Tier 1 通过不等于全部正确，第 11 节列出了它**不验证**的内容。
 
 1. **路由与通用访问检查**（第 3 节）：所有接口都在 `/api/v1` 下。对每个请求，依次检查来源标识、会话、能力和 CSRF。派生的访问检查场景（名称以 `generic:` 开头）只验证这一层，即使业务逻辑还没写也能通过。
 2. **认证**：`login`、`getSession`、`logout`（第 2 节），以及 `getPermissions`、`getNavigation`。
@@ -23,10 +23,10 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| Cookie 属性 | `HttpOnly; Secure; SameSite=Lax`。名称自定。`Path` 至少覆盖 `/api/`，通常用 `/`。本地 http 调试可以不加 `Secure`，生产必须加。 |
+| Cookie 属性 | `HttpOnly; Secure; SameSite=Lax`。名称自定（OpenAPI 里写的 `session` 只是示意）。`Path` 至少覆盖 `/api/`，通常用 `/`。本地 http 调试可以不加 `Secure`，生产必须加。 |
 | 内容 | 不透明的随机会话 ID（至少 128 位），会话数据保存在服务端。不要把角色、权限或部门放进 Cookie 让前端信任。 |
 | 过期 | 设置合理的 `Max-Age` 或 `Expires`，服务端同时记录过期时间。过期或未知的会话一律视为未登录。 |
-| 登录 | 成功时**签发新的会话 ID**（会话轮换）；请求若带着旧会话，作废旧会话。失败时**不得**设置任何会话 Cookie，返回 401 `INVALID_CREDENTIALS`。邮箱比较不区分大小写。 |
+| 登录 | `login` 只做第 3 节的第 1 步检查：即使请求带着有效的旧会话 Cookie，也不检查会话和 CSRF。成功时**签发新的会话 ID**（会话轮换），并作废请求带来的旧会话。邮箱不存在、密码错误、账号已停用、账号所在部门（或其上级）已停用，都返回 401 `INVALID_CREDENTIALS`，且**不得**设置任何会话 Cookie。请求体不是 JSON 时返回 400 `INVALID_REQUEST`，缺少邮箱或密码时返回 400 `INVALID_CREDENTIALS_FORMAT`。邮箱比较不区分大小写。 |
 | 退出 | `logout` 需要 CSRF。必须**在服务端吊销**会话，并用 `Max-Age=0` 清除 Cookie。之后即使有人把旧 Cookie 原样带回来，`getSession` 也必须返回 401（Tier 1 会这样回放检查）。 |
 | 吊销 | 停用账号、删除账号、重置密码时，该账号的所有现有会话立即失效。**停用后再启用，也不能恢复旧会话**（Tier 2）。 |
 | 权限时效 | `getSession` 和每个接口都按服务端当前的账号、角色和部门重新计算权限，不能信任会话创建时缓存的权限。 |
@@ -54,11 +54,11 @@
 }
 ```
 
-`id`、`email`、`name`、`roles`、`permissions` 和 `csrfToken` 必填。`routes`、`departmentId`、`dataScopes` 在契约中是可选字段，但前端靠 `routes` 判断能打开哪些页面：缺少 `routes` 时，账号只能进入工作台（第 5 节）。
+`id`、`email`、`name`、`roles`、`permissions` 和 `csrfToken` 必填。`routes`、`departmentId`、`dataScopes` 在契约中是可选字段，但前端靠 `routes` 判断能打开哪些页面：缺少 `routes` 时，账号只能进入工作台（第 5 节）。另有可选的 `dataScope`，是所有能力范围的总体摘要，只用于展示；鉴权一律看 `dataScopes[能力码]`。没有任何能力的账号，`dataScopes` 是空对象。
 
 ## 3. 请求检查顺序：来源标识、会话、能力、CSRF
 
-每个请求都按以下顺序检查，**遇到第一个失败就返回**，不再读取请求体：
+先做路由匹配：路径不属于任何已注册的操作时返回 404 `NOT_FOUND`，方法与路径不匹配时返回 400 `INVALID_METHOD`。匹配到操作后，再按以下顺序检查，**遇到第一个失败就返回**，不再读取请求体：
 
 | 顺序 | 条件 | 失败时返回 |
 | --- | --- | --- |
@@ -77,7 +77,13 @@
 - **失败**：使用正确的 HTTP 状态码，响应体为 `{ "error": { "code": "…", "message": "…" } }`。`code` 必须是下表中、且该操作在该状态码下声明过的错误码。`message` 直接展示给用户（默认中文），不能包含凭证、SQL 或堆栈。不要用 HTTP 200 返回失败。
 - **时间戳**：`createdAt`、`updatedAt` 等字段是 ISO 8601 date-time 字符串，必须带时区，例如 `2026-10-30T10:00:00Z`。
 - **兼容性**：响应对象可以带契约之外的字段，前端会忽略。系统管理的请求体不接受未知字段，遇到时返回 422 `INVALID_FIELDS`。
-- **未匹配的路径**：返回 404 `NOT_FOUND`；方法与路径不匹配时返回 400 `INVALID_METHOD`。
+- **未匹配的路径**：返回 404 `NOT_FOUND`；方法与路径不匹配时返回 400 `INVALID_METHOD`（见第 3 节）。
+- **请求体不是合法 JSON**：`login` 返回 400 `INVALID_REQUEST`；其他操作把它当作空请求体，按各自的校验规则处理：
+  - 业务用户的创建和更新返回 422 `INVALID_USER_FIELDS`；
+  - `inviteUser` 返回 422 `INVALID_EMAIL`；
+  - `updateUsersStatus` 返回 422 `INVALID_STATUS`；
+  - `batchDeleteUsers`、`inviteUsersBatch` 视为 `ids` 为空，返回计数 0；
+  - 系统管理返回 422 `INVALID_FIELDS`。
 
 错误码表（每个操作的可用子集见 OpenAPI 中各状态码的响应，以及 `components.schemas.ErrorCode`）：
 
@@ -175,7 +181,10 @@
 <!-- routes:end -->
 
 - 账号对某个页面要同时满足三点：页面菜单启用（父目录也启用）、角色授予了该菜单（或其所在目录）、持有该页面需要的能力。满足时，把路径写进 `routes`。
-- `getNavigation` 返回同样满足条件、且**可见**的菜单记录（目录加页面，字段见 OpenAPI 的 `SystemMenu`）。
+- `getNavigation` 返回同样满足条件、且**可见**的页面菜单，以及这些页面所在的目录（只要目录下有返回的页面，就返回该目录），按 `order` 升序，`order` 相同时按 `id` 排序。记录字段见 OpenAPI 的 `SystemMenu`：
+  - 顶级菜单的 `parentId` 是空字符串；
+  - 目录（`kind: directory`）的 `routeId` 是空字符串；
+  - 页面的 `routeId` 是上表中的页面 id。
 - 菜单“隐藏”只影响导航，不撤销页面和接口；“停用”才会撤销页面。菜单从来不会授予或撤销**接口**权限，接口始终按能力和数据范围独立检查（Tier 2 会验证）。
 
 ## 6. 分页、筛选与排序
@@ -186,13 +195,16 @@
 { "data": { "items": [], "meta": { "page": 1, "pageSize": 10, "total": 0, "totalPageCount": 1 } } }
 ```
 
-- `page` 从 1 开始；`pageSize` 默认 10，超过 100 时按 100 处理，**不报错**；`totalPageCount` 至少为 1；`meta` 要原样回显实际使用的 `page` 和 `pageSize`。
+- `page` 从 1 开始，`pageSize` 默认 10。非法值（0、负数、非数字）按默认值处理，**不报错**。
+- `pageSize` 超过 100 时按 100 处理；`page` 超过最后一页时按最后一页处理。
+- `totalPageCount` 至少为 1；`meta` 回显**实际使用的** `page` 和 `pageSize`。
 - 多值参数使用**重复键**，例如 `status=active&status=inactive`，键名不带 `[]`。
 - `listUsers` 的参数：
-  - `username`：在用户名、邮箱、姓名、电话中模糊匹配，不区分大小写；
+  - `username`：在用户名、邮箱、姓名、电话中做子串匹配，不区分大小写；
+  - “姓名”即 `fullName`，按中文习惯拼成 `lastName + firstName`，中间不加空格；
   - `status`、`role`：多值筛选；
   - `sortBy`：取值为 `username`、`fullName`、`email`、`phoneNumber`、`status`、`role`、`createdAt`、`updatedAt`，其他值**回退到 `username`**，不报错；
-  - `sortOrder`：`asc` 或 `desc`。
+  - `sortOrder`：`asc` 或 `desc`；字符串按中文排序规则比较（如 ICU 的 `zh-Hans-CN` 排序）。
 - 系统资源列表的参数是 `search`：匹配名称，以及编码或邮箱。
 - 筛选、排序、分页都在服务端完成，并且在数据范围过滤**之后**进行。
 
@@ -200,19 +212,35 @@
 - `status` 为 `active`、`inactive`、`invited`、`suspended`；
 - `role` 为 `superadmin`、`admin`、`manager`、`cashier`。
 
-新建的用户状态为 `active`，邀请的用户状态为 `invited`。创建和更新都需要 `firstName`、`lastName`、`username`、`email`、`phoneNumber`、`role`，缺失或为空时返回 422 `INVALID_USER_FIELDS`；邮箱或用户名与**其他**用户重复时返回 422 `DUPLICATE_USER`。未知 id 返回 404 `USER_NOT_FOUND`。`password` 可选，**不能**出现在任何响应里。`updateUsersStatus` 只接受 `active` 或 `inactive`。
+单条写入：
+- 创建和更新都需要 `firstName`、`lastName`、`username`、`email`、`phoneNumber`、`role`，缺失或为空时返回 422 `INVALID_USER_FIELDS`。
+- 邮箱或用户名与**其他**用户重复时返回 422 `DUPLICATE_USER`。
+- 未知 id 返回 404 `USER_NOT_FOUND`。
+- 新建的用户状态为 `active`，`createdBy` 是操作者的账号 id，`departmentId` 默认是操作者的部门（也可以在写范围内显式指定）。列表可以附带用于展示的 `departmentName`。
+- `password` 可选，**不能**出现在任何响应里。
+
+批量写入（`batchDeleteUsers`、`updateUsersStatus`、`inviteUsersBatch`）：
+- 请求体是 `{ ids: [...] }`，`updateUsersStatus` 另带 `status`，只接受 `active` 或 `inactive`。
+- 未知的 id 忽略，不计入返回的 `deletedCount`、`updatedCount`、`invitedCount`。
+- 只要包含一条范围外的记录，就整批返回 403 `DATA_SCOPE_DENIED`（第 5 节）。
+
+邀请：
+- `inviteUser` 的请求体是 `{ email, role, desc? }`。邮箱不合法返回 422 `INVALID_EMAIL`，角色不合法返回 422 `INVALID_ROLE`。
+- 用户名取邮箱 `@` 前的部分并转成小写；邮箱或这个用户名已存在时返回 422 `DUPLICATE_USER`。
+- 其余必填字段（姓名、电话）填非空的占位值；新用户状态为 `invited`，返回 201 和该用户。
+- `inviteUsersBatch` 的 `ids` 是已有业务用户。把其中状态还不是 `invited` 的用户改为 `invited`，`invitedCount` 是实际改动的人数。
 
 ## 7. 上传
 
 - `POST /api/v1/uploads`，`multipart/form-data`，文件放在 `file` 字段；需要 `users:write` 和 CSRF。
 - 没有 `file` 部分时返回 422 `FILE_REQUIRED`。
-- 只接受图片，否则返回 422 `UNSUPPORTED_FILE_TYPE`。请检查**文件内容**（例如 PNG、JPEG 的文件头），不要只看客户端声明的 MIME 类型。一致性套件发送的是能正常解码的 1×1 PNG。
+- 先检查类型，再检查大小：只接受图片，否则返回 422 `UNSUPPORTED_FILE_TYPE`。请检查**文件内容**（例如 PNG、JPEG 的文件头），不要只看客户端声明的 MIME 类型。一致性套件发送的是能正常解码的 1×1 PNG。
 - 超过 2 MB（2 × 1024 × 1024 字节）返回 422 `FILE_TOO_LARGE`。
-- 成功返回 `{ id, name, url, contentType, size }`，其中 `url` 应是可以持久访问的下载地址。
+- 成功返回 `{ id, name, url, contentType, size }`。`url` 应是可以持久访问的地址，前端只用它来展示。它可以在契约之外，例如对象存储地址或 `/files/{id}`；如果放在 `/api/` 下，请当作契约之外的扩展接口自行实现。
 
 ## 8. 审计
 
-`listAuditLogs` 需要 `audit:read`，按 `createdAt` **最新在前**排序，支持重复键的 `action` 筛选。
+`listAuditLogs` 需要 `audit:read`，按 `createdAt` **最新在前**排序，支持重复键的 `action` 筛选。返回的条目同样按 `audit:read` 的数据范围过滤：每条记录归属于操作者的部门和账号，范围的判断方式与业务记录相同。
 
 条目字段为 `{ id, createdAt, actorName, actorEmail, action, target, detail, ip }`。`action` 的取值：
 
@@ -224,7 +252,10 @@
 | `user.invited` / `user.batch_invited` | 邀请 |
 | `system.changed` | 任何系统管理写入 |
 
-`actorEmail` 是执行操作的登录账号的邮箱。`target` 要能让人认出对象：创建业务用户时至少包含其用户名或邮箱（Tier 1 会检查）。审计里不能出现密码、摘要或 CSRF 令牌。
+- `actorEmail` 是执行操作的登录账号的邮箱。
+- `target` 和 `detail` 是给人看的文字。`target` 要能让人认出对象：创建业务用户时至少包含其用户名或邮箱（Tier 1 会检查），批量操作可以写成“3 个用户”。
+- `ip` 是客户端地址。后端在反向代理后面时，取可信代理传来的 `X-Forwarded-For`。
+- 登录失败不要求写审计。审计里不能出现密码、摘要或 CSRF 令牌。
 
 ## 9. 同源部署
 
@@ -294,6 +325,12 @@ pnpm test:contract -- --help                          # 全部选项与退出码
 - `3`：Tier 2 被跳过（跳过不算通过）。
 
 在 CI 里请把任何非 0 都当作失败，或者明确使用 `--tier 1`。每个场景名都以契约操作编号（如 `listUsers:`）或 AGENTS.md 规则（`AGENTS.md: …`）开头，派生的访问检查以 `generic:` 开头。
+
+**Tier 1 不验证的内容**：以下几项仍是要求，只是套件查不出来，需要自己保证或另写测试。
+- Cookie 属性（`HttpOnly`、`Secure`、`SameSite`）和 Origin 校验。
+- 能力检查先于 CSRF 检查：guest 的派生检查带着有效的 CSRF 令牌。
+- `getPermissions`、`getNavigation`、`inviteUser`、`inviteUsersBatch` 的成功路径，以及 Session 里 `routes` 的取值。
+- 数据范围、委派上限、保护记录：这些在 Tier 2 里检查。
 
 不跑套件时，也可以用 curl 手工走一遍认证流程（需要 Node 来取出 CSRF 令牌）：
 

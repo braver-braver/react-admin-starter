@@ -19,7 +19,7 @@ Environment:
   CONTRACT_ADMIN_PASSWORD   scope "all", every menu.
   CONTRACT_VIEWER_EMAIL     users:read and permissions:read only, scope "all".
   CONTRACT_VIEWER_PASSWORD
-  CONTRACT_GUEST_EMAIL      No permissions; scope "self".
+  CONTRACT_GUEST_EMAIL      No permissions at all (an empty dataScopes).
   CONTRACT_GUEST_PASSWORD
   CONTRACT_TIER2=1          Confirms the database is disposable and enables
                             Tier 2. Tier 2 creates its own departments, roles
@@ -27,7 +27,8 @@ Environment:
                             changes that must be refused (such as disabling the
                             bootstrap admin); a non-conformant back end may
                             accept them. Without it Tier 2 is skipped.
-  See docs/conformance-fixtures.md for what the back end must contain.
+  See docs/conformance-fixtures.md for what the back end must contain, and
+  docs/backend-integration.md for how to implement it.
 
 Options:
   --base-url <url>          Overrides CONTRACT_BASE_URL.
