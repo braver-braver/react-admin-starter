@@ -1,5 +1,5 @@
 import { type z } from 'zod'
-import { apiErrorSchema, successEnvelope } from '@/contract/common'
+import { API_PREFIX, apiErrorSchema, successEnvelope } from '@/contract/common'
 import { useAuthStore } from '@/stores/auth-store'
 
 export class ApiError extends Error {
@@ -30,8 +30,12 @@ type ApiOptions = RequestInit & {
   csrfToken?: string
 }
 
+/**
+ * `path` is relative to `API_PREFIX` (`/users`, not `/api/v1/users`), so the
+ * prefix lives in one place.
+ */
 export async function apiRequest<T>(
-  path: `/api/${string}`,
+  path: `/${string}`,
   schema: z.ZodType<T>,
   { handleAuthError = true, csrfToken, ...options }: ApiOptions = {}
 ): Promise<T> {
@@ -52,7 +56,9 @@ export async function apiRequest<T>(
   let response: Response
   try {
     response = await fetch(
-      __DEMO_BUILD__ ? `${import.meta.env.BASE_URL}${path.slice(1)}` : path,
+      __DEMO_BUILD__
+        ? `${import.meta.env.BASE_URL}${API_PREFIX.slice(1)}${path}`
+        : `${API_PREFIX}${path}`,
       {
         ...options,
         headers,

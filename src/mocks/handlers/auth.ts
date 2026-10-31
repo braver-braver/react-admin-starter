@@ -1,3 +1,4 @@
+import { API_PREFIX } from '@/contract/common'
 import { type ErrorCodeFor, type ErrorStatus } from '@/contract/errors'
 import { HttpResponse, http } from 'msw'
 import { getCookie } from '@/lib/cookies'
@@ -18,6 +19,8 @@ export type MockSession = {
 }
 
 export const mockBase = import.meta.env.BASE_URL
+/** Base URL of every mock handler: the app base plus `API_PREFIX`. */
+export const apiBase = `${mockBase}${API_PREFIX.slice(1)}`
 const SESSION_KEY =
   mockBase === '/'
     ? 'react-admin-starter:mock-sessions'
@@ -142,7 +145,7 @@ function auditAuthEvent(
 }
 
 export const authHandlers = [
-  http.post(`${mockBase}api/auth/login`, async ({ request, cookies }) => {
+  http.post(`${apiBase}/auth/login`, async ({ request, cookies }) => {
     const missingHeader = requireRequestedWith(request)
     if (missingHeader) return missingHeader
 
@@ -199,7 +202,7 @@ export const authHandlers = [
     )
   }),
 
-  http.get(`${mockBase}api/auth/session`, ({ cookies }) => {
+  http.get(`${apiBase}/auth/session`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
 
@@ -208,7 +211,7 @@ export const authHandlers = [
     })
   }),
 
-  http.post(`${mockBase}api/auth/logout`, ({ request, cookies }) => {
+  http.post(`${apiBase}/auth/logout`, ({ request, cookies }) => {
     const missingHeader = requireRequestedWith(request)
     if (missingHeader) return missingHeader
 
@@ -229,7 +232,7 @@ export const authHandlers = [
     )
   }),
 
-  http.get(`${mockBase}api/auth/permissions`, ({ cookies }) => {
+  http.get(`${apiBase}/auth/permissions`, ({ cookies }) => {
     const session = getSession(cookies[COOKIE_NAME])
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied = requirePermission(session, 'permissions:read')

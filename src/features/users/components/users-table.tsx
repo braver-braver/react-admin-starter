@@ -40,7 +40,7 @@ type DataTableProps = {
 
 /**
  * 服务端驱动的用户列表：分页、筛选、排序全部由 URL 状态触发、
- * /api/users 计算；TanStack Table 只负责渲染当前页。
+ * /api/v1/users 计算；TanStack Table 只负责渲染当前页。
  */
 export function getUserRowId(user: User) {
   return user.id

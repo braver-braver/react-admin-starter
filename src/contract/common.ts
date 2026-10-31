@@ -25,6 +25,12 @@ export const successSchema = z.object({ success: z.literal(true) })
 /** Bulk operations identify their targets by id. */
 export const idListSchema = z.object({ ids: z.array(z.string()) })
 
+/**
+ * Path prefix of every API operation. The `v1` is the API major version
+ * (decision D5): breaking changes after v1.0 go to a new `/api/v2` prefix.
+ */
+export const API_PREFIX = '/api/v1'
+
 /** Largest page size a list returns; larger requests are clamped (decision D3). */
 export const MAX_PAGE_SIZE = 100
 

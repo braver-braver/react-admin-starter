@@ -91,7 +91,7 @@ const roleField = (message: string) =>
         : message,
   })
 
-/** POST /api/users and PUT /api/users/{id}. Unknown fields are ignored. */
+/** POST /api/v1/users and PUT /api/v1/users/{id}. Unknown fields are ignored. */
 export const userWriteSchema = z.object({
   firstName: requiredText,
   lastName: requiredText,
@@ -117,7 +117,7 @@ export type UserWritePayload = z.input<typeof userWriteSchema>
 
 const INVITE_EMAIL_INVALID = '请输入有效邮箱。'
 
-/** POST /api/users/invite */
+/** POST /api/v1/users/invite */
 export const userInviteSchema = z.object({
   email: z
     .string({ error: INVITE_EMAIL_INVALID })
@@ -129,7 +129,7 @@ export const userInviteSchema = z.object({
 })
 export type UserInvitePayload = z.input<typeof userInviteSchema>
 
-/** PATCH /api/users/status */
+/** PATCH /api/v1/users/status */
 export const userStatusUpdateSchema = idListSchema.extend({
   status: z.enum(['active', 'inactive'], {
     error: '状态只允许启用或停用。',
@@ -143,7 +143,7 @@ export const updatedCountSchema = z.object({ updatedCount: z.number() })
 export const invitedCountSchema = z.object({ invitedCount: z.number() })
 
 /**
- * GET /api/users query string. Repeated keys carry arrays
+ * GET /api/v1/users query string. Repeated keys carry arrays
  * (`status=active&status=invited`). An unknown `sortBy` falls back to
  * `username` rather than failing; `pageSize` above 100 is clamped to 100.
  */

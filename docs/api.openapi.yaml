@@ -4,7 +4,7 @@ info:
   version: 0.2.0
   description: Same-origin cookie sessions. Development MSW is a demonstration only.
 servers:
-  - url: /api
+  - url: /api/v1
 security:
   - sessionCookie: []
 paths:

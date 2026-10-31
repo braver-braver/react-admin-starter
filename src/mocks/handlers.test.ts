@@ -12,7 +12,7 @@ import { resetMockSessions } from './handlers'
 const requestedWith = { 'X-Requested-With': 'ReactAdminStarter' }
 
 async function login(email = 'admin@example.com', password = 'Demo1234!') {
-  return fetch('/api/auth/login', {
+  return fetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { ...requestedWith, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -64,7 +64,7 @@ describe('development auth handlers', () => {
     expect(sessionId).toMatch(/^[\da-f-]{36}$/)
     expect(sessionId).not.toContain('admin@example.com')
 
-    const sessionResponse = await fetch('/api/auth/session')
+    const sessionResponse = await fetch('/api/v1/auth/session')
     expect(sessionResponse.status).toBe(200)
     expect(await sessionResponse.json()).toEqual(loginBody)
   })
@@ -72,13 +72,13 @@ describe('development auth handlers', () => {
   it('rejects a deleted browser cookie even if MSW remembers it', async () => {
     await login()
     document.cookie = 'mock_session=; Path=/; Max-Age=0'
-    expect((await fetch('/api/auth/session')).status).toBe(401)
-    expect((await fetch('/api/auth/permissions')).status).toBe(401)
+    expect((await fetch('/api/v1/auth/session')).status).toBe(401)
+    expect((await fetch('/api/v1/auth/permissions')).status).toBe(401)
   })
 
   it('invalidates the session and cookie on logout', async () => {
     const loginBody = await (await login()).json()
-    const logoutResponse = await fetch('/api/auth/logout', {
+    const logoutResponse = await fetch('/api/v1/auth/logout', {
       method: 'POST',
       headers: {
         ...requestedWith,
@@ -89,7 +89,7 @@ describe('development auth handlers', () => {
     expect(await logoutResponse.json()).toEqual({ data: { success: true } })
     expect(document.cookie).not.toContain('mock_session=')
 
-    const sessionResponse = await fetch('/api/auth/session')
+    const sessionResponse = await fetch('/api/v1/auth/session')
     expect(sessionResponse.status).toBe(401)
     expect(await sessionResponse.json()).toEqual({
       error: { code: 'UNAUTHENTICATED', message: '请先登录。' },
@@ -111,14 +111,14 @@ describe('development auth handlers', () => {
   })
 
   it('requires login for permissions and limits guest access', async () => {
-    const anonymous = await fetch('/api/auth/permissions')
+    const anonymous = await fetch('/api/v1/auth/permissions')
     expect(anonymous.status).toBe(401)
     expect(await anonymous.json()).toEqual({
       error: { code: 'UNAUTHENTICATED', message: '请先登录。' },
     })
 
     await login('guest@example.com')
-    const guest = await fetch('/api/auth/permissions')
+    const guest = await fetch('/api/v1/auth/permissions')
     expect(guest.status).toBe(403)
     expect(await guest.json()).toEqual({
       error: { code: 'FORBIDDEN', message: '没有执行该操作的权限。' },
@@ -127,7 +127,7 @@ describe('development auth handlers', () => {
 
   it('returns the viewer permission envelope', async () => {
     await login('viewer@example.com')
-    const response = await fetch('/api/auth/permissions')
+    const response = await fetch('/api/v1/auth/permissions')
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
       data: {
@@ -139,7 +139,7 @@ describe('development auth handlers', () => {
 
   it('rejects logout without a valid CSRF token and retains the session', async () => {
     await login()
-    const response = await fetch('/api/auth/logout', {
+    const response = await fetch('/api/v1/auth/logout', {
       method: 'POST',
       headers: { ...requestedWith, 'X-CSRF-Token': 'wrong' },
     })
@@ -147,11 +147,11 @@ describe('development auth handlers', () => {
     expect(await response.json()).toEqual({
       error: { code: 'INVALID_CSRF_TOKEN', message: '请求令牌无效。' },
     })
-    expect((await fetch('/api/auth/session')).status).toBe(200)
+    expect((await fetch('/api/v1/auth/session')).status).toBe(200)
   })
 
   it('rejects unsafe requests without the source marker', async () => {
-    const loginResponse = await fetch('/api/auth/login', {
+    const loginResponse = await fetch('/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -187,7 +187,7 @@ function writeHeaders(csrfToken: string) {
 
 describe('user CRUD handlers', () => {
   it('rejects anonymous listing with 401', async () => {
-    const response = await fetch('/api/users')
+    const response = await fetch('/api/v1/users')
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({
       error: { code: 'UNAUTHENTICATED', message: '请先登录。' },
@@ -197,7 +197,7 @@ describe('user CRUD handlers', () => {
   it('pages and sorts on the server', async () => {
     await loginSession()
     const response = await fetch(
-      '/api/users?page=2&pageSize=5&sortBy=username&sortOrder=asc'
+      '/api/v1/users?page=2&pageSize=5&sortBy=username&sortOrder=asc'
     )
     expect(response.status).toBe(200)
     const body = (await response.json()) as {
@@ -222,7 +222,7 @@ describe('user CRUD handlers', () => {
   it('filters by username, status and role', async () => {
     await loginSession()
     const response = await fetch(
-      '/api/users?page=1&pageSize=50&status=active&role=admin'
+      '/api/v1/users?page=1&pageSize=50&status=active&role=admin'
     )
     const body = (await response.json()) as {
       data: { items: { status: string; role: string }[] }
@@ -237,9 +237,9 @@ describe('user CRUD handlers', () => {
 
   it('lets a viewer read but rejects writes with 403', async () => {
     await loginSession('viewer@example.com')
-    expect((await fetch('/api/users')).status).toBe(200)
+    expect((await fetch('/api/v1/users')).status).toBe(200)
 
-    const response = await fetch('/api/users', {
+    const response = await fetch('/api/v1/users', {
       method: 'POST',
       headers: writeHeaders('any'),
       body: JSON.stringify({}),
@@ -252,7 +252,7 @@ describe('user CRUD handlers', () => {
 
   it('requires the CSRF token for writes', async () => {
     await loginSession()
-    const response = await fetch('/api/users', {
+    const response = await fetch('/api/v1/users', {
       method: 'POST',
       headers: { ...requestedWith, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -273,7 +273,7 @@ describe('user CRUD handlers', () => {
   it('creates, updates, deletes and audits a user', async () => {
     const session = await loginSession()
     const email = `qa.${Date.now()}@example.com`
-    const created = await fetch('/api/users', {
+    const created = await fetch('/api/v1/users', {
       method: 'POST',
       headers: writeHeaders(session.csrfToken),
       body: JSON.stringify({
@@ -291,7 +291,7 @@ describe('user CRUD handlers', () => {
     }
     expect(createdUser.data.status).toBe('active')
 
-    const updated = await fetch(`/api/users/${createdUser.data.id}`, {
+    const updated = await fetch(`/api/v1/users/${createdUser.data.id}`, {
       method: 'PUT',
       headers: writeHeaders(session.csrfToken),
       body: JSON.stringify({
@@ -308,14 +308,14 @@ describe('user CRUD handlers', () => {
       ((await updated.json()) as { data: { firstName: string } }).data.firstName
     ).toBe('更新')
 
-    const deleted = await fetch(`/api/users/${createdUser.data.id}`, {
+    const deleted = await fetch(`/api/v1/users/${createdUser.data.id}`, {
       method: 'DELETE',
       headers: writeHeaders(session.csrfToken),
     })
     expect(deleted.status).toBe(200)
     expect(await deleted.json()).toEqual({ data: { success: true } })
 
-    const audit = await fetch('/api/audit-logs?page=1&pageSize=50')
+    const audit = await fetch('/api/v1/audit-logs?page=1&pageSize=50')
     const auditBody = (await audit.json()) as {
       data: { items: { action: string; target: string }[] }
     }
@@ -329,7 +329,7 @@ describe('user CRUD handlers', () => {
 
   it('validates duplicates and required fields', async () => {
     const session = await loginSession()
-    const response = await fetch('/api/users', {
+    const response = await fetch('/api/v1/users', {
       method: 'POST',
       headers: writeHeaders(session.csrfToken),
       body: JSON.stringify({
@@ -349,7 +349,7 @@ describe('user CRUD handlers', () => {
 
   it('caps pageSize at 100 on users and audit logs', async () => {
     await loginSession()
-    for (const path of ['/api/users', '/api/audit-logs']) {
+    for (const path of ['/api/v1/users', '/api/v1/audit-logs']) {
       const response = await fetch(`${path}?page=1&pageSize=1000`)
       const body = (await response.json()) as {
         data: { items: unknown[]; meta: { pageSize: number } }
@@ -362,7 +362,7 @@ describe('user CRUD handlers', () => {
   it('prioritises the required-field message and never stores passwords', async () => {
     const session = await loginSession()
     const post = (body: object) =>
-      fetch('/api/users', {
+      fetch('/api/v1/users', {
         method: 'POST',
         headers: writeHeaders(session.csrfToken),
         body: JSON.stringify(body),
@@ -389,7 +389,7 @@ describe('user CRUD handlers', () => {
   it('maps invite validation to INVALID_EMAIL / INVALID_ROLE', async () => {
     const session = await loginSession()
     const invite = (body: object) =>
-      fetch('/api/users/invite', {
+      fetch('/api/v1/users/invite', {
         method: 'POST',
         headers: writeHeaders(session.csrfToken),
         body: JSON.stringify(body),
@@ -409,7 +409,7 @@ describe('user CRUD handlers', () => {
   it('rejects an invalid bulk status and treats malformed ids as an empty set', async () => {
     const session = await loginSession()
     const patch = (body: object) =>
-      fetch('/api/users/status', {
+      fetch('/api/v1/users/status', {
         method: 'PATCH',
         headers: writeHeaders(session.csrfToken),
         body: JSON.stringify(body),
@@ -426,7 +426,7 @@ describe('user CRUD handlers', () => {
 
     // Inside a list, malformed entries are skipped and the valid ids still apply.
     const list = (await (
-      await fetch('/api/users?page=1&pageSize=50')
+      await fetch('/api/v1/users?page=1&pageSize=50')
     ).json()) as {
       data: { items: { id: string; status: string }[] }
     }
@@ -448,7 +448,7 @@ describe('upload handlers', () => {
         type: 'image/png',
       })
     )
-    const response = await fetch('/api/uploads', {
+    const response = await fetch('/api/v1/uploads', {
       method: 'POST',
       headers: { ...requestedWith, 'X-CSRF-Token': session.csrfToken },
       body: form,
@@ -469,7 +469,7 @@ describe('upload handlers', () => {
       'file',
       new File(['hello'], 'notes.txt', { type: 'text/plain' })
     )
-    const rejected = await fetch('/api/uploads', {
+    const rejected = await fetch('/api/v1/uploads', {
       method: 'POST',
       headers: { ...requestedWith, 'X-CSRF-Token': session.csrfToken },
       body: form,
@@ -477,7 +477,7 @@ describe('upload handlers', () => {
     expect(rejected.status).toBe(422)
 
     await loginSession('viewer@example.com')
-    const forbidden = await fetch('/api/users', {
+    const forbidden = await fetch('/api/v1/users', {
       method: 'POST',
       headers: writeHeaders('any'),
       body: '{}',
@@ -488,13 +488,13 @@ describe('upload handlers', () => {
 
 describe('list envelope', () => {
   const lists = [
-    '/api/users',
-    '/api/audit-logs',
-    '/api/system/accounts',
-    '/api/system/roles',
-    '/api/system/permissions',
-    '/api/system/menus',
-    '/api/system/departments',
+    '/api/v1/users',
+    '/api/v1/audit-logs',
+    '/api/v1/system/accounts',
+    '/api/v1/system/roles',
+    '/api/v1/system/permissions',
+    '/api/v1/system/menus',
+    '/api/v1/system/departments',
   ]
 
   it.each(lists)(
@@ -523,7 +523,7 @@ describe('list envelope', () => {
 
   it('reports at least one page for an empty system list', async () => {
     await loginSession()
-    const response = await fetch('/api/system/roles?search=zzzz-no-match')
+    const response = await fetch('/api/v1/system/roles?search=zzzz-no-match')
     const { data } = (await response.json()) as {
       data: {
         items: unknown[]
@@ -535,19 +535,38 @@ describe('list envelope', () => {
   })
 })
 
+describe('versioned API prefix', () => {
+  it('serves /api/v1 and leaves the unversioned /api paths unhandled', async () => {
+    await loginSession()
+    const unhandled: string[] = []
+    const record = ({ request }: { request: Request }) => {
+      unhandled.push(new URL(request.url).pathname)
+    }
+    worker.events.on('request:unhandled', record)
+    try {
+      expect((await fetch('/api/v1/users')).status).toBe(200)
+      await fetch('/api/users').catch(() => null)
+      expect(unhandled).toContain('/api/users')
+      expect(unhandled).not.toContain('/api/v1/users')
+    } finally {
+      worker.events.removeListener('request:unhandled', record)
+    }
+  })
+})
+
 describe('request headers and multi-value query keys', () => {
   const writes: [string, string, object | undefined][] = [
-    ['POST', '/api/users', {}],
-    ['PUT', '/api/users/x', {}],
-    ['DELETE', '/api/users/x', undefined],
-    ['POST', '/api/users/batch-delete', { ids: [] }],
-    ['PATCH', '/api/users/status', { ids: [], status: 'active' }],
-    ['POST', '/api/users/invite', { email: 'a@b.co', role: 'cashier' }],
-    ['POST', '/api/users/invite-batch', { ids: [] }],
-    ['POST', '/api/uploads', undefined],
-    ['POST', '/api/system/roles', {}],
-    ['PUT', '/api/system/roles/x', {}],
-    ['DELETE', '/api/system/roles/x', undefined],
+    ['POST', '/api/v1/users', {}],
+    ['PUT', '/api/v1/users/x', {}],
+    ['DELETE', '/api/v1/users/x', undefined],
+    ['POST', '/api/v1/users/batch-delete', { ids: [] }],
+    ['PATCH', '/api/v1/users/status', { ids: [], status: 'active' }],
+    ['POST', '/api/v1/users/invite', { email: 'a@b.co', role: 'cashier' }],
+    ['POST', '/api/v1/users/invite-batch', { ids: [] }],
+    ['POST', '/api/v1/uploads', undefined],
+    ['POST', '/api/v1/system/roles', {}],
+    ['PUT', '/api/v1/system/roles/x', {}],
+    ['DELETE', '/api/v1/system/roles/x', undefined],
   ]
 
   it.each(writes)(
@@ -573,7 +592,7 @@ describe('request headers and multi-value query keys', () => {
   )
 
   it('checks the header before the session, so anonymous writes get the same 403', async () => {
-    const response = await fetch('/api/users', {
+    const response = await fetch('/api/v1/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',
@@ -588,7 +607,7 @@ describe('request headers and multi-value query keys', () => {
     await loginSession()
     const count = async (query: string) => {
       const body = (await (
-        await fetch(`/api/users?pageSize=100&${query}`)
+        await fetch(`/api/v1/users?pageSize=100&${query}`)
       ).json()) as {
         data: { meta: { total: number } }
       }
@@ -603,7 +622,7 @@ describe('request headers and multi-value query keys', () => {
     const audit = async (query: string) =>
       (
         (await (
-          await fetch(`/api/audit-logs?pageSize=100&${query}`)
+          await fetch(`/api/v1/audit-logs?pageSize=100&${query}`)
         ).json()) as {
           data: { meta: { total: number } }
         }
@@ -617,10 +636,10 @@ describe('request headers and multi-value query keys', () => {
 describe('audit handlers', () => {
   it('requires audit:read and filters by action', async () => {
     await loginSession('viewer@example.com')
-    expect((await fetch('/api/audit-logs')).status).toBe(403)
+    expect((await fetch('/api/v1/audit-logs')).status).toBe(403)
 
     await loginSession()
-    const response = await fetch('/api/audit-logs?page=1&pageSize=5')
+    const response = await fetch('/api/v1/audit-logs?page=1&pageSize=5')
     expect(response.status).toBe(200)
     const body = (await response.json()) as {
       data: { items: unknown[]; meta: { pageSize: number } }
@@ -678,7 +697,7 @@ describe('system and department API enforcement', () => {
     const signedIn = await (
       await login('dept@example.com', 'Operator123!')
     ).json()
-    const listed = await (await fetch('/api/users?pageSize=100')).json()
+    const listed = await (await fetch('/api/v1/users?pageSize=100')).json()
     expect(listed.data.meta.total).toBeGreaterThan(0)
     expect(
       listed.data.items.every(
@@ -695,7 +714,7 @@ describe('system and department API enforcement', () => {
     const previous = inScope.status
     expect(
       (
-        await fetch(`/api/users/${outside.id}`, {
+        await fetch(`/api/v1/users/${outside.id}`, {
           method: 'DELETE',
           headers: writeHeaders(signedIn.data.csrfToken),
         })
@@ -703,7 +722,7 @@ describe('system and department API enforcement', () => {
     ).toBe(403)
     expect(
       (
-        await fetch('/api/users/status', {
+        await fetch('/api/v1/users/status', {
           method: 'PATCH',
           headers: writeHeaders(signedIn.data.csrfToken),
           body: JSON.stringify({
@@ -715,10 +734,10 @@ describe('system and department API enforcement', () => {
     ).toBe(403)
     expect(inScope.status).toBe(previous)
     expect(all.usersStore.some((item) => item.id === outside.id)).toBe(true)
-    expect((await fetch('/api/system/accounts')).status).toBe(403)
+    expect((await fetch('/api/v1/system/accounts')).status).toBe(403)
     expect(
       (
-        await fetch('/api/system/roles', {
+        await fetch('/api/v1/system/roles', {
           method: 'POST',
           headers: writeHeaders(signedIn.data.csrfToken),
           body: JSON.stringify(rolePayload),
@@ -752,7 +771,7 @@ describe('system and department API enforcement', () => {
     const signedIn = await (
       await login('dept@example.com', 'Operator123!')
     ).json()
-    const response = await fetch('/api/system/roles/' + role.id, {
+    const response = await fetch('/api/v1/system/roles/' + role.id, {
       method: 'PUT',
       headers: writeHeaders(signedIn.data.csrfToken),
       body: JSON.stringify({ ...publicFields(role), scope: 'all' }),
@@ -807,11 +826,11 @@ describe('system and department API enforcement', () => {
       )
     }
     await login('accounts-reader@example.com', 'Options123!')
-    const accountOptions = await fetch('/api/system/options')
+    const accountOptions = await fetch('/api/v1/system/options')
     expect(accountOptions.status).toBe(200)
     expect((await accountOptions.json()).data.items).toEqual([])
     await login('department-reader@example.com', 'Options123!')
-    const deptOptions = await fetch('/api/system/options')
+    const deptOptions = await fetch('/api/v1/system/options')
     expect(deptOptions.status).toBe(200)
     const records = (await deptOptions.json()).data.items as Array<{
       resource: string
@@ -830,14 +849,14 @@ describe('system and department API enforcement', () => {
       { ...publicFields(account), enabled: false },
       admin()
     )
-    expect((await fetch('/api/auth/session')).status).toBe(401)
+    expect((await fetch('/api/v1/auth/session')).status).toBe(401)
     await changeSystem(
       'accounts',
       account.id,
       { ...publicFields(account), enabled: true },
       admin()
     )
-    expect((await fetch('/api/auth/session')).status).toBe(401)
+    expect((await fetch('/api/v1/auth/session')).status).toBe(401)
     expect((await login('dept@example.com', 'Operator123!')).status).toBe(200)
     await changeSystem(
       'accounts',
@@ -845,13 +864,13 @@ describe('system and department API enforcement', () => {
       { ...publicFields(account), password: 'NewPassword123!' },
       admin()
     )
-    expect((await fetch('/api/auth/session')).status).toBe(401)
+    expect((await fetch('/api/v1/auth/session')).status).toBe(401)
     expect((await login('dept@example.com', 'Operator123!')).status).toBe(401)
     expect((await login('dept@example.com', 'NewPassword123!')).status).toBe(
       200
     )
     await login()
-    const accountList = await (await fetch('/api/system/accounts')).text()
+    const accountList = await (await fetch('/api/v1/system/accounts')).text()
     expect(accountList).not.toContain('NewPassword123!')
     expect(accountList).not.toContain('hash')
     expect(accountList).not.toContain('credential')
@@ -861,7 +880,7 @@ describe('system and department API enforcement', () => {
     await login()
     expect(
       (
-        await fetch('/api/system/roles', {
+        await fetch('/api/v1/system/roles', {
           method: 'POST',
           headers: requestedWith,
           body: JSON.stringify(rolePayload),
@@ -869,7 +888,7 @@ describe('system and department API enforcement', () => {
       ).status
     ).toBe(403)
     await login('dept@example.com', 'Operator123!')
-    const nav = await (await fetch('/api/auth/navigation')).json()
+    const nav = await (await fetch('/api/v1/auth/navigation')).json()
     expect(
       nav.data.some((item: { routeId: string }) => item.routeId === 'users')
     ).toBe(true)
@@ -884,10 +903,10 @@ describe('system and department API enforcement', () => {
       { ...publicFields(role), permissionIds: [], menuIds: [] },
       admin()
     )
-    const session = await (await fetch('/api/auth/session')).json()
+    const session = await (await fetch('/api/v1/auth/session')).json()
     expect(session.data.user.routes).not.toContain('/users')
     expect(session.data.user.permissions).not.toContain('users:read')
-    expect((await fetch('/api/users')).status).toBe(403)
+    expect((await fetch('/api/v1/users')).status).toBe(403)
     expect(systemStore().records.some((item) => item.id === account.id)).toBe(
       true
     )

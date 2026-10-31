@@ -23,7 +23,7 @@ describe('apiRequest', () => {
   it('sends same-origin credentials and CSRF headers for a JSON mutation', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(success())
     await expect(
-      apiRequest('/api/items', resultSchema, {
+      apiRequest('/items', resultSchema, {
         method: 'POST',
         body: JSON.stringify({ name: 'sample' }),
         csrfToken: 'csrf-value',
@@ -34,7 +34,8 @@ describe('apiRequest', () => {
 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [path, init] = fetchMock.mock.calls[0]
-    expect(path).toBe('/api/items')
+    // Callers pass paths relative to API_PREFIX; the client adds it.
+    expect(path).toBe('/api/v1/items')
     expect(init).toMatchObject({
       method: 'POST',
       credentials: 'same-origin',
@@ -56,7 +57,7 @@ describe('apiRequest', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(body), { status: 200 })
     )
-    await expect(apiRequest('/api/items', resultSchema)).rejects.toMatchObject({
+    await expect(apiRequest('/items', resultSchema)).rejects.toMatchObject({
       status: 502,
       code: 'INVALID_RESPONSE',
     })
@@ -66,7 +67,7 @@ describe('apiRequest', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       failure(422, { error: { code: 'INVALID_ITEM', message: 'Bad item' } })
     )
-    await expect(apiRequest('/api/items', resultSchema)).rejects.toMatchObject({
+    await expect(apiRequest('/items', resultSchema)).rejects.toMatchObject({
       status: 422,
       code: 'INVALID_ITEM',
       message: 'Bad item',
@@ -77,7 +78,7 @@ describe('apiRequest', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       failure(503, { unexpected: true })
     )
-    await expect(apiRequest('/api/items', resultSchema)).rejects.toMatchObject({
+    await expect(apiRequest('/items', resultSchema)).rejects.toMatchObject({
       status: 503,
       code: 'HTTP_ERROR',
     })
@@ -91,9 +92,7 @@ describe('apiRequest', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         failure(status, { error: { code: 'DENIED', message: 'Denied' } })
       )
-      await expect(
-        apiRequest('/api/items', resultSchema)
-      ).rejects.toMatchObject({
+      await expect(apiRequest('/items', resultSchema)).rejects.toMatchObject({
         status,
       })
       expect(handler).toHaveBeenCalledOnce()
@@ -106,7 +105,7 @@ describe('apiRequest', () => {
     setAuthErrorHandler(handler)
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(failure(401, null))
     await expect(
-      apiRequest('/api/auth/session', resultSchema, { handleAuthError: false })
+      apiRequest('/auth/session', resultSchema, { handleAuthError: false })
     ).rejects.toMatchObject({ status: 401 })
     expect(handler).not.toHaveBeenCalled()
   })
@@ -115,10 +114,10 @@ describe('apiRequest', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     const abort = new DOMException('stopped', 'AbortError')
     fetchMock.mockRejectedValueOnce(abort)
-    await expect(apiRequest('/api/items', resultSchema)).rejects.toBe(abort)
+    await expect(apiRequest('/items', resultSchema)).rejects.toBe(abort)
 
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    await expect(apiRequest('/api/items', resultSchema)).rejects.toMatchObject({
+    await expect(apiRequest('/items', resultSchema)).rejects.toMatchObject({
       status: 0,
       code: 'NETWORK_ERROR',
     })
@@ -131,7 +130,7 @@ describe('apiRequest', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       () => new Promise<Response>((resolve) => (resolveFetch = resolve))
     )
-    const request = apiRequest('/api/items', resultSchema)
+    const request = apiRequest('/items', resultSchema)
     invalidateApiRequests()
     resolveFetch(success('old'))
     await expect(request).rejects.toMatchObject({

@@ -141,11 +141,11 @@ export type Menu = z.infer<typeof menuSchema>
 export const navigationSchema = z.array(menuSchema)
 export const optionsSchema = z.object({ items: z.array(systemRecordSchema) })
 
-/** List envelope of GET /api/system/{resource}, narrowed to one resource. */
+/** List envelope of GET /api/v1/system/{resource}, narrowed to one resource. */
 export const systemListOf = <T extends z.ZodType>(item: T) => listEnvelope(item)
 export const systemListSchema = systemListOf(systemRecordSchema)
 
-/** GET /api/system/{resource} query string. `pageSize` above 100 is clamped to 100. */
+/** GET /api/v1/system/{resource} query string. `pageSize` above 100 is clamped to 100. */
 export const systemListQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: pageSizeQuery,

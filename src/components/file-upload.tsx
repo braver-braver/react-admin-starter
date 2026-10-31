@@ -18,7 +18,7 @@ type FileUploadProps = {
 }
 
 /**
- * 通用文件上传原语：前端校验类型/大小 → 上传到 /api/uploads → 回调预览 URL。
+ * 通用文件上传原语：前端校验类型/大小 → 上传到 /api/v1/uploads → 回调预览 URL。
  * 默认渲染为圆形头像样式，可用 className 覆盖为其他形态。
  */
 export function FileUpload({
