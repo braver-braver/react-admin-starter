@@ -23,6 +23,8 @@ pnpm dev
 
 ## 接入真实服务
 
+实现后端请按 [后端接入指南](backend-integration.md) 逐项完成：最小实现顺序、Cookie 会话、检查顺序、错误码、授权模型、部署方式，以及如何用 `pnpm test:contract` 验收。
+
 设置 `VITE_ENABLE_MOCKS=false` 可在开发时关闭模拟，再设置 `VITE_API_PROXY_TARGET=http://127.0.0.1:8000`（后端的源地址，不带路径）后，`pnpm dev` 和 `pnpm preview` 会把 `/api` 转发到该后端，使其成为同源 API；不设置时不启用代理。生产部署则让应用和 API 通过同一个反向代理提供服务。E2E 里的 `production-api` 项目就是这样运行的：普通生产构建加 `/api` 代理，后端是一致性套件的替身服务器（测试替身，不是参考后端），用来验证登录、刷新后恢复会话、退出都能走通。生产构建始终排除 MSW 及其处理器，即使设置 `VITE_ENABLE_MOCKS=true` 也无法开启模拟。普通生产构建的 Worker 脚本只由 Vite 开发中间件提供，不在 `public/` 或 `dist/` 中。单独的 `build:demo` 会将模拟 Worker 与接口放入 `dist-demo/`，通过 Hash 路由和按版本路径隔离的 Cookie/API/Worker 提供静态展示，但不会改变普通生产构建的安全边界。参见 [GitHub Pages 演示部署](pages-demo.md)。构建末尾自动检查产物，检测到 Worker、模拟会话标识或演示账户时构建失败。
 
 前端固定访问同源 `/api/v1`。部署时须让 `/api/*` 先路由到后端（按 `/api/` 前缀转发即可，将来新增的 `/api/v2` 也随之覆盖），再将前端路径回退至 `index.html`。仅部署静态文件不会自动获得认证能力：后端缺失或响应格式不符时会显示错误，无法进入管理页面。

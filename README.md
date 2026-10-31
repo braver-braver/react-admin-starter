@@ -53,7 +53,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
-See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
+See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. To implement a back end, follow the [backend integration guide](docs/backend-integration.md) (中文：[后端接入指南](docs/backend-integration.md)): session and CSRF rules, the authorization model, deployment, and how to verify it with `pnpm test:contract`. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
 
 ## Design principles
 
@@ -77,7 +77,7 @@ pnpm test:browser:install
 pnpm test:e2e
 ```
 
-`test:e2e` 先执行生产构建、类型检查和生产产物检查，再由 Playwright 独立启动开发 MSW 应用（5190）与生产预览（5191）。两个端口必须空闲，不复用已运行的开发服务。可使用 `pnpm test:e2e:ui` 交互调试；已有最新构建时可用 `pnpm exec playwright test --project=desktop` 定位单个项目。
+`test:e2e` 先执行生产构建、类型检查和生产产物检查，再由 Playwright 独立启动开发 MSW 应用（5190）、无后端的生产预览（5191）、一致性套件的替身服务器（5194），以及把 `/api` 代理到替身的生产预览（5193）。这些端口必须空闲，不复用已运行的开发服务。可使用 `pnpm test:e2e:ui` 交互调试；已有最新构建时可用 `pnpm exec playwright test --project=desktop` 定位单个项目。
 
 套件以全新浏览器上下文覆盖 1440×900 桌面与 390×844 手机视口，验证登录/退出、会话刷新、工作台与用户页导航、只读/受限账户权限、命令面板、主题持久化、侧栏及键盘操作。使用仓库 MSW 演示账户，不需要真实凭据；不注入认证状态或拦截业务请求。生产预览单独验证不加载 MSW，缺少后端时演示账户无法登录，也不能访问受保护页面。
 
