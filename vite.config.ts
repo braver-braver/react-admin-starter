@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -33,6 +33,15 @@ export default defineConfig(({ mode, command }) => {
         base,
       }
     : null
+  // Optional same-origin API for `pnpm dev` and `pnpm preview`: forward /api
+  // to a real back end. Unset (the default), nothing is proxied.
+  const apiTarget = loadEnv(mode, process.cwd(), 'VITE_').VITE_API_PROXY_TARGET
+  if (apiTarget && !/^https?:\/\/[^/]+\/?$/.test(apiTarget)) {
+    throw new Error(
+      'VITE_API_PROXY_TARGET must be an origin such as http://127.0.0.1:8000'
+    )
+  }
+  const proxy = apiTarget ? { '/api': { target: apiTarget } } : undefined
   const worker = () => {
     const require = createRequire(import.meta.url)
     return readFileSync(
@@ -45,6 +54,8 @@ export default defineConfig(({ mode, command }) => {
   return {
     base,
     build: { outDir: demo ? 'dist-demo' : 'dist' },
+    server: { proxy },
+    preview: { proxy },
     define: {
       __DEMO_BUILD__: JSON.stringify(demo),
       __DEMO_METADATA__: JSON.stringify(metadata),

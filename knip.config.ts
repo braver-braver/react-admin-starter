@@ -9,6 +9,8 @@ const config: KnipConfig = {
     'src/routes/**/*.tsx',
     // Started by the demo Playwright config's webServer command.
     'scripts/serve-demo.mjs',
+    // Started by the main Playwright config for the production-api project.
+    'scripts/serve-stand-in.mjs',
   ],
   // The repo depends on `playwright`, not `@playwright/test`, so knip's
   // Playwright plugin does not enable itself.

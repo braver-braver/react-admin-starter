@@ -154,7 +154,8 @@ function ids(body: unknown): string[] {
 }
 
 export function startStandIn(
-  variant: StandInVariant = 'correct'
+  variant: StandInVariant = 'correct',
+  { port = 0 }: { port?: number } = {}
 ): Promise<{ server: Server; url: string; stats: StandInStats }> {
   const sessions = new Map<string, { account: Account; csrfToken: string }>()
   const users: StoredUser[] = []
@@ -185,6 +186,10 @@ export function startStandIn(
       name: session.account.name,
       roles: [session.account.key],
       permissions: session.account.permissions,
+      // Pages the app may open (the dashboard needs none).
+      routes: session.account.permissions.includes('users:read')
+        ? ['/users']
+        : [],
     },
     csrfToken: session.csrfToken,
   })
@@ -503,7 +508,7 @@ export function startStandIn(
     }
   })
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(port, '127.0.0.1', () => {
       const address = server.address()
       const port = typeof address === 'object' && address ? address.port : 0
       resolve({ server, url: `http://127.0.0.1:${port}`, stats })

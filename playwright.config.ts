@@ -44,6 +44,13 @@ export default defineConfig({
       testMatch: 'production.e2e.ts',
       use: { baseURL: 'http://127.0.0.1:5191' },
     },
+    {
+      // The same production build, with /api proxied to the conformance
+      // stand-in back end (a test double) as a same-origin API.
+      name: 'production-api',
+      testMatch: 'production-api.e2e.ts',
+      use: { baseURL: 'http://127.0.0.1:5193' },
+    },
   ],
   webServer: [
     {
@@ -55,6 +62,18 @@ export default defineConfig({
     {
       command: 'pnpm preview --host 127.0.0.1 --port 5191 --strictPort',
       url: 'http://127.0.0.1:5191/sign-in',
+      reuseExistingServer: false,
+    },
+    {
+      command: 'node scripts/serve-stand-in.mjs 5194',
+      // 401 without a session: the stand-in is up.
+      url: 'http://127.0.0.1:5194/api/v1/auth/session',
+      reuseExistingServer: false,
+    },
+    {
+      command: 'pnpm preview --host 127.0.0.1 --port 5193 --strictPort',
+      url: 'http://127.0.0.1:5193/sign-in',
+      env: { VITE_API_PROXY_TARGET: 'http://127.0.0.1:5194' },
       reuseExistingServer: false,
     },
   ],
