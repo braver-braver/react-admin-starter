@@ -1124,27 +1124,28 @@ describe('mock contract guard (M1-T8)', () => {
   })
 
   it('every registry operation has a mock handler, and every handler serves a registry operation', () => {
-    const handled = (op: Operation) =>
-      handlers.some(
-        (handler) =>
-          (handler.info.method instanceof RegExp
-            ? handler.info.method.test(op.method)
-            : handler.info.method === op.method) &&
-          typeof handler.info.path !== 'function' &&
-          matchRequestUrl(sampleUrl(op), handler.info.path, location.origin)
-            .matches
-      )
-    expect(registry.filter((op) => !handled(op)).map((op) => op.id)).toEqual([])
+    type Handler = (typeof handlers)[number]
+    // Same rule both ways: the method and the path must match.
+    const serves = (handler: Handler, op: Operation) =>
+      (handler.info.method instanceof RegExp
+        ? handler.info.method.test(op.method)
+        : handler.info.method === op.method) &&
+      typeof handler.info.path !== 'function' &&
+      matchRequestUrl(sampleUrl(op), handler.info.path, location.origin).matches
+    expect(
+      registry
+        .filter((op) => !handlers.some((handler) => serves(handler, op)))
+        .map((op) => op.id)
+    ).toEqual([])
     const unused = handlers.filter(
-      (handler) =>
-        !registry.some(
-          (op) =>
-            typeof handler.info.path !== 'function' &&
-            matchRequestUrl(sampleUrl(op), handler.info.path, location.origin)
-              .matches
-        )
+      (handler) => !registry.some((op) => serves(handler, op))
     )
-    expect(unused.map((handler) => String(handler.info.path))).toEqual([])
+    expect(
+      unused.map(
+        (handler) =>
+          `${String(handler.info.method)} ${String(handler.info.path)}`
+      )
+    ).toEqual([])
   })
 })
 
