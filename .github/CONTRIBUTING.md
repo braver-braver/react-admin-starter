@@ -16,7 +16,7 @@
 
 ## 工作流程
 
-1. **先有 Issue。** 新功能、行为变化和契约变更都必须先有 Issue 并达成一致；没有 Issue 的功能 PR 不会被接受。缺陷修复也请先开 Issue 写明复现步骤。
+1. **先讨论，再开 Issue。** 使用问题和还不成形的想法请发在 [Discussions](https://github.com/braver-braver/react-admin-starter/discussions)。新功能、行为变化和契约变更都必须先有 Issue 并达成一致；没有 Issue 的功能 PR 不会被接受。缺陷修复也请先开 Issue 写明复现步骤。
 2. **开工前在 Issue 里写实施计划**：改哪些文件、如何验证。
 3. **一个 PR 对应一个任务**，不夹带无关清理。从最新的 `main` 拉分支，例如 `feat/<任务>`、`fix/<问题>`。
 4. **提交信息用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)**，例如 `feat(contract): add operation registry`。破坏性变更在类型后加 `!`，并在提交正文写 `BREAKING CHANGE:`。
@@ -67,4 +67,4 @@
 
 ## 社区准则
 
-请遵守[行为准则](./CODE_OF_CONDUCT.md)，就事论事、互相尊重。
+请遵守[行为准则](./CODE_OF_CONDUCT.md)，就事论事、互相尊重。有疑问欢迎在 [Discussions](https://github.com/braver-braver/react-admin-starter/discussions) 提出。
