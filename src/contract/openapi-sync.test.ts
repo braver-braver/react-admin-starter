@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { API_PREFIX } from './common.ts'
 
 /**
  * Stopgap guard for the hand-written docs/api.openapi.yaml. Every write
@@ -12,6 +13,13 @@ const sources = import.meta.glob('/docs/api.openapi.yaml', {
   eager: true,
 }) as Record<string, string>
 const yaml = Object.values(sources)[0] ?? ''
+const packageJson = Object.values(
+  import.meta.glob('/package.json', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>
+)[0]
 
 function schemaBlock(name: string): string {
   const match = yaml.match(
@@ -80,5 +88,13 @@ describe('docs/api.openapi.yaml system schemas', () => {
         /parameters\/RequestedWith/
       )
     }
+  })
+
+  it('uses the package version as info.version and API_PREFIX as the server URL', () => {
+    const { version } = JSON.parse(packageJson) as { version: string }
+    const info = yaml.match(/^info:\n((?: {2}.*\n)+)/m)?.[1] ?? ''
+    expect(info.split('\n')).toContain(`  version: ${version}`)
+    const servers = yaml.match(/^servers:\n((?: {2}.*\n)+)/m)?.[1] ?? ''
+    expect(servers.split('\n')).toContain(`  - url: ${API_PREFIX}`)
   })
 })
