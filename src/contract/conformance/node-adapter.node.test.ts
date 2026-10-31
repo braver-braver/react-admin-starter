@@ -97,7 +97,11 @@ function startServer(
 }
 
 const loginScenario = scenarios.filter((s) => s.name.startsWith('login:'))
-const tier1 = scenarios.filter((s) => s.tier === 1)
+// The minimal stand-in implements login and session only; the generic
+// scenarios need the full stand-in server of M2-T6.
+const handWrittenTier1 = scenarios.filter(
+  (s) => s.tier === 1 && !s.name.startsWith('generic: ')
+)
 
 describe('Node adapter against a stand-in back end', () => {
   let correct: { server: Server; url: string }
@@ -124,9 +128,9 @@ describe('Node adapter against a stand-in back end', () => {
     )
   })
 
-  it('passes every Tier 1 scenario so far, each starting signed out', async () => {
+  it('passes the hand-written Tier 1 scenarios, each starting signed out', async () => {
     const results = await runScenarios(
-      tier1,
+      handWrittenTier1,
       () => createNodeClient(correct.url),
       fixtures
     )

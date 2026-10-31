@@ -1,5 +1,7 @@
+import { type Operation, operations } from '../operations.ts'
 import { assert, expectError, expectSuccess } from './assert.ts'
 import { type ContractClient } from './client.ts'
+import { genericScenarios } from './generic.ts'
 
 /**
  * Conformance scenarios: written once, run against the mock (browser adapter)
@@ -101,3 +103,9 @@ defineScenario({
     expectError(await client.call('getSession'), 401, 'UNAUTHENTICATED')
   },
 })
+
+// ------------------------------------------------------- derived (Tier 1)
+
+for (const scenario of genericScenarios(operations as readonly Operation[])) {
+  defineScenario(scenario)
+}
