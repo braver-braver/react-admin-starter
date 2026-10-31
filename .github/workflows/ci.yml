@@ -33,6 +33,8 @@ jobs:
         run: pnpm test:browser:install
       - name: Test
         run: pnpm test
+      - name: Conformance suite on the Node adapter
+        run: pnpm test:conformance
       - name: Build
         run: pnpm build
       # After the build: knip needs the generated src/routeTree.gen.ts.

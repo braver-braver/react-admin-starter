@@ -12,6 +12,7 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "types": ["node"],
 
     /* Linting */
     "strict": true,
@@ -24,6 +25,7 @@
     "vite.config.ts",
     "playwright.config.ts",
     "playwright.demo.config.ts",
-    "e2e/**/*.ts"
+    "e2e/**/*.ts",
+    "src/**/*.node.test.ts"
   ]
 }
