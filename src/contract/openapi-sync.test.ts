@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 /**
- * Stopgap guard for the hand-written docs/api.openapi.yaml: system-management
+ * Stopgap guard for the hand-written docs/api.openapi.yaml. Every write
+ * operation must declare the X-Requested-With header; system-management
  * responses must stay open to new fields and request bodies strict, like the
  * Zod contract. Delete together with the YAML once M1-T5 generates the document.
  */
@@ -53,5 +54,31 @@ describe('docs/api.openapi.yaml system schemas', () => {
 
   it.each(requests)('%s (request body) rejects unknown fields', (name) => {
     expect(schemaBlock(name)).toMatch(strict)
+  })
+
+  it('declares the X-Requested-With header on every write operation', () => {
+    const lines = yaml.split('\n')
+    const end = lines.findIndex((line) => line.startsWith('components:'))
+    const starts: { at: number; label: string }[] = []
+    let path = ''
+    lines.slice(0, end).forEach((line, at) => {
+      const route = line.match(/^ {2}(\/\S*):\s*$/)
+      if (route) path = route[1]
+      const method = line.match(/^ {4}(get|post|put|patch|delete):\s*$/)
+      if (method && method[1] !== 'get')
+        starts.push({ at, label: `${method[1].toUpperCase()} ${path}` })
+    })
+    const operationStarts = lines
+      .slice(0, end)
+      .flatMap((line, at) =>
+        /^ {4}(get|post|put|patch|delete):\s*$/.test(line) ? [at] : []
+      )
+    expect(starts.length).toBeGreaterThanOrEqual(13)
+    for (const { at, label } of starts) {
+      const next = operationStarts.find((other) => other > at) ?? end
+      expect(lines.slice(at, next).join('\n'), label).toMatch(
+        /parameters\/RequestedWith/
+      )
+    }
   })
 })

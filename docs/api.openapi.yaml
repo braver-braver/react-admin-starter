@@ -533,6 +533,7 @@ paths:
       operationId: "createSystemRecord"
       description: "Requires system:{resource}:write and matching scope. Body schema follows resource; account creation requires password."
       parameters:
+        - $ref: "#/components/parameters/RequestedWith"
         - $ref: "#/components/parameters/CsrfToken"
       requestBody:
         required: true
@@ -576,6 +577,7 @@ paths:
       operationId: "updateSystemRecord"
       description: "Requires write capability, scope and CSRF. Omitted password preserves credentials; password reset/enable-state change revokes previous sessions. Protected identifiers cannot change."
       parameters:
+        - $ref: "#/components/parameters/RequestedWith"
         - $ref: "#/components/parameters/CsrfToken"
       requestBody:
         required: true
@@ -606,6 +608,7 @@ paths:
       operationId: "deleteSystemRecord"
       description: "Requires write capability, scope and CSRF. Referenced records and protected recovery entries cannot be deleted."
       parameters:
+        - $ref: "#/components/parameters/RequestedWith"
         - $ref: "#/components/parameters/CsrfToken"
       responses:
         200:
