@@ -26,6 +26,7 @@
     "playwright.config.ts",
     "playwright.demo.config.ts",
     "e2e/**/*.ts",
-    "src/**/*.node.test.ts"
+    "src/**/*.node.test.ts",
+    "src/**/*.node.ts"
   ]
 }

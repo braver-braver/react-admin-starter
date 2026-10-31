@@ -1,12 +1,44 @@
 # 一致性套件：后端夹具清单
 
-契约一致性套件（`src/contract/conformance/`）用同一组场景检查 Mock 和真实后端。本文列出后端在运行套件之前必须准备好的数据。完整的接入步骤见后续的后端接入指南（M2-T8），它会引用本文。
+契约一致性套件（`src/contract/conformance/`）用同一组场景检查 Mock 和真实后端。本文列出后端在运行套件之前必须准备好的数据，以及如何用 `pnpm test:contract` 对真实后端运行。完整的接入步骤见后续的后端接入指南（M2-T8），它会引用本文。
 
 ## 运行前提
 
 - **使用可丢弃的数据库。** 场景会创建、修改并删除数据。Tier 2 还会尝试停用内置管理员、删除内置角色，这些操作本应被拒绝；如果后端错误地接受了，这个库就需要重建。
 - **完整实现系统管理 API。** Tier 2 不要求预置范围受限的账号，而是用 admin 通过 `createSystemDepartment`、`createSystemRole`、`createSystemAccount` 现场创建部门、角色和带初始密码的账号，然后登录这些账号检查规则。所以这些接口和账号登录必须先能工作。
 - **场景按顺序执行，彼此独立。** 每个场景开始前都会丢弃会话（`forget()`），结束时以 admin 身份删除自己创建的数据并检查删除结果，所以套件可以在同一个库上重复运行。名称、编码和邮箱都带随机前缀（形如 `ct…`，邮箱域名 `example.test`），不会和已有数据冲突。
+
+## 对真实后端运行：`pnpm test:contract`
+
+`scripts/run-contract-tests.mjs` 基于 `node:test` 和全局 `fetch`，需要 Node 22.18 或更高版本。每个场景对应一个测试，按 Tier 1、Tier 2、派生的访问检查的顺序执行。后端项目可以在自己的 CI 里检出本仓库后运行它；本仓库的 CI 不运行它（因为需要真实后端），只用替身服务器检查它本身（`pnpm test:conformance`）。
+
+```bash
+CONTRACT_BASE_URL=http://localhost:8000 \
+CONTRACT_ADMIN_EMAIL=admin@example.com CONTRACT_ADMIN_PASSWORD=… \
+CONTRACT_VIEWER_EMAIL=viewer@example.com CONTRACT_VIEWER_PASSWORD=… \
+CONTRACT_GUEST_EMAIL=guest@example.com CONTRACT_GUEST_PASSWORD=… \
+CONTRACT_TIER2=1 \
+pnpm test:contract -- --json contract-report.json
+```
+
+| 配置 | 说明 |
+| --- | --- |
+| `CONTRACT_BASE_URL` 或 `--base-url` | 后端的源地址，**不带** `/api/v1`（客户端会自动加上；带了会报错退出） |
+| `CONTRACT_ADMIN_EMAIL` / `_PASSWORD` | 夹具 `admin`，要求见下文 |
+| `CONTRACT_VIEWER_EMAIL` / `_PASSWORD` | 夹具 `viewer` |
+| `CONTRACT_GUEST_EMAIL` / `_PASSWORD` | 夹具 `guest` |
+| `CONTRACT_TIER2=1` | 确认数据库可以丢弃，并启用 Tier 2。不设置时 Tier 2 被跳过，终端会打印“跳过 Tier 2” |
+| `--tier 1` | 只选 Tier 1 和派生检查；此时 Tier 2 算作“未选择”，不算跳过 |
+| `--grep <正则>` | 只跑名称匹配的场景，便于定位单个失败 |
+| `--json <文件>` | 另外写一份 JSON 报告：按组汇总的通过/失败/跳过数，以及每个场景的状态、耗时和失败原因 |
+| `--timeout <毫秒>` | 单个场景的超时，默认 60000。超时的场景记为失败，其进行中的请求会被取消，下一个场景要等它停下来才开始，所以场景之间不会交叠 |
+
+结束时终端会打印按组的汇总和每个失败场景的原因。退出码如下：
+
+- `0`：选中的场景全部执行并通过；
+- `1`：至少一个场景失败；
+- `2`：配置有误，什么都没执行；
+- `3`：没有失败，但 Tier 2 被跳过。**跳过不算通过**，CI 里请把非 0 当作失败，或者明确用 `--tier 1`。
 
 ## 必须预置的三个账号
 
@@ -56,6 +88,6 @@
 
 “退出后旧 Cookie 失效”（Tier 1）和“停用再启用后旧会话仍失效”（Tier 2）需要把之前保存的会话 Cookie 放回去再请求。
 
-- **Node 适配器**（`createNodeClient`）自己管理 Cookie，总是执行回放检查。对接真实后端时请用它。
+- **Node 适配器**（`createNodeClient`，`pnpm test:contract` 使用的就是它）自己管理 Cookie，总是执行回放检查。
 - **浏览器适配器**（`createBrowserClient`）面对真实后端时读不到 HttpOnly Cookie，不传 `sessionCookies`，场景会跳过回放，只检查其余部分。
 - **Mock 测试**（`src/mocks/conformance.test.ts`）的会话 Cookie 不是 HttpOnly，测试通过 `sessionCookies` 钩子做回放，所以 Mock 上这两条也完整检查。

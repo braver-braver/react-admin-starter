@@ -64,17 +64,23 @@ export class CookieJar {
   }
 }
 
-/** Client for a real back end over HTTP (Node 22 `fetch`), with its own jar. */
+/**
+ * Client for a real back end over HTTP (Node 22 `fetch`), with its own jar.
+ * Once `signal` aborts (the runner aborts a scenario that timed out), every
+ * request in flight is cancelled and every later call rejects.
+ */
 export function createNodeClient(
   baseUrl: string,
-  jar = new CookieJar()
+  jar = new CookieJar(),
+  { signal }: { signal?: AbortSignal } = {}
 ): ContractClient & { jar: CookieJar } {
   const client = createContractClient(baseUrl, {
     async send(url, init) {
+      signal?.throwIfAborted()
       const headers = new Headers(init.headers)
       const cookie = jar.header()
       if (cookie) headers.set('Cookie', cookie)
-      const response = await fetch(url, { ...init, headers })
+      const response = await fetch(url, { ...init, headers, signal })
       jar.store(response)
       return response
     },
