@@ -35,7 +35,9 @@ Options:
                             then not selected rather than skipped. Default: all.
   --grep <regexp>           Only scenarios whose name matches.
   --json <file>             Also write the results as JSON.
-  --timeout <ms>            Per scenario. Default: 60000.
+  --timeout <ms>            Per scenario. Default: 60000. A scenario that
+                            times out fails, its requests are cancelled, and
+                            the next one starts only once it has stopped.
   -h, --help                Show this help.
 
 Exit codes:
@@ -164,6 +166,29 @@ const groups = [
 if (options.tier === '1') groups.splice(1, 1)
 
 const selected = (scenario) => !grep || grep.test(scenario.name)
+/**
+ * The work of the previous scenario. node:test starts the next test as soon
+ * as one times out, so each scenario first waits (up to `timeout`) for the
+ * aborted work before it to stop: scenarios never overlap on the database.
+ */
+let previous = Promise.resolve()
+async function settle(work) {
+  let timer
+  const settled = await Promise.race([
+    work.then(
+      () => true,
+      () => true
+    ),
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(false), timeout)
+    }),
+  ])
+  clearTimeout(timer)
+  if (!settled)
+    throw new Error(
+      `the previous scenario was still running ${timeout} ms after its timeout`
+    )
+}
 const startedAt = new Date()
 /** One entry per selected scenario, in run order. */
 const results = []
@@ -194,15 +219,27 @@ for (const group of groups) {
         it(scenario.name, { skip: tier2.status }, () => {})
         continue
       }
-      it(scenario.name, { timeout }, async () => {
+      it(scenario.name, { timeout }, async (t) => {
+        await settle(previous)
         const began = performance.now()
-        try {
-          const client = createNodeClient(baseUrl)
+        const work = (async () => {
+          // The test's signal aborts on timeout: requests in flight are
+          // cancelled and later calls reject, so the scenario stops.
+          const client = createNodeClient(baseUrl, undefined, {
+            signal: t.signal,
+          })
           await client.forget()
           await scenario.run(client, fixtures)
+        })()
+        previous = work
+        try {
+          await work
+          if (t.signal.aborted) return
           Object.assign(result, { status: 'passed', error: undefined })
         } catch (error) {
-          result.error = error instanceof Error ? error.message : String(error)
+          if (!t.signal.aborted)
+            result.error =
+              error instanceof Error ? error.message : String(error)
           throw error
         } finally {
           result.durationMs = Math.round(performance.now() - began)

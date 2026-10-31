@@ -4,7 +4,6 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
@@ -57,17 +56,21 @@ function runner(args: string[], extra: Record<string, string> = {}) {
 }
 
 describe('pnpm test:contract (scripts/run-contract-tests.mjs)', () => {
-  let correct: { server: Server; url: string }
-  let broken: { server: Server; url: string }
+  type StandIn = Awaited<ReturnType<typeof startStandIn>>
+  let correct: StandIn
+  let broken: StandIn
+  let slow: StandIn
   let dir: string
   before(async () => {
     correct = await startStandIn('correct')
     broken = await startStandIn('session-ignores-cookie')
+    slow = await startStandIn('slow-session')
     dir = mkdtempSync(join(tmpdir(), 'contract-runner-'))
   })
   after(() => {
     correct.server.close()
     broken.server.close()
+    slow.server.close()
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -177,5 +180,42 @@ describe('pnpm test:contract (scripts/run-contract-tests.mjs)', () => {
           r.status === 'failed' && /getSession/.test(r.error ?? '')
       )
     )
+  })
+
+  it('aborts a timed-out scenario before the next one starts, and keeps it failed', async () => {
+    const report = join(dir, 'timeout.json')
+    // getSession takes 1 s on this stand-in; only the first scenario signs in
+    // and so waits for it.
+    const { code, stdout } = await runner(
+      [
+        '--tier',
+        '1',
+        '--grep',
+        '^(login|getSession): ',
+        '--timeout',
+        '300',
+        '--json',
+        report,
+      ],
+      fixtureEnv(slow.url)
+    )
+    assert.equal(code, 1, stdout)
+    const json = JSON.parse(readFileSync(report, 'utf8'))
+    assert.deepEqual(
+      json.results.map((r: { name: string; status: string }) => [
+        r.name.split(':')[0],
+        r.status,
+      ]),
+      [
+        ['login', 'failed'],
+        ['getSession', 'passed'],
+        ['login', 'passed'],
+      ]
+    )
+    assert.match(json.results[0].error, /did not finish within 300 ms/)
+    // The client cancelled the slow request, and nothing else reached the
+    // server while it was pending.
+    assert.equal(slow.stats.abandoned, 1)
+    assert.equal(slow.stats.overlapped, 0)
   })
 })
