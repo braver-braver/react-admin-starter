@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
   apiRequest,
+  callOperation,
   invalidateApiRequests,
   setAuthErrorHandler,
 } from './api'
@@ -140,3 +141,110 @@ describe('apiRequest', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 })
+
+const user = {
+  id: 'u1',
+  firstName: 'An',
+  lastName: 'Li',
+  username: 'li_an',
+  email: 'li.an@example.com',
+  phoneNumber: '+8613800000002',
+  status: 'active',
+  role: 'manager',
+  createdAt: '2026-10-30T10:00:00.000Z',
+  updatedAt: '2026-10-30T10:00:00.000Z',
+}
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify({ data }), { status })
+
+describe('callOperation', () => {
+  beforeEach(() => {
+    invalidateApiRequests()
+    setAuthErrorHandler(() => {})
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('builds the URL from the registry: query arrays as repeated keys', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      json({
+        items: [user],
+        meta: { page: 1, pageSize: 10, total: 1, totalPageCount: 1 },
+      })
+    )
+    const result = await callOperation('listUsers', {
+      query: {
+        page: 1,
+        pageSize: 10,
+        status: ['active', 'invited'],
+        username: '',
+      },
+    })
+    expect(result.items[0].createdAt).toBeInstanceOf(Date)
+    const [path, init] = fetchMock.mock.calls[0]
+    expect(path).toBe(
+      '/api/v1/users?page=1&pageSize=10&status=active&status=invited'
+    )
+    expect(init?.method).toBe('GET')
+  })
+
+  it('fills the path parameter, uses the registry method and sends JSON', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(json(user))
+    const body = {
+      firstName: 'An',
+      lastName: 'Li',
+      username: 'li_an',
+      email: 'li.an@example.com',
+      phoneNumber: '+8613800000002',
+      role: 'manager',
+    } as const
+    await callOperation('updateUser', { params: { id: 'u 1' }, body })
+    const [path, init] = fetchMock.mock.calls[0]
+    expect(path).toBe('/api/v1/users/u%201')
+    expect(init?.method).toBe('PUT')
+    expect(JSON.parse(String(init?.body))).toEqual(body)
+    expect(new Headers(init?.headers).get('Content-Type')).toBe(
+      'application/json'
+    )
+  })
+
+  it('sends multipart operations as FormData without a JSON content type', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      json(
+        {
+          id: 'f1',
+          name: 'a.png',
+          url: 'blob:x',
+          contentType: 'image/png',
+          size: 1,
+        },
+        201
+      )
+    )
+    const form = new FormData()
+    form.append('file', new File(['x'], 'a.png', { type: 'image/png' }))
+    await callOperation('uploadFile', { body: form })
+    const [path, init] = fetchMock.mock.calls[0]
+    expect(path).toBe('/api/v1/uploads')
+    expect(init?.body).toBe(form)
+    expect(new Headers(init?.headers).get('Content-Type')).toBeNull()
+  })
+
+  it('rejects a response that breaks the operation success schema', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ id: 'u1' }))
+    await expect(callOperation('getSession')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
+  })
+})
+
+// Compile-time checks: never called, only type-checked by `tsc -b`.
+export function _typeChecks() {
+  // @ts-expect-error updateUser needs params.id
+  void callOperation('updateUser', { body: {} as never })
+  // @ts-expect-error getSession takes no body
+  void callOperation('getSession', { body: {} })
+  // @ts-expect-error unknown operation id
+  void callOperation('notAnOperation')
+}

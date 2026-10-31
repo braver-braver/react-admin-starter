@@ -1,83 +1,36 @@
-import { successSchema } from '@/contract/common'
 import {
-  deletedCountSchema,
-  invitedCountSchema,
-  updatedCountSchema,
-  userListResponseSchema,
-  userSchema,
   type UserBulkStatus,
   type UserInvitePayload,
   type UsersListParams,
   type UserWritePayload,
 } from '@/contract/users'
-import { apiRequest } from '@/lib/api'
+import { callOperation } from '@/lib/api'
 
 /**
- * 用户管理 API：全部经共享 apiRequest，响应由 zod 校验。
+ * 用户管理 API：路径、方法、请求体编码与响应校验都来自契约注册表。
  * 分页、筛选、排序与授权都由服务端执行（users:read / users:write）。
- * 请求与查询参数的类型来自 src/contract，不在这里手写。
  */
 
-function toSearchParams(params: UsersListParams): URLSearchParams {
-  const search = new URLSearchParams()
-  search.set('page', String(params.page))
-  search.set('pageSize', String(params.pageSize))
-  if (params.username) search.set('username', params.username)
-  for (const status of params.status ?? []) search.append('status', status)
-  for (const role of params.role ?? []) search.append('role', role)
-  if (params.sortBy) search.set('sortBy', params.sortBy)
-  if (params.sortOrder) search.set('sortOrder', params.sortOrder)
-  return search
-}
+export const fetchUsers = (query: UsersListParams) =>
+  callOperation('listUsers', { query })
 
-export function fetchUsers(params: UsersListParams) {
-  return apiRequest(`/users?${toSearchParams(params)}`, userListResponseSchema)
-}
+export const createUser = (body: UserWritePayload) =>
+  callOperation('createUser', { body })
 
-export function createUser(payload: UserWritePayload) {
-  return apiRequest('/users', userSchema, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
+export const updateUser = (id: string, body: UserWritePayload) =>
+  callOperation('updateUser', { params: { id }, body })
 
-export function updateUser(id: string, payload: UserWritePayload) {
-  return apiRequest(`/users/${id}`, userSchema, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
+export const deleteUser = (id: string) =>
+  callOperation('deleteUser', { params: { id } })
 
-export function deleteUser(id: string) {
-  return apiRequest(`/users/${id}`, successSchema, {
-    method: 'DELETE',
-  })
-}
+export const batchDeleteUsers = (ids: string[]) =>
+  callOperation('batchDeleteUsers', { body: { ids } })
 
-export function batchDeleteUsers(ids: string[]) {
-  return apiRequest('/users/batch-delete', deletedCountSchema, {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
-  })
-}
+export const updateUsersStatus = (ids: string[], status: UserBulkStatus) =>
+  callOperation('updateUsersStatus', { body: { ids, status } })
 
-export function updateUsersStatus(ids: string[], status: UserBulkStatus) {
-  return apiRequest('/users/status', updatedCountSchema, {
-    method: 'PATCH',
-    body: JSON.stringify({ ids, status }),
-  })
-}
+export const inviteUser = (body: UserInvitePayload) =>
+  callOperation('inviteUser', { body })
 
-export function inviteUser(payload: UserInvitePayload) {
-  return apiRequest('/users/invite', userSchema, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export function batchInviteUsers(ids: string[]) {
-  return apiRequest('/users/invite-batch', invitedCountSchema, {
-    method: 'POST',
-    body: JSON.stringify({ ids }),
-  })
-}
+export const batchInviteUsers = (ids: string[]) =>
+  callOperation('inviteUsersBatch', { body: { ids } })
