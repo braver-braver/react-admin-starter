@@ -14,7 +14,7 @@ React application → feature API functions → shared HTTP client → one of:
 - **GitHub Pages demo:** a separate, version-scoped `build:demo` with hash routing, visible build provenance and browser-only mock data; this is not a secure multi-user service.
 - **Production:** `pnpm build` creates `dist/` without MSW, demo credentials or mock handlers. A real same-origin REST backend must implement the documented API contract, enforce authentication/authorization, own sessions and persist data.
 
-The frontend assumes an API response envelope of `{ "data": ... }` on success or `{ "error": { "code": "...", "message": "..." } }` with the appropriate HTTP status on failure. Authentication is based on cookie sessions and CSRF-protected writes; the implementation details remain backend-agnostic. See [API and authentication](auth-and-api.md) and [OpenAPI](api.openapi.yaml).
+The frontend assumes an API response envelope of `{ "data": ... }` on success or `{ "error": { "code": "...", "message": "..." } }` with the appropriate HTTP status on failure. Authentication is based on cookie sessions and CSRF-protected writes; the implementation details remain backend-agnostic. See [API and authentication](auth-and-api.md) and [OpenAPI](api.openapi.json) (generated from `src/contract`).
 
 ## Modules
 

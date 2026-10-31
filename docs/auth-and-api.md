@@ -35,7 +35,7 @@ pnpm dev
 
 ## 契约
 
-可供后端对接的定义见 [OpenAPI](api.openapi.yaml)。运行时使用 `src/features/auth/schema.ts` 的 Zod 契约验证成功响应；业务 API 函数放在各 feature 下，公共传输层在 `src/lib/api.ts`。不依赖 GoFrame 或特定业务响应码。
+可供后端对接的定义见 [OpenAPI](api.openapi.json)。它由 `src/contract/` 的 Zod 契约生成（`pnpm contract:generate`），不要手改；CI 用 `pnpm contract:check` 检查文件与契约一致。运行时用同一份 Zod 契约验证成功响应；业务 API 函数放在各 feature 下，公共传输层在 `src/lib/api.ts`。不依赖 GoFrame 或特定业务响应码。
 
 时间戳（`createdAt`、`updatedAt`）一律是 ISO 8601 date-time 字符串，如 `2026-10-30T10:00:00Z`，允许小数秒与 `±hh:mm` 偏移；数字、布尔值、`null` 或无时区字符串都会被前端拒绝。响应对象允许出现契约之外的新增字段（前端忽略）；系统管理的请求体不允许未知字段。
 
