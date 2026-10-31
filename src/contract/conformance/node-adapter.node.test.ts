@@ -12,8 +12,8 @@ import {
 const loginScenario = scenarios.filter((s) =>
   s.name.startsWith('login: valid credentials')
 )
-// The minimal stand-in implements login, session and logout only; the other
-// scenarios need the full stand-in server of M2-T6.
+// The stand-in passes all of Tier 1 (stand-in.node.test.ts); these tests only
+// need the auth scenarios to exercise the adapter's cookies and CSRF token.
 const authScenarios = scenarios.filter((s) =>
   /^(login|getSession|logout): /.test(s.name)
 )

@@ -1,6 +1,6 @@
 // Runs under `node --test` (Node ≥ 22.18), not Vitest: `pnpm test:conformance`.
 // Spawns scripts/run-contract-tests.mjs (`pnpm test:contract`) as a back-end
-// project would, against the minimal stand-in.
+// project would, against the stand-in back end (stand-in.node.ts).
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
@@ -8,12 +8,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { scenarios } from './scenarios.ts'
 import { standInFixtures, startStandIn } from './stand-in.node.ts'
 
 const script = fileURLToPath(
   new URL('../../../scripts/run-contract-tests.mjs', import.meta.url)
 )
-/** The auth scenarios: all the minimal stand-in can serve. */
+/** The auth scenarios: a quick subset for tests about reporting. */
 const AUTH = '^(login|getSession|logout): '
 const PROTECTED = '^AGENTS\\.md: keep bootstrap'
 
@@ -116,22 +117,27 @@ describe('pnpm test:contract (scripts/run-contract-tests.mjs)', () => {
     assert.match(none.stderr, /no scenario matched/)
   })
 
-  it('exits 0 when every selected scenario passes, and writes the JSON report', async () => {
+  it('passes all of Tier 1 against the stand-in: exit 0 and a JSON report', async () => {
     const report = join(dir, 'pass.json')
     const { code, stdout } = await runner(
-      ['--', '--tier', '1', '--grep', AUTH, '--json', report],
+      ['--', '--tier', '1', '--json', report],
       fixtureEnv(correct.url)
     )
     assert.equal(code, 0, stdout)
     assert.match(stdout, /Tier 2 not selected/)
-    assert.match(stdout, /Tier 1\s+4 passed, 0 failed, 0 skipped/)
     const json = JSON.parse(readFileSync(report, 'utf8'))
     assert.equal(json.tier2, 'not selected (--tier 1)')
-    assert.deepEqual(json.summary.total, { passed: 4, failed: 0, skipped: 0 })
-    assert.equal(json.results.length, 4)
+    const tier1 = scenarios.filter((s) => s.tier === 1)
+    assert.deepEqual(json.summary.total, {
+      passed: tier1.length,
+      failed: 0,
+      skipped: 0,
+    })
+    assert.equal(json.summary.tier1.passed, 9)
+    assert.equal(json.summary.derived.passed, tier1.length - 9)
+    assert.match(stdout, /Tier 1\s+9 passed, 0 failed, 0 skipped/)
     for (const result of json.results) {
       assert.equal(result.status, 'passed')
-      assert.equal(result.group, 'tier1')
       assert.equal(typeof result.durationMs, 'number')
     }
   })
@@ -151,7 +157,7 @@ describe('pnpm test:contract (scripts/run-contract-tests.mjs)', () => {
   })
 
   it('runs Tier 2 once CONTRACT_TIER2=1 confirms a disposable database', async () => {
-    // The minimal stand-in has no system API, so the Tier 2 scenario fails.
+    // The stand-in has no system API, so the Tier 2 scenario fails.
     const { code, stdout } = await runner(['--grep', PROTECTED], {
       ...fixtureEnv(correct.url),
       CONTRACT_TIER2: '1',

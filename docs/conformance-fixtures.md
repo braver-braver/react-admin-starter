@@ -12,6 +12,8 @@
 
 `scripts/run-contract-tests.mjs` 基于 `node:test` 和全局 `fetch`，需要 Node 22.18 或更高版本。每个场景对应一个测试，按 Tier 1、Tier 2、派生的访问检查的顺序执行。后端项目可以在自己的 CI 里检出本仓库后运行它；本仓库的 CI 不运行它（因为需要真实后端），只用替身服务器检查它本身（`pnpm test:conformance`）。
 
+**自检用的替身服务器**：`src/contract/conformance/stand-in.node.ts` 只是测试替身，用来证明套件和运行器确实会报错。它**不是**参考后端实现，不进任何构建产物，也不应照着它写后端。它实现了 Tier 1 用到的接口，以及所有接口的通用访问检查，能跑通全部 Tier 1。另外有 5 个故意出错的变体：未登录也返回 200、缺 CSRF 也放行、返回未声明的错误码、成功响应缺少 `data` 信封、退出后会话仍然有效。自检（`pnpm test:conformance`，在 CI 中运行）断言每个变体都会让对应的场景失败。
+
 ```bash
 CONTRACT_BASE_URL=http://localhost:8000 \
 CONTRACT_ADMIN_EMAIL=admin@example.com CONTRACT_ADMIN_PASSWORD=… \

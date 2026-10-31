@@ -21,6 +21,11 @@ const conformanceSources = import.meta.glob(
   ],
   { query: '?raw', import: 'default', eager: true }
 ) as Record<string, string>
+// Every source the browser test run can see, Node-only files aside.
+const allSources = import.meta.glob(
+  ['../**/*.{ts,tsx}', '!../**/*.node.ts', '!../**/*.node.test.ts'],
+  { query: '?raw', import: 'default', eager: true }
+) as Record<string, string>
 const mockSources = import.meta.glob('../mocks/**/*.ts', {
   query: '?raw',
   import: 'default',
@@ -196,6 +201,13 @@ describe('contract directory', () => {
       expect(source, file).not.toMatch(
         /import\.meta|\b(window|document|localStorage|sessionStorage|process)\./
       )
+    }
+  })
+
+  it('keeps Node-only helpers (the stand-in back end) out of everything but node tests', () => {
+    expect(Object.keys(allSources).length).toBeGreaterThan(50)
+    for (const [file, source] of Object.entries(allSources)) {
+      expect(source, file).not.toMatch(/from\s+'[^']*\.node(\.ts)?'/)
     }
   })
 
