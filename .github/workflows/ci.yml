@@ -25,6 +25,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Check unused files, exports and dependencies
+        run: pnpm knip
       - name: Check formatting
         run: pnpm format:check
       - name: Install Playwright browser

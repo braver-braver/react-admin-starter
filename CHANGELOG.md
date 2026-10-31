@@ -26,6 +26,7 @@ This file distinguishes **React Admin Starter** development from the release his
 
 - Enforced operation-specific scope checks, delegated permission and route ceilings, protected recovery records and session revocation in the mock reference API.
 - Added desktop/mobile UI checks, privilege-escalation regression coverage, production mock isolation and published Pages browser smoke tests.
+- Made `pnpm knip` pass and run in CI: knip now sees the route files, the Playwright config and E2E specs and the demo server script; removed three unused components and the unused `recharts` and `date-fns` dependencies; dependencies used only by the kept shadcn primitives are listed with the reason. `pnpm lint` is warning-free ([#45](https://github.com/braver-braver/react-admin-starter/issues/45), M3-T2).
 
 ### Migration notes
 
