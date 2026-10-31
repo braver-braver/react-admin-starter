@@ -1,11 +1,16 @@
-import { assert, expectError, expectSuccess } from './assert.ts'
+import {
+  assert,
+  ContractAssertionError,
+  expectError,
+  expectSuccess,
+} from './assert.ts'
 import { type ContractClient } from './client.ts'
 import type { Credentials, Scenario } from './scenarios.ts'
 
 /**
  * Tier 1 business scenarios: what every back end must pass. Data they create
- * carries a random prefix and is removed in `finally`, so the suite can run
- * repeatedly against a real back end.
+ * carries a random prefix and is deleted afterwards (and the deletion is
+ * checked), so the suite can run repeatedly against a real back end.
  */
 
 const unique = () =>
@@ -19,6 +24,9 @@ const userBody = (prefix: string, suffix: string) => ({
   phoneNumber: '+8613800000000',
   role: 'cashier' as const,
 })
+
+const reason = (error: unknown) =>
+  error instanceof Error ? error.message : String(error)
 
 async function signIn(client: ContractClient, account: Credentials) {
   return expectSuccess(await client.call('login', { body: account }), 'login')
@@ -35,8 +43,86 @@ async function createUser(
   )
 }
 
-async function removeUsers(client: ContractClient, ids: string[]) {
-  if (ids.length) await client.call('batchDeleteUsers', { body: { ids } })
+/**
+ * Runs `body` with a list for the ids of the users it creates, then deletes
+ * them and checks that the deletion worked. A failing cleanup is reported,
+ * but never hides an earlier failure of the scenario itself.
+ */
+export async function withUsers(
+  client: ContractClient,
+  body: (ids: string[]) => Promise<void>
+) {
+  const ids: string[] = []
+  let failure: unknown
+  try {
+    await body(ids)
+  } catch (error) {
+    failure = error
+  }
+  if (ids.length) {
+    try {
+      const removed = expectSuccess(
+        await client.call('batchDeleteUsers', { body: { ids } }),
+        'batchDeleteUsers'
+      )
+      assert(
+        removed.deletedCount === ids.length,
+        `cleanup: batchDeleteUsers deleted ${removed.deletedCount} of ${ids.length} users`
+      )
+    } catch (cleanup) {
+      if (!failure) throw cleanup
+      throw new ContractAssertionError(
+        `${reason(failure)} (cleanup also failed: ${reason(cleanup)})`
+      )
+    }
+  }
+  if (failure) throw failure
+}
+
+/** A complete, decodable 1×1 PNG. */
+const PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff
+  for (const byte of bytes) crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+export function pixelPng(): Uint8Array {
+  return Uint8Array.from(atob(PIXEL_PNG), (char) => char.charCodeAt(0))
+}
+
+/**
+ * The same valid PNG grown past `size` bytes by a tEXt chunk (correct length
+ * and CRC) placed after IHDR, so only the size rule can reject it.
+ */
+export function pngLargerThan(size: number): Uint8Array {
+  const base = pixelPng()
+  const keyword = [...'Comment'].map((char) => char.charCodeAt(0))
+  const data = new Uint8Array(keyword.length + 1 + size)
+  data.set(keyword)
+  data.fill(0x61, keyword.length + 1)
+  const typeAndData = new Uint8Array(4 + data.length)
+  typeAndData.set([0x74, 0x45, 0x58, 0x74]) // "tEXt"
+  typeAndData.set(data, 4)
+  const chunk = new Uint8Array(4 + typeAndData.length + 4)
+  const view = new DataView(chunk.buffer)
+  view.setUint32(0, data.length)
+  chunk.set(typeAndData, 4)
+  view.setUint32(4 + typeAndData.length, crc32(typeAndData))
+  const afterIhdr = 8 + 25 // signature + IHDR (length, type, 13 bytes, CRC)
+  const out = new Uint8Array(base.length + chunk.length)
+  out.set(base.subarray(0, afterIhdr))
+  out.set(chunk, afterIhdr)
+  out.set(base.subarray(afterIhdr), afterIhdr + chunk.length)
+  return out
 }
 
 export function tier1Scenarios(): Scenario[] {
@@ -105,8 +191,7 @@ export function tier1Scenarios(): Scenario[] {
       async run(client, { admin }) {
         await signIn(client, admin)
         const prefix = unique()
-        const ids: string[] = []
-        try {
+        await withUsers(client, async (ids) => {
           for (const suffix of ['a', 'b', 'c'])
             ids.push((await createUser(client, prefix, suffix)).id)
           const page = async (n: number, sortOrder: 'asc' | 'desc') =>
@@ -135,7 +220,7 @@ export function tier1Scenarios(): Scenario[] {
             'listUsers: meta must echo page 1, pageSize 2 and report 2 pages'
           )
           const ascending = [...first.items, ...second.items].map(
-            (u) => u.username
+            (user) => user.username
           )
           assert(
             ascending.join() ===
@@ -143,7 +228,7 @@ export function tier1Scenarios(): Scenario[] {
             `listUsers: pages must cover the 3 users once, sorted by username (got ${ascending.join()})`
           )
           const descending = (await page(1, 'desc')).items.map(
-            (u) => u.username
+            (user) => user.username
           )
           assert(
             descending.join() === [`${prefix}_c`, `${prefix}_b`].join(),
@@ -170,9 +255,7 @@ export function tier1Scenarios(): Scenario[] {
             inactive.meta.total === 1 && inactive.items[0]?.id === ids[1],
             'listUsers: status=inactive must return only the deactivated user'
           )
-        } finally {
-          await removeUsers(client, ids)
-        }
+        })
       },
     },
     {
@@ -181,8 +264,7 @@ export function tier1Scenarios(): Scenario[] {
       async run(client, { admin }) {
         await signIn(client, admin)
         const prefix = unique()
-        const ids: string[] = []
-        try {
+        await withUsers(client, async (ids) => {
           const created = await createUser(client, prefix, 'crud')
           ids.push(created.id)
           assert(
@@ -205,10 +287,9 @@ export function tier1Scenarios(): Scenario[] {
             updated.firstName === '已更新',
             'updateUser: the change is returned'
           )
-          const missing = { id: `${prefix}-missing` }
           expectError(
             await client.call('updateUser', {
-              params: missing,
+              params: { id: `${prefix}-missing` },
               body: userBody(prefix, 'other'),
             }),
             404,
@@ -224,9 +305,7 @@ export function tier1Scenarios(): Scenario[] {
             404,
             'USER_NOT_FOUND'
           )
-        } finally {
-          await removeUsers(client, ids)
-        }
+        })
       },
     },
     {
@@ -234,29 +313,25 @@ export function tier1Scenarios(): Scenario[] {
       tier: 1,
       async run(client, { admin }) {
         await signIn(client, admin)
-        const upload = (blob: Blob, name: string) => {
+        const upload = (bytes: BlobPart, type: string, name: string) => {
           const form = new FormData()
-          form.append('file', blob, name)
+          form.append('file', new Blob([bytes], { type }), name)
           return client.call('uploadFile', { body: form })
         }
-        const png = new Uint8Array([
-          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-        ])
         const ok = expectSuccess(
-          await upload(new Blob([png], { type: 'image/png' }), 'pixel.png'),
+          await upload(pixelPng() as BlobPart, 'image/png', 'pixel.png'),
           'uploadFile'
         )
         assert(ok.url, 'uploadFile: the result has a url')
         expectError(
-          await upload(new Blob(['hello'], { type: 'text/plain' }), 'note.txt'),
+          await upload('hello', 'text/plain', 'note.txt'),
           422,
           'UNSUPPORTED_FILE_TYPE'
         )
         expectError(
           await upload(
-            new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], {
-              type: 'image/png',
-            }),
+            pngLargerThan(2 * 1024 * 1024) as BlobPart,
+            'image/png',
             'large.png'
           ),
           422,
@@ -297,8 +372,7 @@ export function tier1Scenarios(): Scenario[] {
       async run(client, { admin }) {
         await signIn(client, admin)
         const prefix = unique()
-        const ids: string[] = []
-        try {
+        await withUsers(client, async (ids) => {
           const user = await createUser(client, prefix, 'audit')
           ids.push(user.id)
           const logs = expectSuccess(
@@ -320,9 +394,7 @@ export function tier1Scenarios(): Scenario[] {
             entry.actorEmail.toLowerCase() === admin.email.toLowerCase(),
             'audit: the entry names the signed-in actor'
           )
-        } finally {
-          await removeUsers(client, ids)
-        }
+        })
       },
     },
   ]
