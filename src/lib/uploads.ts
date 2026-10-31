@@ -10,7 +10,7 @@ export { uploadFileSchema, type UploadedFile } from '@/contract/uploads'
 export function uploadFile(file: File) {
   const form = new FormData()
   form.append('file', file)
-  return apiRequest('/api/uploads', uploadFileSchema, {
+  return apiRequest('/uploads', uploadFileSchema, {
     method: 'POST',
     body: form,
   })

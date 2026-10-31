@@ -1,3 +1,5 @@
+import { API_PREFIX } from '@/contract/common'
+
 /** Component/operation registry. Server metadata may select these routes, never code. */
 export const routeCatalog = [
   { id: 'dashboard', path: '/', name: '工作台', permission: '' },
@@ -43,38 +45,38 @@ export const apiCatalog = [
   {
     permission: 'users:read',
     method: 'GET',
-    path: '/api/users',
+    path: `${API_PREFIX}/users`,
     name: '查看业务用户',
   },
   {
     permission: 'users:write',
     method: 'POST / PUT / PATCH / DELETE',
-    path: '/api/users/*',
+    path: `${API_PREFIX}/users/*`,
     name: '维护业务用户',
   },
   {
     permission: 'permissions:read',
     method: 'GET',
-    path: '/api/auth/permissions',
+    path: `${API_PREFIX}/auth/permissions`,
     name: '查看自身权限',
   },
   {
     permission: 'audit:read',
     method: 'GET',
-    path: '/api/audit-logs',
+    path: `${API_PREFIX}/audit-logs`,
     name: '查询审计日志',
   },
   ...Object.entries(resourceNames).flatMap(([key, name]) => [
     {
       permission: `system:${key}:read`,
       method: 'GET',
-      path: `/api/system/${key}`,
+      path: `${API_PREFIX}/system/${key}`,
       name: `查看${name}`,
     },
     {
       permission: `system:${key}:write`,
       method: 'POST / PUT / DELETE',
-      path: `/api/system/${key}/*`,
+      path: `${API_PREFIX}/system/${key}/*`,
       name: `维护${name}`,
     },
   ]),

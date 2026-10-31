@@ -31,55 +31,52 @@ function toSearchParams(params: UsersListParams): URLSearchParams {
 }
 
 export function fetchUsers(params: UsersListParams) {
-  return apiRequest(
-    `/api/users?${toSearchParams(params)}`,
-    userListResponseSchema
-  )
+  return apiRequest(`/users?${toSearchParams(params)}`, userListResponseSchema)
 }
 
 export function createUser(payload: UserWritePayload) {
-  return apiRequest('/api/users', userSchema, {
+  return apiRequest('/users', userSchema, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export function updateUser(id: string, payload: UserWritePayload) {
-  return apiRequest(`/api/users/${id}`, userSchema, {
+  return apiRequest(`/users/${id}`, userSchema, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
 }
 
 export function deleteUser(id: string) {
-  return apiRequest(`/api/users/${id}`, successSchema, {
+  return apiRequest(`/users/${id}`, successSchema, {
     method: 'DELETE',
   })
 }
 
 export function batchDeleteUsers(ids: string[]) {
-  return apiRequest('/api/users/batch-delete', deletedCountSchema, {
+  return apiRequest('/users/batch-delete', deletedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })
 }
 
 export function updateUsersStatus(ids: string[], status: UserBulkStatus) {
-  return apiRequest('/api/users/status', updatedCountSchema, {
+  return apiRequest('/users/status', updatedCountSchema, {
     method: 'PATCH',
     body: JSON.stringify({ ids, status }),
   })
 }
 
 export function inviteUser(payload: UserInvitePayload) {
-  return apiRequest('/api/users/invite', userSchema, {
+  return apiRequest('/users/invite', userSchema, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export function batchInviteUsers(ids: string[]) {
-  return apiRequest('/api/users/invite-batch', invitedCountSchema, {
+  return apiRequest('/users/invite-batch', invitedCountSchema, {
     method: 'POST',
     body: JSON.stringify({ ids }),
   })

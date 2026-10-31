@@ -33,7 +33,7 @@ export type AuditLog = z.infer<typeof auditLogSchema>
 export const auditListResponseSchema = listEnvelope(auditLogSchema)
 export type AuditListResponse = z.infer<typeof auditListResponseSchema>
 
-/** GET /api/audit-logs query string. `pageSize` above 100 is clamped to 100. */
+/** GET /api/v1/audit-logs query string. `pageSize` above 100 is clamped to 100. */
 export const auditQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: pageSizeQuery,

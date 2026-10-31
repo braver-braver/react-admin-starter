@@ -1,7 +1,7 @@
 import { HttpResponse, http } from 'msw'
 import { auditLogsStore } from '../data/audit'
 import { canAccessData } from '../data/system'
-import { apiError, currentSession, mockBase, requirePermission } from './auth'
+import { apiBase, apiError, currentSession, requirePermission } from './auth'
 
 function parseListQuery(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -18,7 +18,7 @@ function parseListQuery(request: Request) {
 }
 
 export const auditHandlers = [
-  http.get(`${mockBase}api/audit-logs`, ({ request, cookies }) => {
+  http.get(`${apiBase}/audit-logs`, ({ request, cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     const denied = requirePermission(session, 'audit:read')

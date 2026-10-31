@@ -25,7 +25,9 @@ pnpm dev
 
 设置 `VITE_ENABLE_MOCKS=false` 可在开发时关闭模拟，随后在 Vite 中配置 `/api` 代理，或让应用和 API 通过同一个反向代理提供服务。生产构建始终排除 MSW 及其处理器，即使设置 `VITE_ENABLE_MOCKS=true` 也无法开启模拟。普通生产构建的 Worker 脚本只由 Vite 开发中间件提供，不在 `public/` 或 `dist/` 中。单独的 `build:demo` 会将模拟 Worker 与接口放入 `dist-demo/`，通过 Hash 路由和按版本路径隔离的 Cookie/API/Worker 提供静态展示，但不会改变普通生产构建的安全边界。参见 [GitHub Pages 演示部署](pages-demo.md)。构建末尾自动检查产物，检测到 Worker、模拟会话标识或演示账户时构建失败。
 
-前端固定访问同源 `/api`。部署时须让 `/api/*` 先路由到后端，再将前端路径回退至 `index.html`。仅部署静态文件不会自动获得认证能力：后端缺失或响应格式不符时会显示错误，无法进入管理页面。
+前端固定访问同源 `/api/v1`。部署时须让 `/api/*` 先路由到后端（按 `/api/` 前缀转发即可，将来新增的 `/api/v2` 也随之覆盖），再将前端路径回退至 `index.html`。
+
+**API 版本：** 路径中的 `v1` 是 API 主版本，前缀常量 `API_PREFIX` 定义在 `src/contract/common.ts`，客户端、Mock 与 OpenAPI 共用。v1.0 之后的破坏性变更（删除、改名、改类型、收紧校验）走新的 `/api/v2` 路径并升包的主版本；旧版本保留多久由后端决定，前端模板一次只对接一个主版本。OpenAPI 的 `info.version` 跟随包版本。仅部署静态文件不会自动获得认证能力：后端缺失或响应格式不符时会显示错误，无法进入管理页面。
 
 后端负责校验凭证、签发和吊销会话、会话期限、禁用账户、权限判断、限流及审计。生产会话 Cookie 应采用 `HttpOnly; Secure; SameSite=Lax`、适当 Path 和过期时间。登录后旋转会话 ID，退出后在服务端吊销；不要把演示账户或模拟令牌作为生产后门。
 
@@ -41,26 +43,26 @@ pnpm dev
 
 | 方法 | 路径 | 成功 data | 行为 |
 | --- | --- | --- | --- |
-| POST | /api/auth/login | Session | JSON `{email,password}`；设置会话 Cookie |
-| GET | /api/auth/session | Session | 验证当前会话并返回当前权限；未登录返回 401 |
-| POST | /api/auth/logout | `{success:true}` | 校验 CSRF、吊销会话、清除 Cookie |
-| GET | /api/auth/permissions | `{roles,permissions}` | 需要 permissions:read；否则 403 |
-| GET | /api/auth/navigation | Menu[] | 返回当前账号启用且授权的菜单；停用菜单同时撤销路由访问 |
-| GET | /api/system/options | SystemRecord[] | 需要至少一个 system:{resource}:read；只返回对应资源已授权的角色/权限/菜单/部门记录（部门进一步按范围过滤） |
-| GET | /api/system/{resource} | `{items,meta}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
-| POST | /api/system/{resource} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；校验引用、层级与越权后创建 |
-| PUT | /api/system/{resource}/{id} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；保护记录返回 409 |
-| DELETE | /api/system/{resource}/{id} | `{success:true}` | 需要 `system:{resource}:write` 与 CSRF；仍被引用时返回 409 |
-| GET | /api/users | `{items,meta}` | 需要 users:read；分页、筛选、排序由服务端计算；按数据范围过滤 |
-| POST | /api/users | User | 需要 users:write 与 CSRF；重复邮箱/用户名返回 422 |
-| PUT | /api/users/{id} | User | 需要 users:write 与 CSRF；未知用户返回 404 |
-| DELETE | /api/users/{id} | `{success:true}` | 需要 users:write 与 CSRF |
-| POST | /api/users/batch-delete | `{deletedCount}` | 批量删除所选用户 |
-| PATCH | /api/users/status | `{updatedCount}` | 批量启用/停用 |
-| POST | /api/users/invite | User（status=invited） | 邀请单个用户 |
-| POST | /api/users/invite-batch | `{invitedCount}` | 批量邀请所选用户 |
-| POST | /api/uploads | UploadedFile | multipart `file`；仅图片、≤2MB；需要 users:write 与 CSRF |
-| GET | /api/audit-logs | `{items,meta}` | 需要 audit:read；按 action 过滤，最新在前 |
+| POST | /api/v1/auth/login | Session | JSON `{email,password}`；设置会话 Cookie |
+| GET | /api/v1/auth/session | Session | 验证当前会话并返回当前权限；未登录返回 401 |
+| POST | /api/v1/auth/logout | `{success:true}` | 校验 CSRF、吊销会话、清除 Cookie |
+| GET | /api/v1/auth/permissions | `{roles,permissions}` | 需要 permissions:read；否则 403 |
+| GET | /api/v1/auth/navigation | Menu[] | 返回当前账号启用且授权的菜单；停用菜单同时撤销路由访问 |
+| GET | /api/v1/system/options | SystemRecord[] | 需要至少一个 system:{resource}:read；只返回对应资源已授权的角色/权限/菜单/部门记录（部门进一步按范围过滤） |
+| GET | /api/v1/system/{resource} | `{items,meta}` | 需要 `system:{resource}:read`；resource 为 accounts/roles/permissions/menus/departments；支持 page、pageSize、search |
+| POST | /api/v1/system/{resource} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；校验引用、层级与越权后创建 |
+| PUT | /api/v1/system/{resource}/{id} | SystemRecord | 需要 `system:{resource}:write` 与 CSRF；保护记录返回 409 |
+| DELETE | /api/v1/system/{resource}/{id} | `{success:true}` | 需要 `system:{resource}:write` 与 CSRF；仍被引用时返回 409 |
+| GET | /api/v1/users | `{items,meta}` | 需要 users:read；分页、筛选、排序由服务端计算；按数据范围过滤 |
+| POST | /api/v1/users | User | 需要 users:write 与 CSRF；重复邮箱/用户名返回 422 |
+| PUT | /api/v1/users/{id} | User | 需要 users:write 与 CSRF；未知用户返回 404 |
+| DELETE | /api/v1/users/{id} | `{success:true}` | 需要 users:write 与 CSRF |
+| POST | /api/v1/users/batch-delete | `{deletedCount}` | 批量删除所选用户 |
+| PATCH | /api/v1/users/status | `{updatedCount}` | 批量启用/停用 |
+| POST | /api/v1/users/invite | User（status=invited） | 邀请单个用户 |
+| POST | /api/v1/users/invite-batch | `{invitedCount}` | 批量邀请所选用户 |
+| POST | /api/v1/uploads | UploadedFile | multipart `file`；仅图片、≤2MB；需要 users:write 与 CSRF |
+| GET | /api/v1/audit-logs | `{items,meta}` | 需要 audit:read；按 action 过滤，最新在前 |
 
 列表接口接受 `page`、`pageSize`、`username`（匹配用户名/邮箱/姓名/电话）、`status`、`role`、`sortBy`、`sortOrder`；多值参数一律用重复键（`status=active&status=invited`），不接受 `status[]` 写法；`pageSize` 超过 100 按 100 处理；返回 `{items, meta: {page,pageSize,total,totalPageCount}}`。所有分页列表（用户、审计流水、系统管理的五种资源）共用这一种信封，`pageSize` 上限都是 100，`totalPageCount` 至少为 1。`sortBy` 仅接受白名单字段（username、fullName、email、phoneNumber、status、role、createdAt、updatedAt），非法值回退到 username。
 
@@ -92,4 +94,4 @@ pnpm build
 
 ## 系统管理会话扩展
 
-会话现在同时返回 `routes`、`departmentId` 与按能力代码索引的 `dataScopes`。`dataScope` 是总体摘要，操作鉴权必须读取对应能力的范围。前端从 `/api/auth/navigation` 加载侧栏与命令搜索，受保护路由默认拒绝未下发的路径。账号密码重置、停用/再启用及删除会吊销旧会话；角色授权在每次 Mock API 请求时重算。后端升级必须实现这些字段与接口，详见 [系统管理与统一授权](system-management.md)。
+会话现在同时返回 `routes`、`departmentId` 与按能力代码索引的 `dataScopes`。`dataScope` 是总体摘要，操作鉴权必须读取对应能力的范围。前端从 `/api/v1/auth/navigation` 加载侧栏与命令搜索，受保护路由默认拒绝未下发的路径。账号密码重置、停用/再启用及删除会吊销旧会话；角色授权在每次 Mock API 请求时重算。后端升级必须实现这些字段与接口，详见 [系统管理与统一授权](system-management.md)。

@@ -42,9 +42,9 @@ for (const version of versions) {
     await login(page, 'admin')
     const apiStatus = await page.evaluate(async (mockPath) => {
       const paths = [
-        'api/auth/session',
-        'api/users?page=1&pageSize=1',
-        'api/audit-logs?page=1&pageSize=1',
+        'api/v1/auth/session',
+        'api/v1/users?page=1&pageSize=1',
+        'api/v1/audit-logs?page=1&pageSize=1',
       ]
       return Promise.all(
         paths.map(async (path) => (await fetch(`${mockPath}${path}`)).status)

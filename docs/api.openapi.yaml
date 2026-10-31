@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: React Admin Starter API
-  version: 0.2.0
+  version: 0.1.0
   description: Same-origin cookie sessions. Development MSW is a demonstration only.
 servers:
-  - url: /api
+  - url: /api/v1
 security:
   - sessionCookie: []
 paths:

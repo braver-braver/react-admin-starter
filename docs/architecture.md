@@ -10,7 +10,7 @@ The v0.1 and v0.2 *development milestones* have been implemented, but this proje
 
 React application → feature API functions → shared HTTP client → one of:
 
-- **Development:** MSW handlers provide demonstrative same-origin `/api` endpoints and cookie-like browser sessions.
+- **Development:** MSW handlers provide demonstrative same-origin `/api/v1` endpoints and cookie-like browser sessions.
 - **GitHub Pages demo:** a separate, version-scoped `build:demo` with hash routing, visible build provenance and browser-only mock data; this is not a secure multi-user service.
 - **Production:** `pnpm build` creates `dist/` without MSW, demo credentials or mock handlers. A real same-origin REST backend must implement the documented API contract, enforce authentication/authorization, own sessions and persist data.
 
@@ -27,7 +27,7 @@ The frontend assumes an API response envelope of `{ "data": ... }` on success or
 
 ## Navigation and authorization boundaries
 
-`/api/auth/navigation` supplies the menu data. The frontend may render only registered routes and capabilities authorized by the server-issued session, without treating menu visibility as proof of API access. The sidebar's group expansion state and compact icon mode affect presentation only, never the permissions or routes granted to the user.
+`/api/v1/auth/navigation` supplies the menu data. The frontend may render only registered routes and capabilities authorized by the server-issued session, without treating menu visibility as proof of API access. The sidebar's group expansion state and compact icon mode affect presentation only, never the permissions or routes granted to the user.
 
 Each account belongs to one department and may hold multiple roles. Authorization is calculated **per capability**: permission grants and their `dataScopes[permission]` are not interchangeable across read and write operations. Role or department changes must not silently widen permissions, routes or data scopes beyond an administrator's own grants. The real API must independently enforce record-level and batch-level scope checks, including filtering before pagination and counts. See [system management and authorization](system-management.md).
 

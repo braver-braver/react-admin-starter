@@ -20,6 +20,7 @@ This file distinguishes **React Admin Starter** development from the release his
 - Moved the request-side rules for users into the contract: user create/update bodies, invites, bulk status changes and the users/audit list queries are now Zod schemas registered on their operations, and the client and the mock handlers reuse them instead of hand-written checks. Behaviour changes: the audit list now caps `pageSize` at 100 like the users list (decision D3), the mock no longer keeps any `password` sent with a business-user body, and a bulk request whose `ids` is not an array selects nothing (non-string entries inside the array are skipped, as before). The list queries clamp `pageSize` above 100 to 100 and fall back to `username` for an unknown `sortBy`, in the contract as well as in the mock (decisions D3 and D6). Error codes and messages are unchanged ([#30](https://github.com/braver-braver/react-admin-starter/issues/30), M1-T4).
 - Fixed the request conventions for list queries and headers in the contract, the docs and the mock: multi-value query parameters use repeated keys only (`status=a&status=b`; `status[]`, `role[]` and `action[]` are no longer read), and every write (POST, PUT, PATCH, DELETE) must send `X-Requested-With: ReactAdminStarter`, otherwise it gets 403 `REQUEST_HEADER_REQUIRED`. The header is checked before the session, so an anonymous write without it now gets that 403 rather than 401 ([#32](https://github.com/braver-braver/react-admin-starter/issues/32), M1-T6).
 - Unified every paged list on one envelope, `{ items, meta: { page, pageSize, total, totalPageCount } }`, built from a single `listEnvelope` in the contract. The system-management lists were the last ones using the flat shape; see the migration notes below ([#29](https://github.com/braver-braver/react-admin-starter/issues/29), M1-T3b, decision D2). Breaking change.
+- Moved every API path under the versioned prefix `/api/v1` (decision D5). The prefix is one constant, `API_PREFIX` in `src/contract/common.ts`, shared by the client, the mock handlers and the OpenAPI document; feature code passes paths relative to it. The unversioned `/api/...` paths are no longer served ([#65](https://github.com/braver-braver/react-admin-starter/issues/65), M1-T4b). Breaking change.
 
 ### Security and quality
 
@@ -29,6 +30,8 @@ This file distinguishes **React Admin Starter** development from the release his
 ### Migration notes
 
 Breaking changes for anyone integrating against the API, listed per change.
+
+- **API paths**, M1-T4b: every endpoint moves from `/api/...` to `/api/v1/...` (for example `POST /api/auth/login` → `POST /api/v1/auth/login`). The old paths are not served. A reverse proxy that forwards the `/api/` prefix keeps working unchanged. Breaking changes after v1.0 will use a new `/api/v2` prefix.
 
 - **System-management list responses** (`GET /api/system/{accounts,roles,permissions,menus,departments}`), M1-T3b:
   - `data.total` → `data.meta.total`

@@ -26,7 +26,7 @@ export const sessionSchema = z.object({
   user: authUserSchema,
   csrfToken: z.string().min(1),
 })
-/** GET /api/auth/permissions */
+/** GET /api/v1/auth/permissions */
 export const permissionsSchema = z.object({
   roles: z.array(z.string()),
   permissions: z.array(z.string()),

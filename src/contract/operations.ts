@@ -42,7 +42,7 @@ import {
  * (M1-T4, #30), OpenAPI generation (M1-T5, #31), the typed client (M1-T7, #33)
  * and the mock response guard (M1-T8, #34).
  *
- * Paths are relative to `/api` and use OpenAPI `{param}` syntax.
+ * Paths are relative to `API_PREFIX` (`/api/v1`) and use OpenAPI `{param}` syntax.
  */
 export type Operation = {
   /** operationId; unique. */

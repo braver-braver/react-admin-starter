@@ -32,7 +32,7 @@ type AuditTableProps = {
 
 /**
  * 服务端分页的审计日志表格（只读）：分页与动作筛选全部由 URL 触发、
- * /api/audit-logs 计算；TanStack Table 只渲染当前页。
+ * /api/v1/audit-logs 计算；TanStack Table 只渲染当前页。
  */
 export function AuditTable({ search, navigate }: AuditTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})

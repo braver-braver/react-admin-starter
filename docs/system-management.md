@@ -46,7 +46,7 @@ flowchart LR
 
 登录和会话恢复返回 `user.routes`。进入受保护页面时先恢复会话，再检查服务端是否下发该路由，最后执行页面能力守卫。缺少路由授权列表时，受保护页面默认拒绝；工作台为所有已登录账号提供回退入口。后端接入必须实现这些字段，不能只继续返回旧版的三个演示权限。
 
-`GET /api/auth/navigation` 返回当前账号有权访问的导航。侧栏和命令搜索共用这份数据；加载失败显示重试入口，不回退到一份完整管理员静态菜单。
+`GET /api/v1/auth/navigation` 返回当前账号有权访问的导航。侧栏和命令搜索共用这份数据；加载失败显示重试入口，不回退到一份完整管理员静态菜单。
 
 菜单支持目录与页面两层，部门树支持多级。页面需同时满足启用、父目录启用、角色菜单授权及注册页面的查看能力。目录授权包含其页面；也可单独授予页面。菜单的两个状态含义不同：
 
@@ -61,12 +61,12 @@ flowchart LR
 
 | 接口 | 要求 |
 | --- | --- |
-| `GET /api/auth/navigation` | 已登录；仅返回已授权导航 |
-| `GET /api/system/options` | 至少一个系统资源的读取能力；按资源读取授权及部门范围过滤，不返回账号或凭据 |
-| `GET /api/system/{resource}` | `system:{resource}:read`，支持 `page/pageSize/search` |
-| `POST /api/system/{resource}` | `system:{resource}:write` 与 CSRF |
-| `PUT /api/system/{resource}/{id}` | 同上；更新可写字段，不能修改 ID、类型、保护标记 |
-| `DELETE /api/system/{resource}/{id}` | 同上；校验引用关系 |
+| `GET /api/v1/auth/navigation` | 已登录；仅返回已授权导航 |
+| `GET /api/v1/system/options` | 至少一个系统资源的读取能力；按资源读取授权及部门范围过滤，不返回账号或凭据 |
+| `GET /api/v1/system/{resource}` | `system:{resource}:read`，支持 `page/pageSize/search` |
+| `POST /api/v1/system/{resource}` | `system:{resource}:write` 与 CSRF |
+| `PUT /api/v1/system/{resource}/{id}` | 同上；更新可写字段，不能修改 ID、类型、保护标记 |
+| `DELETE /api/v1/system/{resource}/{id}` | 同上；校验引用关系 |
 
 `resource` 为 `accounts`、`roles`、`permissions`、`menus`、`departments`。API 注册清单将已有业务用户、系统管理和审计操作映射到能力代码；新增真实后端端点时必须显式绑定能力并复用数据范围检查。创建一个权限目录项不会自动创建 API，也不会让任意端点获得授权。
 

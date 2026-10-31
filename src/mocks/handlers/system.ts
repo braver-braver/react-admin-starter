@@ -13,19 +13,19 @@ import { usersStore } from '../data/users'
 import {
   apiError,
   currentSession,
-  mockBase,
+  apiBase,
   requireCsrf,
   requireRequestedWith,
   requirePermission,
 } from './auth'
 
 export const systemHandlers = [
-  http.get(`${mockBase}api/auth/navigation`, ({ cookies }) => {
+  http.get(`${apiBase}/auth/navigation`, ({ cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     return HttpResponse.json({ data: visibleNavigation(session.user) })
   }),
-  http.get(`${mockBase}api/system/options`, ({ cookies }) => {
+  http.get(`${apiBase}/system/options`, ({ cookies }) => {
     const session = currentSession(cookies)
     if (!session) return apiError(401, 'UNAUTHENTICATED', '请先登录。')
     if (
@@ -49,8 +49,8 @@ export const systemHandlers = [
     )
     return HttpResponse.json({ data: { items } })
   }),
-  http.all(`${mockBase}api/system/:resource`, handle),
-  http.all(`${mockBase}api/system/:resource/:id`, handle),
+  http.all(`${apiBase}/system/:resource`, handle),
+  http.all(`${apiBase}/system/:resource/:id`, handle),
 ]
 async function handle({
   request,

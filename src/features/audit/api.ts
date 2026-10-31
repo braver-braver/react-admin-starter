@@ -8,5 +8,5 @@ export function fetchAuditLogs(params: AuditListParams) {
   search.set('page', String(params.page))
   search.set('pageSize', String(params.pageSize))
   for (const action of params.action ?? []) search.append('action', action)
-  return apiRequest(`/api/audit-logs?${search}`, auditListResponseSchema)
+  return apiRequest(`/audit-logs?${search}`, auditListResponseSchema)
 }
