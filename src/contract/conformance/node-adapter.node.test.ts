@@ -77,6 +77,21 @@ function startServer(
         }
       )
     }
+    if (request.method === 'POST' && request.url === '/api/v1/auth/logout') {
+      if (request.headers['x-requested-with'] !== 'ReactAdminStarter')
+        return error(403, 'REQUEST_HEADER_REQUIRED')
+      if (!sid || !sessions.has(sid)) return error(401, 'UNAUTHENTICATED')
+      if (request.headers['x-csrf-token'] !== 'csrf-token')
+        return error(403, 'INVALID_CSRF_TOKEN')
+      sessions.delete(sid)
+      return send(
+        200,
+        { data: { success: true } },
+        {
+          'Set-Cookie': 'sid=; Path=/; Max-Age=0',
+        }
+      )
+    }
     if (request.method === 'GET' && request.url === '/api/v1/auth/session') {
       const email =
         variant === 'session-ignores-cookie'
@@ -96,11 +111,13 @@ function startServer(
   })
 }
 
-const loginScenario = scenarios.filter((s) => s.name.startsWith('login:'))
-// The minimal stand-in implements login and session only; the generic
+const loginScenario = scenarios.filter((s) =>
+  s.name.startsWith('login: valid credentials')
+)
+// The minimal stand-in implements login, session and logout only; the other
 // scenarios need the full stand-in server of M2-T6.
-const handWrittenTier1 = scenarios.filter(
-  (s) => s.tier === 1 && !s.name.startsWith('generic: ')
+const authScenarios = scenarios.filter((s) =>
+  /^(login|getSession|logout): /.test(s.name)
 )
 
 describe('Node adapter against a stand-in back end', () => {
@@ -128,13 +145,13 @@ describe('Node adapter against a stand-in back end', () => {
     )
   })
 
-  it('passes the hand-written Tier 1 scenarios, each starting signed out', async () => {
+  it('passes the login, session and logout scenarios, each starting signed out', async () => {
     const results = await runScenarios(
-      handWrittenTier1,
+      authScenarios,
       () => createNodeClient(correct.url),
       fixtures
     )
-    assert.ok(results.length >= 2)
+    assert.ok(results.length >= 4)
     assert.deepEqual(
       results.filter((r) => !r.ok),
       []

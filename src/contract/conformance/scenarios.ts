@@ -1,7 +1,7 @@
 import { type Operation, operations } from '../operations.ts'
-import { assert, expectError, expectSuccess } from './assert.ts'
 import { type ContractClient } from './client.ts'
 import { genericScenarios } from './generic.ts'
+import { tier1Scenarios } from './tier1.ts'
 
 /**
  * Conformance scenarios: written once, run against the mock (browser adapter)
@@ -75,34 +75,7 @@ export async function runScenarios(
 
 // ------------------------------------------------------------------ Tier 1
 
-defineScenario({
-  name: 'login: valid credentials return a Session that getSession restores',
-  tier: 1,
-  async run(client, { admin }) {
-    const login = expectSuccess(
-      await client.call('login', { body: admin }),
-      'login'
-    )
-    assert(
-      login.user.email.toLowerCase() === admin.email.toLowerCase(),
-      'login: the Session belongs to the signed-in account'
-    )
-    assert(login.csrfToken, 'login: the Session carries a csrfToken')
-    const session = expectSuccess(await client.call('getSession'), 'getSession')
-    assert(
-      session.user.id === login.user.id,
-      'getSession: the cookie restores the same account'
-    )
-  },
-})
-
-defineScenario({
-  name: 'getSession: without a session cookie returns 401 UNAUTHENTICATED',
-  tier: 1,
-  async run(client) {
-    expectError(await client.call('getSession'), 401, 'UNAUTHENTICATED')
-  },
-})
+for (const scenario of tier1Scenarios()) defineScenario(scenario)
 
 // ------------------------------------------------------- derived (Tier 1)
 

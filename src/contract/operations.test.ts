@@ -186,7 +186,7 @@ describe('contract directory', () => {
     expect(files.length).toBeGreaterThanOrEqual(6)
     for (const [file, source] of files) {
       for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
-        expect(match[1], file).toMatch(/^(zod|\.\.?\/[a-z-]+\.ts)$/)
+        expect(match[1], file).toMatch(/^(zod|\.\.?\/[a-z0-9-]+\.ts)$/)
       }
       expect(source, file).not.toMatch(
         /import\.meta|\b(window|document|localStorage|sessionStorage|process)\./
