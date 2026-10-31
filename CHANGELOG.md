@@ -21,6 +21,7 @@ This file distinguishes **React Admin Starter** development from the release his
 - Fixed the request conventions for list queries and headers in the contract, the docs and the mock: multi-value query parameters use repeated keys only (`status=a&status=b`; `status[]`, `role[]` and `action[]` are no longer read), and every write (POST, PUT, PATCH, DELETE) must send `X-Requested-With: ReactAdminStarter`, otherwise it gets 403 `REQUEST_HEADER_REQUIRED`. The header is checked before the session, so an anonymous write without it now gets that 403 rather than 401 ([#32](https://github.com/braver-braver/react-admin-starter/issues/32), M1-T6).
 - Unified every paged list on one envelope, `{ items, meta: { page, pageSize, total, totalPageCount } }`, built from a single `listEnvelope` in the contract. The system-management lists were the last ones using the flat shape; see the migration notes below ([#29](https://github.com/braver-braver/react-admin-starter/issues/29), M1-T3b, decision D2). Breaking change.
 - Moved every API path under the versioned prefix `/api/v1` (decision D5). The prefix is one constant, `API_PREFIX` in `src/contract/common.ts`, shared by the client, the mock handlers and the OpenAPI document; feature code passes paths relative to it. The unversioned `/api/...` paths are no longer served ([#65](https://github.com/braver-braver/react-admin-starter/issues/65), M1-T4b). Breaking change.
+- Generated the OpenAPI document from the contract: `docs/api.openapi.json` (OpenAPI 3.1, decision D1) replaces the hand-written `docs/api.openapi.yaml`. `pnpm contract:generate` writes it, `pnpm contract:check` fails when it differs from `src/contract`, and CI runs the check after Lint. Every operation lists exactly the error codes it may return per status; timestamps are `string`/`date-time`; request bodies are strict and responses open; names must be sent already trimmed (decision D7). Contract scripts need Node 22.18 or later ([#31](https://github.com/braver-braver/react-admin-starter/issues/31), M1-T5).
 
 ### Security and quality
 
@@ -31,6 +32,8 @@ This file distinguishes **React Admin Starter** development from the release his
 
 Breaking changes for anyone integrating against the API, listed per change.
 
+- **OpenAPI file**, M1-T5: `docs/api.openapi.yaml` is replaced by the generated `docs/api.openapi.json`. System-management operations have per-resource ids (`listSystemAccounts`, `createSystemRole`, …) and request bodies, instead of one `/system/{resource}` path with a `oneOf` body.
+- **Names**, M1-T5: send system-management `name` values already trimmed (at most 80 characters).
 - **API paths**, M1-T4b: every endpoint moves from `/api/...` to `/api/v1/...` (for example `POST /api/auth/login` → `POST /api/v1/auth/login`). The old paths are not served. A reverse proxy that forwards the `/api/` prefix keeps working unchanged. Breaking changes after v1.0 will use a new `/api/v2` prefix.
 
 - **System-management list responses** (`GET /api/system/{accounts,roles,permissions,menus,departments}`), M1-T3b:

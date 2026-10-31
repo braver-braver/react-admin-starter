@@ -10,7 +10,7 @@ Build a lightweight, reusable, Chinese-first React admin starter independent of 
 - Use feature-oriented folders and colocate schemas, API functions and components.
 - Use Mock Service Worker for demos and tests; production must not contain mock authentication bypass.
 - Use a small API adapter, typed contracts and clear error handling. Do not hardcode GoFrame-specific response semantics in shared UI.
-- Auth API uses same-origin Cookie sessions and Zod-validated response envelopes; see docs/auth-and-api.md and docs/api.openapi.yaml. Keep both contracts in sync.
+- Auth API uses same-origin Cookie sessions and Zod-validated response envelopes; see docs/auth-and-api.md and docs/api.openapi.json. The Zod contract in src/contract is the single source: regenerate the OpenAPI file with `pnpm contract:generate` after changing it; CI runs `pnpm contract:check` and fails on drift.
 - Serve MSW through Vite development middleware or the explicit build:demo static artifact. Never copy it to public/ or ordinary production artifacts. Demo output uses hash routing, scoped worker/API/session paths and a visible versioned demo banner; keep production checks independent.
 - Server-side authorization remains mandatory; client-side route and button guards are UX only.
 - Prefer server-side pagination, filtering and sorting for administrative tables.
