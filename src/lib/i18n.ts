@@ -41,8 +41,8 @@ export const catalog = {
   },
 } as const
 
-export type Locale = keyof typeof catalog
-export type MessageKey = keyof (typeof catalog)['zh-CN']
+type Locale = keyof typeof catalog
+type MessageKey = keyof (typeof catalog)['zh-CN']
 
 /** 中文优先：未显式指定语言时一律使用 zh-CN */
 export const defaultLocale: Locale = 'zh-CN'

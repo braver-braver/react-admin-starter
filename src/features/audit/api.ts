@@ -1,12 +1,6 @@
 import { type AuditListParams } from '@/contract/audit'
-import { apiRequest } from '@/lib/api'
-import { auditListResponseSchema } from './data/schema'
+import { callOperation } from '@/lib/api'
 
 /** 审计日志查询：仅 audit:read（管理员）可访问，由服务端校验。 */
-export function fetchAuditLogs(params: AuditListParams) {
-  const search = new URLSearchParams()
-  search.set('page', String(params.page))
-  search.set('pageSize', String(params.pageSize))
-  for (const action of params.action ?? []) search.append('action', action)
-  return apiRequest(`/audit-logs?${search}`, auditListResponseSchema)
-}
+export const fetchAuditLogs = (query: AuditListParams) =>
+  callOperation('listAuditLogs', { query })

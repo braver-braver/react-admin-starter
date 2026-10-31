@@ -1,5 +1,11 @@
 import { type z } from 'zod'
 import { API_PREFIX, apiErrorSchema, successEnvelope } from '@/contract/common'
+import {
+  type Operation,
+  type OperationId,
+  operations,
+} from '@/contract/operations'
+import { operationBody, operationPath } from '@/contract/request'
 import { useAuthStore } from '@/stores/auth-store'
 
 export class ApiError extends Error {
@@ -103,4 +109,90 @@ export async function apiRequest<T>(
     )
   }
   return parsed.data.data
+}
+
+// ---------------------------------------------------------------- registry
+
+type RegistryOperation = (typeof operations)[number]
+type OperationById<Id extends OperationId> = Extract<
+  RegistryOperation,
+  { id: Id }
+>
+type InputOf<S> = S extends z.ZodType ? z.input<S> : never
+
+type RequestOptions = {
+  signal?: AbortSignal
+  handleAuthError?: boolean
+  csrfToken?: string
+}
+
+/** Arguments of an operation, derived from its registry entry. */
+type OperationArgs<Op extends RegistryOperation> =
+  (Op['path'] extends `${string}{id}${string}`
+    ? { params: { id: string } }
+    : { params?: never }) &
+    (Op extends { query: infer Q }
+      ? { query?: InputOf<Q> }
+      : { query?: never }) &
+    (Op extends { body: infer B }
+      ? { body: InputOf<B> }
+      : Op extends { multipart: true }
+        ? { body: FormData }
+        : { body?: never }) &
+    RequestOptions
+
+/** Parsed success data of an operation. */
+type OperationResult<Op extends RegistryOperation> = z.output<
+  Op['success']['schema']
+>
+
+const operationsById = new Map<string, Operation>(
+  (operations as readonly Operation[]).map((op) => [op.id, op])
+)
+
+function invoke(
+  id: OperationId,
+  args: {
+    params?: Record<string, string>
+    query?: Record<string, unknown>
+    body?: unknown
+  } & RequestOptions
+) {
+  const op = operationsById.get(id)
+  if (!op) throw new Error(`Unknown operation ${id}`)
+  return apiRequest(operationPath(op, args), op.success.schema, {
+    method: op.method,
+    body: operationBody(op, args.body),
+    signal: args.signal,
+    handleAuthError: args.handleAuthError,
+    csrfToken: args.csrfToken,
+  })
+}
+
+/**
+ * Calls a registry operation: the registry supplies the method, the path, how
+ * the body is encoded and the success schema; params, query, body and result
+ * are typed from the same entry. Auth handling is that of `apiRequest`.
+ */
+export function callOperation<Id extends OperationId>(
+  id: Id,
+  ...[args]: object extends OperationArgs<OperationById<Id>>
+    ? [args?: OperationArgs<OperationById<Id>>]
+    : [args: OperationArgs<OperationById<Id>>]
+): Promise<OperationResult<OperationById<Id>>> {
+  return invoke(id, (args ?? {}) as Parameters<typeof invoke>[1]) as Promise<
+    OperationResult<OperationById<Id>>
+  >
+}
+
+/**
+ * Untyped variant for screens that pick the operation at runtime and validate
+ * the body themselves (the generic system-management pages). The response is
+ * still checked against the operation's success schema.
+ */
+export function callOperationUnchecked(
+  id: OperationId,
+  args: Parameters<typeof invoke>[1] = {}
+): Promise<unknown> {
+  return invoke(id, args)
 }

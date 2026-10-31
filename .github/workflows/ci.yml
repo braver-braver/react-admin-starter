@@ -25,6 +25,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Check OpenAPI is generated from the contract
+        run: pnpm contract:check
       - name: Check formatting
         run: pnpm format:check
       - name: Install Playwright browser
@@ -33,6 +35,9 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+      # After the build: knip needs the generated src/routeTree.gen.ts.
+      - name: Check unused files, exports and dependencies
+        run: pnpm knip
       - name: Full application E2E smoke and accessibility baseline
         run: pnpm test:e2e
       - name: Pages snapshot assembly tests

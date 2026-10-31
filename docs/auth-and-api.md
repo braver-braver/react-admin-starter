@@ -35,7 +35,7 @@ pnpm dev
 
 ## 契约
 
-可供后端对接的定义见 [OpenAPI](api.openapi.yaml)。运行时使用 `src/features/auth/schema.ts` 的 Zod 契约验证成功响应；业务 API 函数放在各 feature 下，公共传输层在 `src/lib/api.ts`。不依赖 GoFrame 或特定业务响应码。
+可供后端对接的定义见 [OpenAPI](api.openapi.json)。它由 `src/contract/` 的 Zod 契约生成（`pnpm contract:generate`），不要手改；CI 用 `pnpm contract:check` 检查文件与契约一致。运行时用同一份 Zod 契约验证成功响应；业务 API 函数放在各 feature 下，统一调用 `src/lib/api.ts` 的 `callOperation('<operationId>', { params, query, body })`：方法、路径、查询序列化（数组用重复键）、JSON 或 multipart 编码以及响应校验都取自契约注册表，参数与返回值的类型也由注册表推导；业务代码不手写 `/api` 路径（有单测扫描源码保证）。请求构建是 `src/contract/request.ts` 中的纯函数，Node 端的一致性测试也可复用。不依赖 GoFrame 或特定业务响应码。
 
 时间戳（`createdAt`、`updatedAt`）一律是 ISO 8601 date-time 字符串，如 `2026-10-30T10:00:00Z`，允许小数秒与 `±hh:mm` 偏移；数字、布尔值、`null` 或无时区字符串都会被前端拒绝。响应对象允许出现契约之外的新增字段（前端忽略）；系统管理的请求体不允许未知字段。
 
@@ -91,6 +91,8 @@ pnpm build
 ```
 
 测试覆盖 API 格式与错误、MSW 会话与 CSRF、用户 CRUD 的服务端分页/筛选/排序、批量操作与写权限拒绝、上传类型与权限校验、审计流水与 audit:read、登录和退出交互、路由和菜单权限、旧请求竞争。真实后端的 HttpOnly、服务端授权、会话吊销与跨标签页一致性仍须后端集成验收。
+
+**Mock 契约守卫：** 开发、演示与测试中，`src/mocks/contract-guard.ts` 按操作注册表检查每个 Mock 响应：状态码必须是该操作声明过的，成功体必须符合 `{ data }` 与对应 schema，错误码必须是该状态下声明过的；违规在控制台报 `[contract-guard]`，测试中直接失败。`src/mocks/handlers.test.ts` 还校验 Mock 路由与注册表双向一致，并要求全部 36 个操作都至少走过一次成功路径和一次声明的错误路径。守卫只由 `mocks/browser.ts` 引入，不进入普通生产构建。
 
 ## 系统管理会话扩展
 

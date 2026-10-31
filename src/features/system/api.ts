@@ -1,31 +1,48 @@
-import { z } from 'zod'
-import { apiRequest } from '@/lib/api'
+import { type z } from 'zod'
+import { type OperationId } from '@/contract/operations'
+import { callOperation, callOperationUnchecked } from '@/lib/api'
 import { type SystemResource } from './catalog'
-import {
-  navigationSchema,
-  optionsSchema,
-  systemListSchema,
-  systemRecordSchema,
-} from './schema'
+import { type systemListSchema, type systemRecordSchema } from './schema'
 
+/** Registry operation ids per system resource (`listSystemAccounts`, …). */
+const names = {
+  accounts: 'Account',
+  roles: 'Role',
+  permissions: 'Permission',
+  menus: 'Menu',
+  departments: 'Department',
+} as const satisfies Record<SystemResource, string>
+
+/** The registry operation id for an action on a system resource. */
+export const systemOperationId = (
+  action: 'list' | 'create' | 'update' | 'delete',
+  resource: SystemResource
+) =>
+  `${action}System${names[resource]}${action === 'list' ? 's' : ''}` as OperationId
+
+/**
+ * The system pages share one screen for five resources and validate the body
+ * with each resource's form schema, so they pick the operation at runtime.
+ * Responses are still checked against that operation's success schema.
+ */
 export const systemApi = {
   list: (resource: SystemResource, page: number, search: string) =>
-    apiRequest(
-      `/system/${resource}?${new URLSearchParams({ page: String(page), pageSize: '10', search })}`,
-      systemListSchema
-    ),
-  options: () => apiRequest('/system/options', optionsSchema),
-  navigation: () => apiRequest('/auth/navigation', navigationSchema),
+    callOperationUnchecked(systemOperationId('list', resource), {
+      query: { page, pageSize: 10, search },
+    }) as Promise<z.infer<typeof systemListSchema>>,
+  options: () => callOperation('getSystemOptions'),
+  navigation: () => callOperation('getNavigation'),
   save: (resource: SystemResource, id: string | undefined, body: unknown) =>
-    apiRequest(
-      id ? `/system/${resource}/${id}` : `/system/${resource}`,
-      systemRecordSchema,
-      { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) }
-    ),
+    (id
+      ? callOperationUnchecked(systemOperationId('update', resource), {
+          params: { id },
+          body,
+        })
+      : callOperationUnchecked(systemOperationId('create', resource), {
+          body,
+        })) as Promise<z.infer<typeof systemRecordSchema>>,
   remove: (resource: SystemResource, id: string) =>
-    apiRequest(
-      `/system/${resource}/${id}`,
-      z.object({ success: z.literal(true) }),
-      { method: 'DELETE' }
-    ),
+    callOperationUnchecked(systemOperationId('delete', resource), {
+      params: { id },
+    }) as Promise<{ success: true }>,
 }
