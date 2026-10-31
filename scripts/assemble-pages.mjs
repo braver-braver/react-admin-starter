@@ -11,8 +11,8 @@ import {
 import { basename, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-export const releasePattern = /^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/
-export function validateMetadata(metadata) {
+const releasePattern = /^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/
+function validateMetadata(metadata) {
   if (
     !metadata ||
     !/^[a-f0-9]{40}$/.test(metadata.commit) ||
