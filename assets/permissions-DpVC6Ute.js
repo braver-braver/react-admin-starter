@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-DbxlOmJ0.js";import{t}from"./system-CP5u9RoO.js";var n=e(),r=()=>(0,n.jsx)(t,{resource:`permissions`});export{r as component};

@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DbxlOmJ0.js";import{t}from"./system-xwNeU_7U.js";var n=e(),r=()=>(0,n.jsx)(t,{resource:`departments`});export{r as component};
