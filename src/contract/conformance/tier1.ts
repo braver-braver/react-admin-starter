@@ -13,10 +13,11 @@ import type { Credentials, Scenario } from './scenarios.ts'
  * checked), so the suite can run repeatedly against a real back end.
  */
 
-const unique = () =>
+/** A short random prefix for data a scenario creates. */
+export const unique = () =>
   `ct${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`
 
-const userBody = (prefix: string, suffix: string) => ({
+export const userBody = (prefix: string, suffix: string) => ({
   firstName: '一致',
   lastName: '测试',
   username: `${prefix}_${suffix}`,
@@ -28,7 +29,7 @@ const userBody = (prefix: string, suffix: string) => ({
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
-async function signIn(client: ContractClient, account: Credentials) {
+export async function signIn(client: ContractClient, account: Credentials) {
   return expectSuccess(await client.call('login', { body: account }), 'login')
 }
 
@@ -180,7 +181,7 @@ export function tier1Scenarios(): Scenario[] {
         expectSuccess(await client.call('logout'), 'logout')
         expectError(await client.call('getSession'), 401, 'UNAUTHENTICATED')
         if (client.sessionCookies) {
-          client.sessionCookies.restore(saved)
+          await client.sessionCookies.restore(saved)
           expectError(await client.call('getSession'), 401, 'UNAUTHENTICATED')
         }
       },

@@ -101,6 +101,14 @@ export function resetMockSessions() {
   document.cookie = expiredSessionCookie()
 }
 
+/**
+ * The `Set-Cookie` value that sets the mock session cookie to `id`, or drops
+ * it when `id` is undefined. Only the conformance harness uses it, to replay a
+ * saved session (see src/mocks/conformance.test.ts).
+ */
+export const mockSessionSetCookie = (id: string | undefined) =>
+  id ? sessionCookie(id) : expiredSessionCookie()
+
 /** 从请求 Cookie 解析当前演示会话；未登录返回 undefined。 */
 export function currentSession(
   cookies: Record<string, string>
