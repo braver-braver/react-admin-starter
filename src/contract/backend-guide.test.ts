@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { apiCatalog, routeCatalog } from '@/features/system/catalog'
+import { routeCatalog } from '@/features/system/catalog'
 import { errorCatalog } from './errors.ts'
+import { type Operation, operations } from './operations.ts'
 
 /**
  * M2-T8: the tables in docs/backend-integration.md that restate code must not
@@ -48,12 +49,19 @@ describe('docs/backend-integration.md tables', () => {
     )
   })
 
-  it('lists exactly the capability codes the API catalog binds', () => {
+  it('lists exactly the capability codes the operation registry requires', () => {
+    const required = (operations as readonly Operation[]).flatMap((op) =>
+      op.permission === undefined
+        ? []
+        : typeof op.permission === 'string'
+          ? [op.permission]
+          : [...op.permission]
+    )
     expect(
       table('capabilities')
         .map(([name]) => code(name))
         .sort()
-    ).toEqual([...new Set(apiCatalog.map((entry) => entry.permission))].sort())
+    ).toEqual([...new Set(required)].sort())
   })
 
   it('lists every registered page with its path and capability', () => {
