@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -8,6 +8,33 @@ import { playwright } from '@vitest/browser-playwright'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+
+/**
+ * `VITE_API_PROXY_TARGET` must be a bare http(s) origin: no credentials, path,
+ * query or fragment, which Vite would otherwise forward with every request.
+ */
+function apiProxyTarget(value: string | undefined) {
+  if (!value) return undefined
+  let url: URL | undefined
+  try {
+    url = new URL(value)
+  } catch {
+    url = undefined
+  }
+  if (
+    !url ||
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    /[?#]/.test(value)
+  ) {
+    throw new Error(
+      `VITE_API_PROXY_TARGET must be an origin such as http://127.0.0.1:8000, got ${value}`
+    )
+  }
+  return url.origin
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode, command }) => {
@@ -33,6 +60,12 @@ export default defineConfig(({ mode, command }) => {
         base,
       }
     : null
+  // Optional same-origin API for `pnpm dev` and `pnpm preview`: forward /api
+  // to a real back end. Unset (the default), nothing is proxied.
+  const apiTarget = apiProxyTarget(
+    loadEnv(mode, process.cwd(), 'VITE_').VITE_API_PROXY_TARGET
+  )
+  const proxy = apiTarget ? { '/api': { target: apiTarget } } : undefined
   const worker = () => {
     const require = createRequire(import.meta.url)
     return readFileSync(
@@ -45,6 +78,8 @@ export default defineConfig(({ mode, command }) => {
   return {
     base,
     build: { outDir: demo ? 'dist-demo' : 'dist' },
+    server: { proxy },
+    preview: { proxy },
     define: {
       __DEMO_BUILD__: JSON.stringify(demo),
       __DEMO_METADATA__: JSON.stringify(metadata),
