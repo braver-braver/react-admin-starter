@@ -34,9 +34,9 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 
 - 最新演示：`https://braver-braver.github.io/react-admin-starter/`
 - 历史索引：`https://braver-braver.github.io/react-admin-starter/versions.html`
-- 版本快照：`https://braver-braver.github.io/react-admin-starter/releases/v0.2.0/`
+- 版本快照：`https://braver-braver.github.io/react-admin-starter/releases/<tag>/`，`<tag>` 是 Release 的 Tag，例如首个预发布版发布后的 `v1.0.0-rc.1`
 
-界面路由在 `#/` 后，例如 `…/releases/v0.2.0/#/users`，因此刷新不依赖服务器路径重写。
+界面路由在 `#/` 后，例如 `…/releases/<tag>/#/users`，因此刷新不依赖服务器路径重写。
 
 ## 上线后的真实站点验收
 
