@@ -84,6 +84,15 @@ describe('pnpm release:check (CLI in a temporary repository)', () => {
     git(dir, 'init', '-q', '-b', 'main')
     git(dir, 'config', 'user.email', 'test@example.test')
     git(dir, 'config', 'user.name', 'Test')
+    // An older commit on main, before the version bump.
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ version: '0.9.0' })
+    )
+    writeFileSync(join(dir, 'CHANGELOG.md'), changelog())
+    git(dir, 'add', '.')
+    git(dir, 'commit', '-q', '-m', 'before the release')
+    const older = git(dir, 'rev-parse', 'HEAD')
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ version }))
     writeFileSync(join(dir, 'CHANGELOG.md'), changelog(...sections))
     git(dir, 'add', '.')
@@ -93,13 +102,13 @@ describe('pnpm release:check (CLI in a temporary repository)', () => {
     git(dir, 'commit', '-q', '--allow-empty', '-m', 'not on main')
     const side = git(dir, 'rev-parse', 'HEAD')
     git(dir, 'checkout', '-q', 'main')
-    return { dir, release, side }
+    return { dir, older, release, side }
   }
 
   const run = (dir, ...args) =>
     spawnSync(
       process.execPath,
-      [script, ...args, '--dir', dir, '--main', 'main'],
+      [script, ...args, '--repo', dir, '--dir', dir, '--main', 'main'],
       {
         encoding: 'utf8',
       }
@@ -110,6 +119,16 @@ describe('pnpm release:check (CLI in a temporary repository)', () => {
     const result = run(dir, 'v1.0.0-rc.1', '--commit', release)
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /release:check v1\.0\.0-rc\.1: ok/)
+  })
+
+  it('checks the files of the selected commit, not the working tree', (t) => {
+    // The working tree (main) has the right version, but the SHA given is an
+    // older commit on main whose package.json and CHANGELOG were never bumped.
+    const { dir, older } = repository(t)
+    const result = run(dir, 'v1.0.0-rc.1', '--commit', older)
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /does not match package\.json version 0\.9\.0/)
+    assert.match(result.stderr, /has no "## v0\.9\.0" section/)
   })
 
   it('exits 1 and lists every problem', (t) => {

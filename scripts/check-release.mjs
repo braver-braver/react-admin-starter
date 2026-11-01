@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Checks that a release tag matches the code it points to, before anything is
 // published (docs/releasing.md):
-//   pnpm release:check v1.0.0-rc.1 [--dir app] [--repo .] [--commit <sha>] [--main origin/main] [--skip-main]
+//   pnpm release:check v1.0.0-rc.1 [--repo .] [--commit <sha>] [--main origin/main]
+//   pnpm release:check v1.0.0-rc.1 --skip-main [--dir .]      (release PR, before merge)
 // The Pages workflow runs it before building a Release, so a wrong tag never
 // reaches the immutable pages-snapshots branch.
 import { execFileSync } from 'node:child_process'
@@ -64,7 +65,8 @@ function isOnMain(repo, commit, main) {
       `${commit}^{commit}`,
     ])
   } catch {
-    if (/^[0-9a-f]{40}$/i.test(commit)) return { onMain: false, commit }
+    if (/^[0-9a-f]{40}$/i.test(commit))
+      return { onMain: false, commit, found: false }
     throw new Error(`cannot resolve ${commit} in ${repo}`)
   }
   try {
@@ -75,9 +77,10 @@ function isOnMain(repo, commit, main) {
         stdio: 'ignore',
       }
     )
-    return { onMain: true, commit: resolved }
+    return { onMain: true, commit: resolved, found: true }
   } catch (error) {
-    if (error.status === 1) return { onMain: false, commit: resolved }
+    if (error.status === 1)
+      return { onMain: false, commit: resolved, found: true }
     throw new Error(
       `cannot compare ${resolved} with ${main}; fetch the full history of main first`
     )
@@ -90,7 +93,7 @@ function main(argv) {
     allowPositionals: true,
     options: {
       dir: { type: 'string', default: '.' },
-      repo: { type: 'string' },
+      repo: { type: 'string', default: '.' },
       commit: { type: 'string', default: 'HEAD' },
       main: { type: 'string', default: 'origin/main' },
       'skip-main': { type: 'boolean', default: false },
@@ -99,25 +102,46 @@ function main(argv) {
   })
   const tag = positionals.filter((arg) => arg !== '--')[0]
   if (values.help || !tag) {
-    console.log(`Usage: pnpm release:check <tag> [--dir <dir>] [--repo <dir>] [--commit <sha>] [--main <ref>] [--skip-main]
+    console.log(`Usage: pnpm release:check <tag> [--repo <dir>] [--commit <sha>] [--main <ref>]
+       pnpm release:check <tag> --skip-main [--dir <dir>]
 
 Checks a release tag before it is published:
   1. the tag is vMAJOR.MINOR.PATCH with an optional prerelease suffix
-  2. the tag is "v" + the version in <dir>/package.json
-  3. <dir>/CHANGELOG.md has a "## v<version>" section above the upstream history
-  4. <commit> (default HEAD) is on <main> (default origin/main), checked in
-     <repo> (default <dir>), which needs the full history of main
---skip-main skips check 4, for a release PR whose commit is not on main yet.`)
+  2. the tag is "v" + the version in package.json
+  3. CHANGELOG.md has a "## v<version>" section above the upstream history
+  4. <commit> (default HEAD) is on <main> (default origin/main)
+package.json and CHANGELOG.md are read from <commit> itself, in <repo>
+(default ".", a clone with the full history of main), so the checked version
+is the one the tag will point at.
+--skip-main skips check 4 and reads both files from the working tree <dir>
+instead: for a release PR, whose commit is not on main yet.`)
     return values.help ? 0 : 2
   }
-  const dir = resolve(values.dir)
-  const { version } = JSON.parse(
-    readFileSync(join(dir, 'package.json'), 'utf8')
-  )
-  const changelog = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8')
-  const ancestry = values['skip-main']
-    ? undefined
-    : isOnMain(resolve(values.repo ?? values.dir), values.commit, values.main)
+  const files = (read) => ({
+    version: JSON.parse(read('package.json')).version,
+    changelog: read('CHANGELOG.md'),
+  })
+  let ancestry
+  let metadata
+  if (values['skip-main']) {
+    const dir = resolve(values.dir)
+    metadata = files((name) => readFileSync(join(dir, name), 'utf8'))
+  } else {
+    const repo = resolve(values.repo)
+    ancestry = isOnMain(repo, values.commit, values.main)
+    if (!ancestry.found) {
+      console.error(`release:check ${tag}: FAILED`)
+      console.error(`  ✗ the tagged commit is not on main`)
+      console.error(
+        `  ✗ ${ancestry.commit} is not in ${repo}, so its package.json and CHANGELOG.md cannot be read`
+      )
+      return 1
+    }
+    metadata = files((name) =>
+      git(repo, ['show', `${ancestry.commit}:${name}`])
+    )
+  }
+  const { version, changelog } = metadata
   const problems = releaseProblems({
     tag,
     version,
@@ -130,11 +154,9 @@ Checks a release tag before it is published:
     return 1
   }
   console.log(
-    `release:check ${tag}: ok (package.json ${version}, CHANGELOG section found, ${
-      ancestry
-        ? `${ancestry.commit.slice(0, 7)} is on ${values.main}`
-        : 'main not checked (--skip-main)'
-    })`
+    ancestry
+      ? `release:check ${tag}: ok (at ${ancestry.commit.slice(0, 7)}: package.json ${version}, CHANGELOG section found; on ${values.main})`
+      : `release:check ${tag}: ok (working tree: package.json ${version}, CHANGELOG section found; main not checked (--skip-main))`
   )
   return 0
 }

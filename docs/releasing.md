@@ -55,7 +55,7 @@
    # 84 换成发布 PR 的编号
    gh api repos/braver-braver/react-admin-starter/pulls/84 --jq .merge_commit_sha
    ```
-   用这个提交再跑一次完整检查，这次包括“属于 main”：
+   用这个提交再跑一次完整检查，这次包括“属于 main”。`package.json` 和 CHANGELOG 直接从这个提交里读取，与当前工作区无关，所以检查到的就是 Tag 将指向的内容：
    ```bash
    git fetch origin main
    pnpm release:check -- v1.0.0-rc.1 --commit <上一步得到的 40 位提交 SHA>
