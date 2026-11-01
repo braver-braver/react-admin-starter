@@ -70,8 +70,19 @@ These changes are visible to anyone who built a back end or a client against an 
 
 - The Pages workflow failed after #68 because the `releasePattern` export it imports had been removed. The export is restored, and `pnpm test:pages` now checks every name a workflow imports ([PR #73](https://github.com/braver-braver/react-admin-starter/pull/73)).
 
+### Removed
+
+- `axios`. No request in the application used it: every call goes through the contract client with `fetch`. It was imported only to recognise an Axios error in `handleServerError`, which now shows the validated `ApiError` message or a generic one ([#87](https://github.com/braver-braver/react-admin-starter/issues/87)).
+
 ### Security
 
+- Production dependencies are free of known advisories (`pnpm audit --prod` reported 60, including 2 critical and 27 high) ([#87](https://github.com/braver-braver/react-admin-starter/issues/87)):
+  - `@tanstack/react-router` 1.170 (with its plugin and devtools) brings `seroval` 1.7, which fixes the two critical deserialization advisories;
+  - `zod` 4.6;
+  - `vite` 8.3 and `@tailwindcss/vite`/`tailwindcss` 4.3 fix `vite`, `postcss`, `nanoid` and `source-map-js`;
+  - removing `axios` also removes `form-data` and `follow-redirects`.
+
+  zod's built-in email pattern in the generated OpenAPI document is now written without lookaheads. It accepts exactly the same addresses, and validators without lookahead support can now use it.
 - The mock reference API enforces several rules: scope checks per operation, limits on what a role edit or account assignment can delegate, protected recovery records, and session revocation after a password reset or disable ([#20](https://github.com/braver-braver/react-admin-starter/issues/20)).
 - Production builds never contain MSW, its handlers or demo credentials, and the build checks this every time. Desktop and mobile UI tests and privilege-escalation regression tests run in CI, and the Pages workflow smoke-tests the published site after every deployment.
 
