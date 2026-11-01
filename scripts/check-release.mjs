@@ -89,7 +89,9 @@ function isOnMain(repo, commit, main) {
 
 function main(argv) {
   const { values, positionals } = parseArgs({
-    args: argv,
+    // `pnpm release:check -- <tag> --commit …` passes the `--` through; after
+    // it parseArgs would take every option as a positional and ignore it.
+    args: argv[0] === '--' ? argv.slice(1) : argv,
     allowPositionals: true,
     options: {
       dir: { type: 'string', default: '.' },
@@ -100,7 +102,11 @@ function main(argv) {
       help: { type: 'boolean', short: 'h' },
     },
   })
-  const tag = positionals.filter((arg) => arg !== '--')[0]
+  const [tag, ...extra] = positionals
+  if (extra.length) {
+    console.error(`release:check: unexpected arguments: ${extra.join(' ')}`)
+    return 2
+  }
   if (values.help || !tag) {
     console.log(`Usage: pnpm release:check <tag> [--repo <dir>] [--commit <sha>] [--main <ref>]
        pnpm release:check <tag> --skip-main [--dir <dir>]

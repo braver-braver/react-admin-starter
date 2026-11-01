@@ -157,6 +157,28 @@ describe('pnpm release:check (CLI in a temporary repository)', () => {
     assert.match(result.stdout, /main not checked \(--skip-main\)/)
   })
 
+  it('honours options after the `--` that pnpm passes through', (t) => {
+    const { dir, side } = repository(t)
+    // As `pnpm release:check -- v1.0.0-rc.1 --commit <side>` runs it.
+    const result = spawnSync(
+      process.execPath,
+      [
+        script,
+        '--',
+        'v1.0.0-rc.1',
+        '--commit',
+        side,
+        '--repo',
+        dir,
+        '--main',
+        'main',
+      ],
+      { encoding: 'utf8' }
+    )
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /the tagged commit is not on main/)
+  })
+
   it('exits 2 with usage when no tag is given', () => {
     const result = spawnSync(process.execPath, [script], { encoding: 'utf8' })
     assert.equal(result.status, 2)
