@@ -1,4 +1,3 @@
-import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './api'
 import { handleServerError } from './handle-server-error'
@@ -28,38 +27,10 @@ describe('handleServerError', () => {
     expect(toastError).toHaveBeenCalledWith('没有返回内容。')
   })
 
-  it('prefers the API title when the error is an Axios error with response data', () => {
-    const error = new AxiosError('Bad request')
-    error.response = {
-      status: 422,
-      data: { title: 'Validation failed' },
-    } as AxiosError['response']
-
-    handleServerError(error)
-
-    expect(toastError).toHaveBeenCalledWith('Validation failed')
-  })
-
-  it('falls back to the generic message when Axios response has no data.title', () => {
-    const error = new AxiosError('Request failed')
-    error.response = {
-      status: 500,
-      data: {},
-    } as AxiosError['response']
-
-    handleServerError(error)
-
-    expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
-  })
-
-  it('falls back to the generic message when Axios data.title is an empty string', () => {
-    const error = new AxiosError('Bad request')
-    error.response = {
-      status: 400,
-      data: { title: '' },
-    } as AxiosError['response']
-
-    handleServerError(error)
+  it('shows only validated messages: an unvalidated response title is not displayed', () => {
+    // Requests go through the contract client, which throws ApiError for
+    // every error response; any other shape is treated as unknown.
+    handleServerError({ response: { status: 422, data: { title: 'raw' } } })
 
     expect(toastError).toHaveBeenCalledWith('操作失败，请稍后重试。')
   })
