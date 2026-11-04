@@ -31,6 +31,7 @@ const files = new Set(
 const sources = import.meta.glob(
   [
     '/src/contract/operations.ts',
+    '/src/contract/openapi.ts',
     '/src/contract/errors.ts',
     '/src/features/system/navigation.ts',
   ],
@@ -84,10 +85,11 @@ describe('docs/adding-a-module.md', () => {
         'pageSizeQuery',
         'wireDate',
         'API_PREFIX',
+        'successSchema',
       ],
       '/src/contract/operations.ts': ['operations'],
       '/src/contract/errors.ts': ['errorCatalog'],
-      '/src/contract/conformance/tier1.ts': ['unique'],
+      '/src/contract/conformance/tier1.ts': ['unique', 'withUsers'],
       '/src/features/system/catalog.ts': ['apiCatalog', 'routeCatalog'],
       '/src/mocks/handlers/auth.ts': [
         'apiBase',
@@ -112,12 +114,19 @@ describe('docs/adding-a-module.md', () => {
 
   it('relies on module constants that still exist', () => {
     const operations = sources['/src/contract/operations.ts']
-    for (const name of ['guarded', 'guardedWrite', 'scopedWrite'])
+    for (const name of ['guarded', 'guardedWrite', 'scopedWrite', 'idParams'])
       expect(operations).toMatch(new RegExp(`const ${name} = `))
     expect(sources['/src/features/system/navigation.ts']).toMatch(
       /const icons = \{/
     )
     expect(sources['/src/contract/errors.ts']).toMatch(/INVALID_USER_FIELDS:/)
+    expect(sources['/src/contract/errors.ts']).toMatch(/USER_NOT_FOUND:/)
+    // The OpenAPI generator names every body and success schema, and throws
+    // the error the guide quotes when one is missing.
+    expect(sources['/src/contract/openapi.ts']).toMatch(/const namedSchemas: /)
+    expect(sources['/src/contract/openapi.ts']).toContain(
+      'No component name for a schema of operation'
+    )
     expect(operations).toMatch(/id: 'listAuditLogs'/)
   })
 })

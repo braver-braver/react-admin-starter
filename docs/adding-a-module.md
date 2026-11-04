@@ -2,13 +2,13 @@
 
 本指南按**契约优先**的顺序，把一个新业务模块从接口定义一路接到页面和一致性套件。每一步先说明要改哪里，再给出最小代码骨架。
 
-真实参照是审计日志：一个只读列表操作 `listAuditLogs`，一个能力码 `audit:read`，使用统一的列表信封。下文用一个假想的“公告”模块（`announcements`）演示，包含一个列表和一个创建操作，以便覆盖写请求的规则。代码块只是示意，仓库里**没有**这个模块。
+真实参照是审计日志：一个只读列表操作 `listAuditLogs`，一个能力码 `audit:read`，使用统一的列表信封。下文用一个假想的“公告”模块（`announcements`）演示，包含列表、创建和删除三个操作：创建用来覆盖写请求的规则，删除让一致性场景能清理自己创建的数据。代码块只是示意，仓库里**没有**这个模块。
 
 开工前先读 [AGENTS.md](../AGENTS.md)（尤其是 API compatibility）、[接口与认证](auth-and-api.md)、[后端接入指南](backend-integration.md)和[系统管理](system-management.md)。
 
 ## 0. 先回答四个问题
 
-1. **资源名与路径**：所有路径都在 `/api/v1` 下（常量 `API_PREFIX`），例如 `GET /api/v1/announcements`、`POST /api/v1/announcements`。
+1. **资源名与路径**：所有路径都在 `/api/v1` 下（常量 `API_PREFIX`），例如 `GET /api/v1/announcements`、`POST /api/v1/announcements`、`DELETE /api/v1/announcements/{id}`。
 2. **能力码**：读写分开，例如 `announcements:read`、`announcements:write`。服务端必须校验，前端的路由与按钮守卫只影响体验。
 3. **数据范围**：记录是否按部门或本人过滤？要过滤时，每个能力单独计算范围，先过滤再计数和分页，批量操作中只要有一条越界就整体拒绝（见 [system-management.md](system-management.md)）。
 4. **兼容性**：v1.0.0 之后，`/api/v1` 只接受向后兼容的变更。新增操作、可选请求字段、响应字段、错误码和能力码都可以；能力码在线上是普通字符串，`Permission` 联合类型只在编译期存在。改名、删字段、收紧校验、改状态码等破坏性变更必须走 `/api/v2` 并升主版本。
@@ -48,7 +48,7 @@ export const announcementListResponseSchema = listEnvelope(announcementSchema)
 ## 2. 能力码与注册表
 
 1. 在 `src/contract/permissions.ts` 的 `Permission` 联合类型里加上 `'announcements:read' | 'announcements:write'`。
-2. 在 `src/contract/operations.ts` 的 `operations` 数组里登记两个操作。错误集合复用文件里已有的 `guarded`（读）和 `guardedWrite`（写）；按部门过滤的写操作用 `scopedWrite`：
+2. 在 `src/contract/operations.ts` 的 `operations` 数组里登记三个操作。错误集合复用文件里已有的 `guarded`（读）和 `guardedWrite`（写）；按部门过滤的写操作用 `scopedWrite`。路径参数复用 `idParams`，没有返回数据的写操作用 `src/contract/common.ts` 的 `successSchema`：
 
 ```ts
 {
@@ -75,14 +75,28 @@ export const announcementListResponseSchema = listEnvelope(announcementSchema)
   success: { status: 201, schema: announcementSchema },
   errors: { ...guardedWrite, 422: ['INVALID_ANNOUNCEMENT_FIELDS'] },
 },
+{
+  id: 'deleteAnnouncement',
+  method: 'DELETE',
+  path: '/announcements/{id}',
+  summary: 'Delete an announcement',
+  permission: 'announcements:write',
+  auth: 'session',
+  csrf: true,
+  params: idParams,
+  success: { status: 200, schema: successSchema },
+  errors: { ...guardedWrite, 404: ['ANNOUNCEMENT_NOT_FOUND'] },
+},
 ```
 
-3. 错误码按资源定义，例如已有的 `INVALID_USER_FIELDS`。新的业务错误码（这里是 `INVALID_ANNOUNCEMENT_FIELDS`，状态 422）要登记到 `src/contract/errors.ts` 的 `errorCatalog`，写明含义；新增错误码属于向后兼容的变更。
+3. 错误码按资源定义，例如已有的 `INVALID_USER_FIELDS`、`USER_NOT_FOUND`。新的业务错误码（这里是 422 的 `INVALID_ANNOUNCEMENT_FIELDS` 和 404 的 `ANNOUNCEMENT_NOT_FOUND`）要登记到 `src/contract/errors.ts` 的 `errorCatalog`，写明含义；新增错误码属于向后兼容的变更。
 4. 把能力登记到 `src/features/system/catalog.ts` 的 `apiCatalog`，这样它才会出现在权限管理里、可以分配给角色。Mock 的权限种子由 `apiCatalog` 生成，内置管理员角色自动拥有它。
 
 `src/contract/operations.test.ts` 固定了操作总数、错误码总数和每条规则：写操作必须声明 CSRF 和来源标识错误；声明的错误码必须在目录里且状态对得上；目录里每个操作级错误码至少被一个操作使用，Mock 能返回的每个错误码都必须在目录里。新增操作或错误码后，把那里的计数改成新的数量。
 
 ## 3. 生成 OpenAPI 并同步文档
+
+先给每个新的请求体和成功响应 schema 起组件名：在 `src/contract/openapi.ts` 里导入它们，加进 `namedSchemas`，例如 `[announcementSchema, 'Announcement']`、`[announcementListResponseSchema, 'AnnouncementList']`、`[announcementInput, 'AnnouncementWrite']`。复用的 schema（如 `successSchema`）已经在表里。漏了这一步，生成时会报 `No component name for a schema of operation …`。
 
 ```bash
 pnpm contract:generate   # 重写 docs/api.openapi.json
@@ -135,6 +149,8 @@ export const announcementsHandlers = [
 ]
 ```
 
+`DELETE /announcements/:id` 的处理器按同样顺序检查，找不到记录时返回 `apiError(404, 'ANNOUNCEMENT_NOT_FOUND', …)`。
+
 在 `src/mocks/handlers/index.ts` 的 `handlers` 里加上 `...announcementsHandlers`。
 
 不需要手写响应格式的检查：开发环境里，`src/mocks/contract-guard.ts` 会把每个 Mock 响应和注册表比对，状态码未声明、响应体不符合 schema 或错误码未声明都会报出来。`src/mocks/handlers.test.ts` 会对注册表里的每个操作发真实 HTTP 请求：没有来源标识的写请求必须得到 403，没有会话的读请求必须得到 401。
@@ -163,7 +179,8 @@ export const announcementsHandlers = [
 ## 7. 一致性场景
 
 - **通用场景不用写**：`src/contract/conformance/generic.ts` 会按注册表为每个新操作自动生成未登录、缺少来源标识、访客（无能力）和缺少 CSRF 令牌的场景。
-- **业务场景要写**：在 `src/contract/conformance/tier1.ts` 加 Tier 1 场景，参照其中的 `listAuditLogs` 场景：只读账户得到 `403 FORBIDDEN`、管理员能读、列表按时间倒序。创建出来的数据带 `unique()` 前缀，场景结束前删掉并核对。
+- **业务场景要写**：在 `src/contract/conformance/tier1.ts` 加 Tier 1 场景，参照其中的 `listAuditLogs` 场景：只读账户得到 `403 FORBIDDEN`、管理员能读、列表按时间倒序。
+- **场景必须清理自己的数据**：同一套场景会反复跑在真实后端上，所以场景创建的数据带 `unique()` 前缀，结束时通过注册表里的删除操作删掉，并核对删除成功。参照同文件的 `withUsers`：先收集创建出的 id，无论场景成功与否都执行清理；清理失败要报告，但不能掩盖场景本身的失败。这也是示例模块需要 `deleteAnnouncement` 的原因：没有删除操作的资源无法写可重复运行的写入场景。
 - 有数据范围时，在 `src/contract/conformance/tier2.ts` 加 Tier 2 场景。需要新夹具时，更新 `docs/conformance-fixtures.md`。
 
 `pnpm test:conformance` 用 Mock 跑整套场景；后端项目用 `pnpm test:contract` 对自己的实现跑同一套（见[后端接入指南](backend-integration.md)第 11 节）。
@@ -176,6 +193,7 @@ export const announcementsHandlers = [
 | --- | --- |
 | 契约文件导入了 `@/`、React 或 `import.meta.env` | `src/contract/operations.test.ts`（契约目录导入限制） |
 | 注册表里的操作或错误码计数、CSRF 或错误声明不对；新错误码没有登记 | `src/contract/operations.test.ts` |
+| 新的请求体或成功响应 schema 没有加进 `namedSchemas` | `pnpm contract:generate` 报 `No component name …` |
 | 改了契约但没有重新生成 OpenAPI | `pnpm contract:check` |
 | 操作表没有同步 | `src/contract/docs-sync.test.ts` |
 | 错误码表、能力码表或页面表没有同步 | `src/contract/backend-guide.test.ts` |
