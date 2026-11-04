@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Documentation
+
+- The README roadmap and the [Pages demo guide](docs/pages-demo.md) link the real `v1.0.0` and `v1.0.0-rc.3` Release runs and snapshots, and mark the Release snapshot acceptance ([#15](https://github.com/braver-braver/react-admin-starter/issues/15)) as complete.
+
 ## v1.0.0 (2026-11-04)
 
 First stable release. The application, the `/api/v1` contract and the release tooling are the same as in `v1.0.0-rc.3`, which passed acceptance: its Release workflow built, verified, snapshotted, deployed and live-tested `releases/v1.0.0-rc.3/` ([#50](https://github.com/braver-braver/react-admin-starter/issues/50)), and the snapshot checks and history preservation were verified in [#15](https://github.com/braver-braver/react-admin-starter/issues/15). The full list of changes since the shadcn-admin import is in the `v1.0.0-rc.1`, `v1.0.0-rc.2` and `v1.0.0-rc.3` sections below; read the `v1.0.0-rc.1` migration notes if you integrated a back end against an earlier `main`.
