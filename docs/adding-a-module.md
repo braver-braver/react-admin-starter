@@ -41,6 +41,12 @@ export const announcementQuerySchema = z.object({
 })
 
 export const announcementListResponseSchema = listEnvelope(announcementSchema)
+
+/** 客户端参数：page 与 pageSize 总是发送（与 audit.ts 的 AuditListParams 一致） */
+export type AnnouncementListParams = z.input<typeof announcementQuerySchema> & {
+  page: number
+  pageSize: number
+}
 ```
 
 `refine` 和 `transform` 不会进入 JSON Schema。用 `.meta({ description })` 写明这类规则，并在一致性场景里覆盖它们（风险 R1）。
@@ -167,6 +173,7 @@ export const announcementsHandlers = [
 - `api.ts`：**只**通过注册表发请求。`callOperation` 按操作 id 推断参数和返回类型，并在运行时校验响应：
 
   ```ts
+  import { type AnnouncementListParams } from '@/contract/announcements'
   import { callOperation } from '@/lib/api'
   export const fetchAnnouncements = (query: AnnouncementListParams) =>
     callOperation('listAnnouncements', { query })
@@ -186,7 +193,8 @@ export const announcementsHandlers = [
 - **通用场景不用写**：`src/contract/conformance/generic.ts` 会按注册表为每个新操作自动生成未登录、缺少来源标识、访客（无能力）和缺少 CSRF 令牌的场景。
 - **业务场景要写**：在 `src/contract/conformance/tier1.ts` 加 Tier 1 场景，参照其中的 `listAuditLogs` 场景：只读账户得到 `403 FORBIDDEN`、管理员能读、列表按时间倒序。
 - **场景必须清理自己的数据**：同一套场景会反复跑在真实后端上，所以场景创建的数据带 `unique()` 前缀，结束时通过注册表里的删除操作删掉，并核对删除成功。参照同文件的 `withUsers`：先收集创建出的 id，无论场景成功与否都执行清理；清理失败要报告，但不能掩盖场景本身的失败。这也是示例模块需要 `deleteAnnouncement` 的原因：没有删除操作的资源无法写可重复运行的写入场景。
-- 有数据范围时，在 `src/contract/conformance/tier2.ts` 加 Tier 2 场景。需要新夹具时，更新 `docs/conformance-fixtures.md`。
+- **每新增一个能力码都要更新夹具清单** `docs/conformance-fixtures.md`，不只是需要新账号时：`admin` 夹具必须拥有全部权限，“权限记录”一行逐个列出了必须存在的权限代码。把新能力码加进这份列表，并写明 `admin` 拥有它、`viewer` 是否拥有。否则真实后端按旧清单准备夹具，`pnpm test:contract` 会得到 403 或找不到权限记录。
+- 有数据范围时，在 `src/contract/conformance/tier2.ts` 加 Tier 2 场景；需要新的账号、部门或角色时，同样写进夹具清单。
 
 同一套场景在三个地方运行，新模块要让三处都通过：
 
@@ -210,6 +218,7 @@ export const announcementsHandlers = [
 | 新操作没有成功路径或业务错误的 HTTP 测试 | `src/mocks/handlers.test.ts` 的 `mock contract coverage` |
 | 场景遗留数据，或新存储没加进 `mockData()` | `src/mocks/conformance.test.ts`（运行前后数据对比） |
 | 替身后端缺新能力码或新操作，Tier 1 计数没改 | `pnpm test:conformance`（`stand-in.node.ts`、`runner.node.test.ts`） |
+| 夹具清单没有新能力码 | 没有自动检查：真实后端运行 `pnpm test:contract` 时才会 403。提交前对照第 7 节核对 |
 | Mock 响应不符合注册表 | 开发环境的 Mock 契约守卫；`src/mocks/conformance.test.ts` |
 | 新增导出没有被使用 | `pnpm knip` |
 | 普通生产构建里混入 Mock 或演示账户 | `pnpm build` 末尾的生产产物检查 |

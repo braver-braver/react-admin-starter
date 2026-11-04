@@ -38,6 +38,8 @@ const sources = import.meta.glob(
     '/src/mocks/conformance.test.ts',
     '/src/contract/conformance/stand-in.node.ts',
     '/src/contract/conformance/runner.node.test.ts',
+    '/src/contract/audit.ts',
+    '/docs/conformance-fixtures.md',
   ],
   { query: '?raw', import: 'default', eager: true }
 ) as Record<string, string>
@@ -146,5 +148,13 @@ describe('docs/adding-a-module.md', () => {
       sources['/src/contract/conformance/runner.node.test.ts']
     )?.[1]
     expect(guide).toContain(`目前 ${tier1Count} 个`)
+    // The example mirrors the audit contract's client parameter type, and the
+    // fixture checklist still enumerates permission codes one by one.
+    expect(sources['/src/contract/audit.ts']).toMatch(
+      /export type AuditListParams = z\.input<typeof auditQuerySchema>/
+    )
+    expect(sources['/docs/conformance-fixtures.md']).toMatch(
+      /\| 权限记录 \|.*`audit:read`/
+    )
   })
 })
