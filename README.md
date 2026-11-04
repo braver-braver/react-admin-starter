@@ -2,7 +2,7 @@
 
 A lightweight, Chinese-first, reusable React admin application based on [shadcn-admin](https://github.com/satnaing/shadcn-admin).
 
-> **状态：功能里程碑 v0.2 已实现，尚未发布正式 GitHub Release。** 当前 `package.json` 版本为 `0.1.0`；`v0.1` 与 `v0.2` 仅表示开发里程碑，并非已发布的 Tag/Release。开发环境与独立的 Pages 演示使用 MSW；普通生产构建不包含 Mock，必须接入真实的同源 API，由后端执行认证及权限校验。
+> **状态：预发布中（`1.0.0-rc.1`）。** 当前 `package.json` 版本为 `1.0.0-rc.1`，由维护者以 GitHub 预发布（Tag `v1.0.0-rc.1`）发出，验收通过后发布正式版 `v1.0.0`。早期的 `v0.1` 与 `v0.2` 仅表示开发里程碑，并非已发布的 Tag/Release。开发环境与独立的 Pages 演示使用 MSW；普通生产构建不包含 Mock，必须接入真实的同源 API，由后端执行认证及权限校验。
 
 ## Tech stack
 
@@ -32,7 +32,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 ## Roadmap
 
-开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-10-31）。
+开发阶段的 `v0.1` / `v0.2` 表示已实现的功能范围，**不代表已经发布 Git Tag 或 GitHub Release**；首个 Release 为预发布 `v1.0.0-rc.1`。下表以 `main` 上的代码、PR / Issue 状态及实际发布验收为准（更新于 2026-11-04）。
 
 <!-- prettier-ignore -->
 | 里程碑 | 主要交付与验收标准 | 状态 | 跟踪 |
@@ -46,11 +46,11 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 | 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 已完成 · 已合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
 | v1.0 · M1 API 契约冻结 | Zod 契约为唯一来源；生成 OpenAPI 并在 CI 检查漂移；路径统一为 `/api/v1`；客户端经注册表发请求；Mock 契约守卫；冻结规则 | 已完成 · 已合并 | [M1](https://github.com/braver-braver/react-admin-starter/milestone/1) · [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.json) |
 | v1.0 · M2 一致性套件与接入指南 | 同一套用例跑 Mock 与真实后端（Tier 1/2）；替身服务器自检；生产构建加同源 API 的 E2E；后端接入指南 | 已完成 · 已合并 | [M2](https://github.com/braver-braver/react-admin-starter/milestone/2) · [后端接入指南](docs/backend-integration.md) · [夹具清单](docs/conformance-fixtures.md) |
-| v1.0 · M3 发布工程 | 版本号与 CHANGELOG 流程、发布前检查 | 下一步 · 已拆分任务 | [M3](https://github.com/braver-braver/react-admin-starter/milestone/3) |
-| v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 计划中 · 尚无 Release | [工程规范](AGENTS.md) · [发布流程](docs/releasing.md) · [Pages 演示](docs/pages-demo.md) |
+| v1.0 · M3 发布工程 | 版本号与 CHANGELOG 流程、发布前检查、依赖安全升级、发布候选 PR | 已完成 · 已合并 | [M3](https://github.com/braver-braver/react-admin-starter/milestone/3) |
+| v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 预发布中 · `v1.0.0-rc.1` | [工程规范](AGENTS.md) · [发布流程](docs/releasing.md) · [Pages 演示](docs/pages-demo.md) |
 | Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 待验收 · 需真实 Release | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) |
 
-**下一步顺序：** M3 发布工程（版本、CHANGELOG、发布检查）→ 发布真实 Release 并完成 #15 的版本快照验收（M4）。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
+**下一步顺序：** 维护者发布 `v1.0.0-rc.1` 预发布并完成 #15 的版本快照验收（M4）→ 发布正式版 `v1.0.0`。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
