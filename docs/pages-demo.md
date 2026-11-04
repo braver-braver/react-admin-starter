@@ -30,11 +30,11 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 3. 检查 `github-pages` environment 的部署规则：允许 main；若限制分支/标签，再允许发布标签 `v*`。GitHub Actions 必须允许 `contents: write` 创建专用的 `pages-snapshots` 分支，以及 `pages: write` / `id-token: write` 执行 Pages 部署。
 4. 在 main 上运行 `Publish mock demo to GitHub Pages` 工作流，或由合并后的 main push 自动触发。工作流成功及浏览器在线验证之前，不应称站点“已上线”。
 
-项目预期入口（启用并成功部署后才可用）：
+站点入口：
 
 - 最新演示：`https://braver-braver.github.io/react-admin-starter/`
 - 历史索引：`https://braver-braver.github.io/react-admin-starter/versions.html`
-- 版本快照：`https://braver-braver.github.io/react-admin-starter/releases/<tag>/`，`<tag>` 是 Release 的 Tag，例如首个预发布版发布后的 `v1.0.0-rc.1`
+- 版本快照：`https://braver-braver.github.io/react-admin-starter/releases/<tag>/`，`<tag>` 是 Release 的 Tag，例如 [`releases/v1.0.0/`](https://braver-braver.github.io/react-admin-starter/releases/v1.0.0/)、[`releases/v1.0.0-rc.3/`](https://braver-braver.github.io/react-admin-starter/releases/v1.0.0-rc.3/)
 
 界面路由在 `#/` 后，例如 `…/releases/<tag>/#/users`，因此刷新不依赖服务器路径重写。
 
@@ -43,6 +43,12 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 发布工作流在 Pages 部署成功后，自动执行 `pnpm test:live`：等待已发布 `demo.json` 中的版本号、Git 提交与目标路径匹配，随后直接通过公开 Pages URL 运行桌面和移动端 Playwright 验证，覆盖登录、刷新、权限差异、退出和接口是否由预期的 Service Worker 响应。此验证检查的是公开站点，不是本地临时服务器，也不会提高全局重试次数；部署 CDN 尚未传播时会进行有上限的轮询，而不是固定睡眠。
 
 若部署成功但线上验收失败，Actions 会保持失败并上传浏览器 trace；此时网站可能已可访问，不能将整次发布标记为完全通过。为手动复现，设置 `LIVE_DEMO_SITE_URL` 为根站点 URL，设置 `LIVE_DEMO_VERSION` 为 `latest` 或发布标签，设置 `LIVE_DEMO_COMMIT` 为该版本对应的 40 位提交 SHA，然后运行 `pnpm test:live`。
+
+首次真实验收记录（[#15](https://github.com/braver-braver/react-admin-starter/issues/15)）：
+
+- [`v1.0.0`](https://github.com/braver-braver/react-admin-starter/releases/tag/v1.0.0) 的 [Release 运行](https://github.com/braver-braver/react-admin-starter/actions/runs/41798612436)：发布检查、构建、静态验证、快照、部署与 `test:live`（桌面、手机）全部通过。
+- [`v1.0.0-rc.3`](https://github.com/braver-braver/react-admin-starter/releases/tag/v1.0.0-rc.3) 的 [Release 运行](https://github.com/braver-braver/react-admin-starter/actions/runs/41795226477) 与其[同一提交重跑](https://github.com/braver-braver/react-admin-starter/actions/runs/41795226477/attempts/2)：重跑不产生新快照提交，以同一构建版本部署，验证幂等。
+- `v1.0.0-rc.1`、`v1.0.0-rc.2` 的 Release 运行因 [#91](https://github.com/braver-braver/react-admin-starter/issues/91) 未能部署，快照随后由 main 的部署上线；之后的 `latest` 与新版本发布都没有改动它们的文件。
 
 ## 自动发布与版本保存
 

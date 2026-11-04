@@ -42,15 +42,15 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 | v0.2 · Mock API 与认证 | 开发环境 MSW、Cookie Session、RBAC 及受保护路由 | 已完成 · 已合并 | [#3](https://github.com/braver-braver/react-admin-starter/issues/3) · [PR #7](https://github.com/braver-braver/react-admin-starter/pull/7) |
 | v0.2 · 通用业务示例与质量基线 | 服务端分页 CRUD、文件上传、审计日志、桌面/手机 E2E 与可访问性基线 | 已完成 · 已合并 | [#4](https://github.com/braver-braver/react-admin-starter/issues/4) · [#9](https://github.com/braver-braver/react-admin-starter/issues/9) |
 | v0.2 · 系统管理与统一授权 | 账号、角色、权限、菜单、部门管理；动态路由、按能力的数据范围及越权回归测试 | 已完成 · 已合并 | [#20](https://github.com/braver-braver/react-admin-starter/issues/20) · [PR #21](https://github.com/braver-braver/react-admin-starter/pull/21) |
-| Pages 演示基础设施 | 独立静态 Mock 演示、`latest` 在线验证、Release 版本快照构建与隔离测试 | 代码已完成 · 线上 latest 已验收 | [#14](https://github.com/braver-braver/react-admin-starter/issues/14) · [PR #16](https://github.com/braver-braver/react-admin-starter/pull/16) |
+| Pages 演示基础设施 | 独立静态 Mock 演示、`latest` 在线验证、Release 版本快照构建与隔离测试 | 已完成 · latest 与 Release 快照均已线上验收 | [#14](https://github.com/braver-braver/react-admin-starter/issues/14) · [PR #16](https://github.com/braver-braver/react-admin-starter/pull/16) |
 | 导航交互完善 | 工作区、系统管理、业务示例分组折叠；图标栏与桌面/手机 E2E | 已完成 · 已合并 | [PR #22](https://github.com/braver-braver/react-admin-starter/pull/22)；合并后验收 [Pages](https://braver-braver.github.io/react-admin-starter/) |
 | v1.0 · M1 API 契约冻结 | Zod 契约为唯一来源；生成 OpenAPI 并在 CI 检查漂移；路径统一为 `/api/v1`；客户端经注册表发请求；Mock 契约守卫；冻结规则 | 已完成 · 已合并 | [M1](https://github.com/braver-braver/react-admin-starter/milestone/1) · [接口文档](docs/auth-and-api.md) · [OpenAPI](docs/api.openapi.json) |
 | v1.0 · M2 一致性套件与接入指南 | 同一套用例跑 Mock 与真实后端（Tier 1/2）；替身服务器自检；生产构建加同源 API 的 E2E；后端接入指南 | 已完成 · 已合并 | [M2](https://github.com/braver-braver/react-admin-starter/milestone/2) · [后端接入指南](docs/backend-integration.md) · [夹具清单](docs/conformance-fixtures.md) |
 | v1.0 · M3 发布工程 | 版本号与 CHANGELOG 流程、发布前检查、依赖安全升级、发布候选 PR | 已完成 · 已合并 | [M3](https://github.com/braver-braver/react-admin-starter/milestone/3) |
-| v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 已发布 · [`v1.0.0`](https://github.com/braver-braver/react-admin-starter/releases/tag/v1.0.0) | [工程规范](AGENTS.md) · [发布流程](docs/releasing.md) · [Pages 演示](docs/pages-demo.md) |
-| Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 验收中 · rc 快照与历史保留已验收，待 `v1.0.0` 双版本并存（M4-T5） | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) |
+| v1.0 · 模板质量与正式发布 | 对齐包版本与 Git Tag；通过 Lint、格式、类型检查、单元/E2E、生产 Mock 隔离及 Pages 线上验收后发布首个正式版本 | 已完成 · 已发布 [`v1.0.0`](https://github.com/braver-braver/react-admin-starter/releases/tag/v1.0.0)（[Release 运行](https://github.com/braver-braver/react-admin-starter/actions/runs/41798612436)） | [工程规范](AGENTS.md) · [发布流程](docs/releasing.md) · [Pages 演示](docs/pages-demo.md) |
+| Release 历史快照验收 | 使用真实 Release 验证 `releases/<tag>/`、版本索引及不同版本的历史保留；不能以合成测试版本代替 | 已完成 · 快照、历史保留与双版本并存已验收 | [#15](https://github.com/braver-braver/react-admin-starter/issues/15) · [`releases/v1.0.0/`](https://braver-braver.github.io/react-admin-starter/releases/v1.0.0/) · [历史版本](https://braver-braver.github.io/react-admin-starter/versions.html) |
 
-**下一步顺序：** 完成 #15 的双版本并存验收与收尾（M4-T5、M4-T6）→ v1.x 增强待办池（#56）。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
+**下一步顺序：** v1.x 增强待办池（[#56](https://github.com/braver-braver/react-admin-starter/issues/56)），每项先建 Issue；`/api/v1` 只接受向后兼容的变更。面向 GoFrame 等具体后端的业务集成属于脚手架的消费项目，不在此仓库内引入生产后端。
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
