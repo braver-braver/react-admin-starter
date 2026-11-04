@@ -141,7 +141,7 @@ test('every name a workflow imports from a script is exported', async () => {
   }
 })
 
-test('release deploys use a build version that main has not deployed', () => {
+test('Pages deploys use the pages-snapshots commit as the build version', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/pages.yml', import.meta.url),
     'utf8'
@@ -152,30 +152,33 @@ test('release deploys use a build version that main has not deployed', () => {
     const end = workflow.indexOf('\n      - name: ', start + 1)
     return workflow.slice(start, end < 0 ? undefined : end)
   }
-  // actions/deploy-pages always deploys with GITHUB_SHA as the build version,
-  // which main has already used for the tagged commit (#91).
+  // Pages resolves the build version as a commit of the repository and keeps
+  // the existing deployment for a repeated one. actions/deploy-pages always
+  // sends GITHUB_SHA, which main has already deployed when a Release tags the
+  // same commit (#91); a composite string such as <sha>-<tag> is rejected.
+  assert.doesNotMatch(workflow, /actions\/deploy-pages@/)
+  const snapshot = step('Persist verified site snapshots')
+  assert.match(snapshot, /id: snapshot\n/)
   assert.match(
-    step('Deploy GitHub Pages'),
-    /if: github\.event_name != 'release'\n\s+uses: actions\/deploy-pages@/
+    snapshot,
+    /echo "commit=\$\(git -C \.pages-site rev-parse HEAD\)" >> "\$GITHUB_OUTPUT"/
   )
-  const release = step('Deploy GitHub Pages for the release')
-  assert.match(release, /if: github\.event_name == 'release'/)
+  const deploy = step('Deploy GitHub Pages')
+  assert.match(deploy, /id: deployment\n/)
+  assert.doesNotMatch(deploy, /\bif:/)
   assert.match(
-    release,
-    /BUILD_VERSION: \$\{\{ github\.sha \}\}-\$\{\{ env\.DEMO_VERSION \}\}-\$\{\{ github\.run_attempt \}\}/
+    deploy,
+    /BUILD_VERSION: \$\{\{ steps\.snapshot\.outputs\.commit \}\}/
   )
   assert.match(
-    release,
+    deploy,
     /ARTIFACT_ID: \$\{\{ steps\.upload\.outputs\.artifact_id \}\}/
   )
-  assert.match(release, /core\.setOutput\('page_url'/)
-  for (const use of ['url:', 'LIVE_DEMO_SITE_URL:', 'PAGE_URL:']) {
-    assert.match(
-      workflow,
-      new RegExp(
-        `${use} \\$\\{\\{ steps\\.deployment\\.outputs\\.page_url \\|\\| steps\\.release-deployment\\.outputs\\.page_url \\}\\}`
-      ),
-      `${use} must fall back to the release deployment URL`
-    )
-  }
+  assert.match(deploy, /pages_build_version: process\.env\.BUILD_VERSION/)
+  assert.match(deploy, /core\.setOutput\('page_url'/)
+  assert.ok(
+    workflow.indexOf('      - name: Persist verified site snapshots') <
+      workflow.indexOf('      - name: Deploy GitHub Pages'),
+    'the snapshot must be pushed before it is used as the build version'
+  )
 })

@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Fixed
+
+- Release demos now actually deploy to GitHub Pages. The `v1.0.0-rc.2` fix used `<sha>-<tag>-<attempt>` as the Pages build version, but Pages resolves the build version as a commit of the repository and rejected it with 404, so the `v1.0.0-rc.2` Release run failed before deploying. Every Pages run (main and Release) now deploys with the `pages-snapshots` commit it has just pushed, whose tree is the uploaded site ([#91](https://github.com/braver-braver/react-admin-starter/issues/91)).
+
 ## v1.0.0-rc.2 (2026-11-04)
 
 This release candidate replaces `v1.0.0-rc.1`: the deployment bug fixed below kept the `v1.0.0-rc.1` Release run from deploying its Pages demo, so it failed its live acceptance check. Its snapshot was published later by a `main` deployment. The application and API are the same as in `v1.0.0-rc.1`.
