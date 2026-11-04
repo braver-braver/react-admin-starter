@@ -1,0 +1,1 @@
+import{t as e}from"./system-CnX5hYYS.js";import{t}from"./jsx-runtime-BX5dh3L7.js";var n=t(),r=()=>(0,n.jsx)(e,{resource:`menus`});export{r as component};
