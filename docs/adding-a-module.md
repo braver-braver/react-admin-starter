@@ -153,7 +153,12 @@ export const announcementsHandlers = [
 
 在 `src/mocks/handlers/index.ts` 的 `handlers` 里加上 `...announcementsHandlers`。
 
-不需要手写响应格式的检查：开发环境里，`src/mocks/contract-guard.ts` 会把每个 Mock 响应和注册表比对，状态码未声明、响应体不符合 schema 或错误码未声明都会报出来。`src/mocks/handlers.test.ts` 会对注册表里的每个操作发真实 HTTP 请求：没有来源标识的写请求必须得到 403，没有会话的读请求必须得到 401。
+不需要手写响应格式的检查：开发环境里，`src/mocks/contract-guard.ts` 会把每个 Mock 响应和注册表比对，状态码未声明、响应体不符合 schema 或错误码未声明都会报出来。
+
+但要给新处理器写 HTTP 测试。`src/mocks/handlers.test.ts` 会对注册表里的每个操作自动发两类请求：没有来源标识的写请求必须得到 403，没有会话的读请求必须得到 401。这只覆盖了错误路径。同一文件末尾的 `mock contract coverage` 要求每个操作**既**出现过成功状态、**又**出现过一个已声明的错误，所以要在这里为每个新操作补上：
+
+- 成功路径：列表 200、创建 201、删除 200；
+- 业务错误：例如创建时字段不合法得到 422 `INVALID_ANNOUNCEMENT_FIELDS`，删除不存在的 id 得到 404 `ANNOUNCEMENT_NOT_FOUND`。
 
 ## 5. 客户端：API、查询与页面
 
@@ -183,7 +188,11 @@ export const announcementsHandlers = [
 - **场景必须清理自己的数据**：同一套场景会反复跑在真实后端上，所以场景创建的数据带 `unique()` 前缀，结束时通过注册表里的删除操作删掉，并核对删除成功。参照同文件的 `withUsers`：先收集创建出的 id，无论场景成功与否都执行清理；清理失败要报告，但不能掩盖场景本身的失败。这也是示例模块需要 `deleteAnnouncement` 的原因：没有删除操作的资源无法写可重复运行的写入场景。
 - 有数据范围时，在 `src/contract/conformance/tier2.ts` 加 Tier 2 场景。需要新夹具时，更新 `docs/conformance-fixtures.md`。
 
-`pnpm test:conformance` 用 Mock 跑整套场景；后端项目用 `pnpm test:contract` 对自己的实现跑同一套（见[后端接入指南](backend-integration.md)第 11 节）。
+同一套场景在三个地方运行，新模块要让三处都通过：
+
+1. **Mock**（`pnpm test` 的一部分）：`src/mocks/conformance.test.ts` 逐个运行全部场景，并对比运行前后的 Mock 数据，场景遗留的数据会让测试失败。比对的数据由同文件的 `mockData()` 汇总，目前只包括系统记录和业务用户；新模块的内存存储要加进去，否则它的遗留数据查不出来。
+2. **替身后端**（`pnpm test:conformance`）：`src/contract/conformance/stand-in.node.ts` 是一个手写的、与 Mock 无关的最小后端，用来证明套件本身会判对判错。它的 `ALL_PERMISSIONS` 和操作处理表都是手写的：要加上新能力码，并为每个新操作实现处理逻辑，否则派生的 CSRF 场景和新的业务场景会得到 403 或“未实现”。`src/contract/conformance/runner.node.test.ts` 写死了 Tier 1 业务场景的数量（目前 9 个），新增业务场景后要一并修改。
+3. **真实后端**：后端项目用 `pnpm test:contract` 对自己的实现跑同一套（见[后端接入指南](backend-integration.md)第 11 节）。
 
 ## 8. 收尾检查
 
@@ -198,7 +207,10 @@ export const announcementsHandlers = [
 | 操作表没有同步 | `src/contract/docs-sync.test.ts` |
 | 错误码表、能力码表或页面表没有同步 | `src/contract/backend-guide.test.ts` |
 | 没有注册 Mock 处理器，或处理器没检查来源标识或会话 | `src/mocks/handlers.test.ts`（逐个操作的 HTTP 覆盖） |
-| Mock 响应不符合注册表 | 开发环境的 Mock 契约守卫；`pnpm test:conformance` |
+| 新操作没有成功路径或业务错误的 HTTP 测试 | `src/mocks/handlers.test.ts` 的 `mock contract coverage` |
+| 场景遗留数据，或新存储没加进 `mockData()` | `src/mocks/conformance.test.ts`（运行前后数据对比） |
+| 替身后端缺新能力码或新操作，Tier 1 计数没改 | `pnpm test:conformance`（`stand-in.node.ts`、`runner.node.test.ts`） |
+| Mock 响应不符合注册表 | 开发环境的 Mock 契约守卫；`src/mocks/conformance.test.ts` |
 | 新增导出没有被使用 | `pnpm knip` |
 | 普通生产构建里混入 Mock 或演示账户 | `pnpm build` 末尾的生产产物检查 |
 

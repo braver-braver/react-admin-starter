@@ -34,6 +34,10 @@ const sources = import.meta.glob(
     '/src/contract/openapi.ts',
     '/src/contract/errors.ts',
     '/src/features/system/navigation.ts',
+    '/src/mocks/handlers.test.ts',
+    '/src/mocks/conformance.test.ts',
+    '/src/contract/conformance/stand-in.node.ts',
+    '/src/contract/conformance/runner.node.test.ts',
   ],
   { query: '?raw', import: 'default', eager: true }
 ) as Record<string, string>
@@ -128,5 +132,19 @@ describe('docs/adding-a-module.md', () => {
       'No component name for a schema of operation'
     )
     expect(operations).toMatch(/id: 'listAuditLogs'/)
+    // Hand-maintained lists the guide tells readers to extend.
+    expect(sources['/src/mocks/handlers.test.ts']).toContain(
+      "describe('mock contract coverage"
+    )
+    expect(sources['/src/mocks/conformance.test.ts']).toMatch(
+      /function mockData\(\)/
+    )
+    expect(sources['/src/contract/conformance/stand-in.node.ts']).toMatch(
+      /const ALL_PERMISSIONS: /
+    )
+    const tier1Count = /summary\.tier1\.passed, (\d+)\)/.exec(
+      sources['/src/contract/conformance/runner.node.test.ts']
+    )?.[1]
+    expect(guide).toContain(`目前 ${tier1Count} 个`)
   })
 })
