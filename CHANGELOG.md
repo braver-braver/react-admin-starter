@@ -17,6 +17,7 @@ This release candidate replaces `v1.0.0-rc.1`: the deployment bug fixed below ke
 ### Documentation
 
 - The release steps in [docs/releasing.md](docs/releasing.md) now regenerate the OpenAPI document after the version bump (its `info.version` follows `package.json`), give the commitizen commands for the next release candidate and for the final release, and list the other places that name the current version.
+- The release-creation and verification commands in [docs/releasing.md](docs/releasing.md) read the tag from `package.json` at the release commit instead of hard-coding `v1.0.0-rc.1`, and show how to extract the release notes from the CHANGELOG.
 
 ## v1.0.0-rc.1 (2026-11-04)
 
