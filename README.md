@@ -54,7 +54,7 @@ The tests use Playwright/Chromium. CI installs the required browser automaticall
 
 See [engineering guidelines](AGENTS.md), [architecture](docs/architecture.md), [changelog](CHANGELOG.md), [branding guide](docs/branding.md) and [upstream provenance](docs/upstream.md). Work is tracked in [GitHub Issues](https://github.com/braver-braver/react-admin-starter/issues).
 
-See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. To implement a back end, follow the [backend integration guide](docs/backend-integration.md) (中文：[后端接入指南](docs/backend-integration.md)): session and CSRF rules, the authorization model, deployment, and how to verify it with `pnpm test:contract`. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
+See [API and authentication guide](docs/auth-and-api.md) for demo accounts, the API contract and production integration requirements. To add a business module, follow the contract-first [module guide](docs/adding-a-module.md) (中文：[新增业务模块](docs/adding-a-module.md)). To implement a back end, follow the [backend integration guide](docs/backend-integration.md) (中文：[后端接入指南](docs/backend-integration.md)): session and CSRF rules, the authorization model, deployment, and how to verify it with `pnpm test:contract`. See the [localization guide](docs/i18n.md) for shared strings and `Intl` conventions, and the [Pages demo guide](docs/pages-demo.md) for the separately isolated public mock demo and release snapshots.
 
 ## Design principles
 
