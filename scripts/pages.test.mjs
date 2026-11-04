@@ -182,3 +182,85 @@ test('Pages deploys use the pages-snapshots commit as the build version', () => 
     'the snapshot must be pushed before it is used as the build version'
   )
 })
+
+test('the Pages deploy step retries transient status errors and cancels when it gives up', async (t) => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/pages.yml', import.meta.url),
+    'utf8'
+  )
+  const marker = '          script: |\n'
+  const start =
+    workflow.indexOf(
+      marker,
+      workflow.indexOf('      - name: Deploy GitHub Pages\n')
+    ) + marker.length
+  const body = workflow
+    .slice(start, workflow.indexOf('\n      - name: ', start))
+    .split('\n')
+    .map((line) => line.replace(/^ {12}/, ''))
+    .join('\n')
+  const AsyncFunction = (async () => {}).constructor
+  const deploy = new AsyncFunction('github', 'context', 'core', body)
+  t.mock.method(globalThis, 'setTimeout', (callback) => callback())
+  t.mock.method(Date, 'now', () => 0)
+  process.env.ARTIFACT_ID = '1'
+  process.env.BUILD_VERSION = 'a'.repeat(40)
+
+  const run = async (statuses) => {
+    const routes = []
+    const outputs = {}
+    const github = {
+      request: async (route) => {
+        routes.push(route)
+        if (route.endsWith('/pages/deployments'))
+          return {
+            data: {
+              status_url: 'https://api.github.test/pages/deployments/7',
+              page_url: 'https://pages.test/',
+            },
+          }
+        if (route.endsWith('/cancel')) return { data: {} }
+        const next = statuses.shift()
+        if (next instanceof Error) throw next
+        return { data: { status: next } }
+      },
+    }
+    const core = {
+      info() {},
+      warning() {},
+      getIDToken: async () => 'oidc',
+      setOutput: (name, value) => (outputs[name] = value),
+    }
+    let error
+    try {
+      await deploy(github, { repo: { owner: 'o', repo: 'r' } }, core)
+    } catch (caught) {
+      error = caught
+    }
+    return {
+      error,
+      outputs,
+      cancelled: routes.some((route) => route.endsWith('/cancel')),
+    }
+  }
+  const failure = (status) =>
+    Object.assign(new Error('request failed'), { status })
+
+  const recovered = await run([
+    failure(404),
+    failure(502),
+    'not_found',
+    'deployment_in_progress',
+    'succeed',
+  ])
+  assert.equal(recovered.error, undefined)
+  assert.equal(recovered.outputs.page_url, 'https://pages.test/')
+
+  const exhausted = await run(Array.from({ length: 10 }, () => failure(500)))
+  assert.match(exhausted.error.message, /failed 10 times in a row/)
+  assert.ok(exhausted.cancelled)
+
+  const final = await run(['deployment_queued', 'deployment_failed'])
+  assert.match(final.error.message, /ended with deployment_failed/)
+  assert.ok(!final.cancelled)
+})

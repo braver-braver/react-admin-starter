@@ -152,15 +152,45 @@ jobs:
             const { data } = await github.request('POST /repos/{owner}/{repo}/pages/deployments', { owner, repo, ...payload })
             const deploymentId = data.id || data.status_url?.split('/').pop()
             if (!deploymentId) throw new Error('Pages did not return a deployment id')
+            // Same polling rules as actions/deploy-pages: final states fail, transient
+            // states and request errors are retried up to 10 times in a row, and a
+            // deployment that cannot finish is cancelled.
             const failed = ['deployment_failed', 'deployment_perms_error', 'deployment_content_failed', 'deployment_cancelled', 'deployment_lost']
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+            const cancel = async (reason) => {
+              try {
+                await github.request('POST /repos/{owner}/{repo}/pages/deployments/{deploymentId}/cancel', { owner, repo, deploymentId })
+              } catch (error) {
+                core.warning(`Cancelling Pages deployment ${deploymentId} failed: ${error.message}`)
+              }
+              throw new Error(reason)
+            }
             const deadline = Date.now() + 10 * 60 * 1000
+            let errors = 0
+            let last = 'unknown'
             for (;;) {
-              const { data: status } = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deploymentId}', { owner, repo, deploymentId })
-              if (status.status === 'succeed') break
-              if (failed.includes(status.status)) throw new Error(`Pages deployment ${deploymentId} ended with ${status.status}`)
-              if (Date.now() > deadline) throw new Error(`Pages deployment ${deploymentId} did not finish in 10 minutes (last status: ${status.status})`)
-              core.info(`Current status: ${status.status}`)
-              await new Promise((resolve) => setTimeout(resolve, 5000))
+              await sleep(errors ? Math.min(5000 * 2 ** errors, 30000) : 5000)
+              if (Date.now() > deadline) await cancel(`Pages deployment ${deploymentId} did not finish in 10 minutes (last status: ${last})`)
+              let status
+              try {
+                ;({ data: { status } } = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deploymentId}', { owner, repo, deploymentId }))
+              } catch (error) {
+                errors += 1
+                core.warning(`Getting Pages deployment status failed (${errors}/10): ${error.status ?? ''} ${error.message}`)
+                if (errors >= 10) await cancel(`Pages deployment ${deploymentId}: status requests failed 10 times in a row`)
+                continue
+              }
+              last = status
+              if (status === 'succeed') break
+              if (failed.includes(status)) throw new Error(`Pages deployment ${deploymentId} ended with ${status}`)
+              if (status === 'not_found' || status === 'deployment_attempt_error') {
+                errors += 1
+                core.warning(`Pages deployment status ${status} (${errors}/10)`)
+                if (errors >= 10) await cancel(`Pages deployment ${deploymentId} kept reporting ${status}`)
+                continue
+              }
+              errors = 0
+              core.info(`Current status: ${status}`)
             }
             core.info(`Deployed ${deploymentId} to ${data.page_url}`)
             core.setOutput('page_url', data.page_url)
