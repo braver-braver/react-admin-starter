@@ -1,0 +1,1 @@
+function e(e){if(typeof document>`u`)return;let t=`; ${document.cookie}`.split(`; ${e}=`);if(t.length===2)return t.pop()?.split(`;`).shift()}function t(e,t,n=604800){typeof document<`u`&&(document.cookie=`${e}=${t}; path=/; max-age=${n}`)}function n(e){typeof document<`u`&&(document.cookie=`${e}=; path=/; max-age=0`)}export{n,t as r,e as t};

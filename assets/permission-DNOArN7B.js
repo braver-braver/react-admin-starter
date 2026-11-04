@@ -1,1 +1,0 @@
-import{p as e}from"./createLucideIcon-D948XUHo.js";import{n as t}from"./users-C3nEN7vR.js";function n({permission:n,children:r}){return t(e(e=>e.auth.user),n)?r:null}export{n as t};
