@@ -2,9 +2,15 @@
 
 This file distinguishes **React Admin Starter** development from the release history of its [shadcn-admin upstream](https://github.com/satnaing/shadcn-admin). The source was imported at a pinned upstream commit; see [upstream provenance](docs/upstream.md).
 
-**Release status:** Release candidate. The package version is `1.0.0-rc.3`. `v1.0.0-rc.1` and `v1.0.0-rc.2` are published as GitHub pre-releases, but their own Release runs could not deploy their Pages demos and failed acceptance (see v1.0.0-rc.3 below). The maintainer creates the Git tag `v1.0.0-rc.3` and its GitHub pre-release from the merged release commit; until then this version exists only on `main`. The stable `v1.0.0` follows once a release candidate passes acceptance.
+**Release status:** Released. `v1.0.0` is the first stable release of React Admin Starter, published as a GitHub Release from the merged release commit. It is `v1.0.0-rc.3` without the pre-release suffix. The release candidates `v1.0.0-rc.1` and `v1.0.0-rc.2` remain published as GitHub pre-releases, but their own Release runs failed acceptance (see `v1.0.0-rc.3`). From here on, `/api/v1` follows the freeze rules in [AGENTS.md](AGENTS.md#api-compatibility-freeze-rules).
 
 ## Unreleased — React Admin Starter
+
+## v1.0.0 (2026-11-04)
+
+First stable release. The application, the `/api/v1` contract and the release tooling are the same as in `v1.0.0-rc.3`, which passed acceptance: its Release workflow built, verified, snapshotted, deployed and live-tested `releases/v1.0.0-rc.3/` ([#50](https://github.com/braver-braver/react-admin-starter/issues/50)), and the snapshot checks and history preservation were verified in [#15](https://github.com/braver-braver/react-admin-starter/issues/15). The full list of changes since the shadcn-admin import is in the `v1.0.0-rc.1`, `v1.0.0-rc.2` and `v1.0.0-rc.3` sections below; read the `v1.0.0-rc.1` migration notes if you integrated a back end against an earlier `main`.
+
+From this release on, `/api/v1` accepts only backward-compatible changes; breaking changes go to `/api/v2` with a major version bump.
 
 ## v1.0.0-rc.3 (2026-11-04)
 
