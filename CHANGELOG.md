@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Fixed
+
+- Release demos now go live on GitHub Pages. `actions/deploy-pages` always used the commit SHA as the Pages build version, and a release tags a commit that `main` has already deployed, so Pages kept serving the existing deployment and `releases/<tag>/` never appeared (the `v1.0.0-rc.1` smoke test failed this way). Release runs now deploy the uploaded artifact through the Pages API with a build version unique to the tag and run attempt ([#91](https://github.com/braver-braver/react-admin-starter/issues/91)).
+
 ### Documentation
 
 - The release steps in [docs/releasing.md](docs/releasing.md) now regenerate the OpenAPI document after the version bump (its `info.version` follows `package.json`), give the commitizen commands for the next release candidate and for the final release, and list the other places that name the current version.
