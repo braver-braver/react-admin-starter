@@ -27,7 +27,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.release-deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     env:
       DEMO_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || 'latest' }}
     steps:
@@ -109,6 +109,7 @@ jobs:
           DEMO_SERVE_DIR: ../.pages-upload
         run: pnpm exec playwright test --config playwright.demo.config.ts
       - name: Persist verified site snapshots
+        id: snapshot
         shell: bash
         run: |
           git -C .pages-site add --all
@@ -116,6 +117,8 @@ jobs:
             git -C .pages-site commit -m "Publish demo $DEMO_VERSION"
             git -C .pages-site push origin HEAD:refs/heads/pages-snapshots
           fi
+          # This commit's tree is exactly the site uploaded below (minus .git).
+          echo "commit=$(git -C .pages-site rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload verified Pages artifact
@@ -123,25 +126,23 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: .pages-upload
+      # Pages identifies a deployment by its build version and resolves that
+      # version as a commit of this repository: a repeated version keeps the
+      # existing deployment, and a string that is not a commit is rejected with
+      # 404. actions/deploy-pages always sends GITHUB_SHA, which main has
+      # already deployed by the time a Release tags the same commit (#91), so
+      # deploy the uploaded artifact with the pages-snapshots commit instead:
+      # it is new whenever the site changed and its tree is the uploaded site.
       - name: Deploy GitHub Pages
         id: deployment
-        if: github.event_name != 'release'
-        uses: actions/deploy-pages@v4
-      # actions/deploy-pages always uses GITHUB_SHA as the Pages build version.
-      # A release tags a commit that main has already deployed, and Pages treats
-      # a repeated build version as the existing deployment, so the release
-      # pages would never go live (#91). Deploy the exact uploaded artifact with
-      # a build version unique to this tag and run attempt instead.
-      - name: Deploy GitHub Pages for the release
-        id: release-deployment
-        if: github.event_name == 'release'
         uses: actions/github-script@v7
         env:
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
-          BUILD_VERSION: ${{ github.sha }}-${{ env.DEMO_VERSION }}-${{ github.run_attempt }}
+          BUILD_VERSION: ${{ steps.snapshot.outputs.commit }}
         with:
           script: |
             const { owner, repo } = context.repo
+            if (!/^[0-9a-f]{40}$/.test(process.env.BUILD_VERSION)) throw new Error(`Invalid snapshot commit: ${process.env.BUILD_VERSION}`)
             const payload = {
               artifact_id: Number(process.env.ARTIFACT_ID),
               pages_build_version: process.env.BUILD_VERSION,
@@ -151,28 +152,58 @@ jobs:
             const { data } = await github.request('POST /repos/{owner}/{repo}/pages/deployments', { owner, repo, ...payload })
             const deploymentId = data.id || data.status_url?.split('/').pop()
             if (!deploymentId) throw new Error('Pages did not return a deployment id')
+            // Same polling rules as actions/deploy-pages: final states fail, transient
+            // states and request errors are retried up to 10 times in a row, and a
+            // deployment that cannot finish is cancelled.
             const failed = ['deployment_failed', 'deployment_perms_error', 'deployment_content_failed', 'deployment_cancelled', 'deployment_lost']
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+            const cancel = async (reason) => {
+              try {
+                await github.request('POST /repos/{owner}/{repo}/pages/deployments/{deploymentId}/cancel', { owner, repo, deploymentId })
+              } catch (error) {
+                core.warning(`Cancelling Pages deployment ${deploymentId} failed: ${error.message}`)
+              }
+              throw new Error(reason)
+            }
             const deadline = Date.now() + 10 * 60 * 1000
+            let errors = 0
+            let last = 'unknown'
             for (;;) {
-              const { data: status } = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deploymentId}', { owner, repo, deploymentId })
-              if (status.status === 'succeed') break
-              if (failed.includes(status.status)) throw new Error(`Pages deployment ${deploymentId} ended with ${status.status}`)
-              if (Date.now() > deadline) throw new Error(`Pages deployment ${deploymentId} did not finish in 10 minutes (last status: ${status.status})`)
-              core.info(`Current status: ${status.status}`)
-              await new Promise((resolve) => setTimeout(resolve, 5000))
+              await sleep(errors ? Math.min(5000 * 2 ** errors, 30000) : 5000)
+              if (Date.now() > deadline) await cancel(`Pages deployment ${deploymentId} did not finish in 10 minutes (last status: ${last})`)
+              let status
+              try {
+                ;({ data: { status } } = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deploymentId}', { owner, repo, deploymentId }))
+              } catch (error) {
+                errors += 1
+                core.warning(`Getting Pages deployment status failed (${errors}/10): ${error.status ?? ''} ${error.message}`)
+                if (errors >= 10) await cancel(`Pages deployment ${deploymentId}: status requests failed 10 times in a row`)
+                continue
+              }
+              last = status
+              if (status === 'succeed') break
+              if (failed.includes(status)) throw new Error(`Pages deployment ${deploymentId} ended with ${status}`)
+              if (status === 'not_found' || status === 'deployment_attempt_error') {
+                errors += 1
+                core.warning(`Pages deployment status ${status} (${errors}/10)`)
+                if (errors >= 10) await cancel(`Pages deployment ${deploymentId} kept reporting ${status}`)
+                continue
+              }
+              errors = 0
+              core.info(`Current status: ${status}`)
             }
             core.info(`Deployed ${deploymentId} to ${data.page_url}`)
             core.setOutput('page_url', data.page_url)
       - name: Smoke-test the deployed Pages URL in Chromium
         working-directory: app
         env:
-          LIVE_DEMO_SITE_URL: ${{ steps.deployment.outputs.page_url || steps.release-deployment.outputs.page_url }}
+          LIVE_DEMO_SITE_URL: ${{ steps.deployment.outputs.page_url }}
           LIVE_DEMO_VERSION: ${{ env.DEMO_VERSION }}
           LIVE_DEMO_COMMIT: ${{ github.sha }}
         run: pnpm exec playwright test --config playwright.live.config.ts
       - name: Publish deployment links
         env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url || steps.release-deployment.outputs.page_url }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           node --input-type=module <<'NODE'
           import { appendFileSync } from 'node:fs'

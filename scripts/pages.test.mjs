@@ -141,7 +141,7 @@ test('every name a workflow imports from a script is exported', async () => {
   }
 })
 
-test('release deploys use a build version that main has not deployed', () => {
+test('Pages deploys use the pages-snapshots commit as the build version', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/pages.yml', import.meta.url),
     'utf8'
@@ -152,30 +152,115 @@ test('release deploys use a build version that main has not deployed', () => {
     const end = workflow.indexOf('\n      - name: ', start + 1)
     return workflow.slice(start, end < 0 ? undefined : end)
   }
-  // actions/deploy-pages always deploys with GITHUB_SHA as the build version,
-  // which main has already used for the tagged commit (#91).
+  // Pages resolves the build version as a commit of the repository and keeps
+  // the existing deployment for a repeated one. actions/deploy-pages always
+  // sends GITHUB_SHA, which main has already deployed when a Release tags the
+  // same commit (#91); a composite string such as <sha>-<tag> is rejected.
+  assert.doesNotMatch(workflow, /actions\/deploy-pages@/)
+  const snapshot = step('Persist verified site snapshots')
+  assert.match(snapshot, /id: snapshot\n/)
   assert.match(
-    step('Deploy GitHub Pages'),
-    /if: github\.event_name != 'release'\n\s+uses: actions\/deploy-pages@/
+    snapshot,
+    /echo "commit=\$\(git -C \.pages-site rev-parse HEAD\)" >> "\$GITHUB_OUTPUT"/
   )
-  const release = step('Deploy GitHub Pages for the release')
-  assert.match(release, /if: github\.event_name == 'release'/)
+  const deploy = step('Deploy GitHub Pages')
+  assert.match(deploy, /id: deployment\n/)
+  assert.doesNotMatch(deploy, /\bif:/)
   assert.match(
-    release,
-    /BUILD_VERSION: \$\{\{ github\.sha \}\}-\$\{\{ env\.DEMO_VERSION \}\}-\$\{\{ github\.run_attempt \}\}/
+    deploy,
+    /BUILD_VERSION: \$\{\{ steps\.snapshot\.outputs\.commit \}\}/
   )
   assert.match(
-    release,
+    deploy,
     /ARTIFACT_ID: \$\{\{ steps\.upload\.outputs\.artifact_id \}\}/
   )
-  assert.match(release, /core\.setOutput\('page_url'/)
-  for (const use of ['url:', 'LIVE_DEMO_SITE_URL:', 'PAGE_URL:']) {
-    assert.match(
-      workflow,
-      new RegExp(
-        `${use} \\$\\{\\{ steps\\.deployment\\.outputs\\.page_url \\|\\| steps\\.release-deployment\\.outputs\\.page_url \\}\\}`
-      ),
-      `${use} must fall back to the release deployment URL`
-    )
+  assert.match(deploy, /pages_build_version: process\.env\.BUILD_VERSION/)
+  assert.match(deploy, /core\.setOutput\('page_url'/)
+  assert.ok(
+    workflow.indexOf('      - name: Persist verified site snapshots') <
+      workflow.indexOf('      - name: Deploy GitHub Pages'),
+    'the snapshot must be pushed before it is used as the build version'
+  )
+})
+
+test('the Pages deploy step retries transient status errors and cancels when it gives up', async (t) => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/pages.yml', import.meta.url),
+    'utf8'
+  )
+  const marker = '          script: |\n'
+  const start =
+    workflow.indexOf(
+      marker,
+      workflow.indexOf('      - name: Deploy GitHub Pages\n')
+    ) + marker.length
+  const body = workflow
+    .slice(start, workflow.indexOf('\n      - name: ', start))
+    .split('\n')
+    .map((line) => line.replace(/^ {12}/, ''))
+    .join('\n')
+  const AsyncFunction = (async () => {}).constructor
+  const deploy = new AsyncFunction('github', 'context', 'core', body)
+  t.mock.method(globalThis, 'setTimeout', (callback) => callback())
+  t.mock.method(Date, 'now', () => 0)
+  process.env.ARTIFACT_ID = '1'
+  process.env.BUILD_VERSION = 'a'.repeat(40)
+
+  const run = async (statuses) => {
+    const routes = []
+    const outputs = {}
+    const github = {
+      request: async (route) => {
+        routes.push(route)
+        if (route.endsWith('/pages/deployments'))
+          return {
+            data: {
+              status_url: 'https://api.github.test/pages/deployments/7',
+              page_url: 'https://pages.test/',
+            },
+          }
+        if (route.endsWith('/cancel')) return { data: {} }
+        const next = statuses.shift()
+        if (next instanceof Error) throw next
+        return { data: { status: next } }
+      },
+    }
+    const core = {
+      info() {},
+      warning() {},
+      getIDToken: async () => 'oidc',
+      setOutput: (name, value) => (outputs[name] = value),
+    }
+    let error
+    try {
+      await deploy(github, { repo: { owner: 'o', repo: 'r' } }, core)
+    } catch (caught) {
+      error = caught
+    }
+    return {
+      error,
+      outputs,
+      cancelled: routes.some((route) => route.endsWith('/cancel')),
+    }
   }
+  const failure = (status) =>
+    Object.assign(new Error('request failed'), { status })
+
+  const recovered = await run([
+    failure(404),
+    failure(502),
+    'not_found',
+    'deployment_in_progress',
+    'succeed',
+  ])
+  assert.equal(recovered.error, undefined)
+  assert.equal(recovered.outputs.page_url, 'https://pages.test/')
+
+  const exhausted = await run(Array.from({ length: 10 }, () => failure(500)))
+  assert.match(exhausted.error.message, /failed 10 times in a row/)
+  assert.ok(exhausted.cancelled)
+
+  const final = await run(['deployment_queued', 'deployment_failed'])
+  assert.match(final.error.message, /ended with deployment_failed/)
+  assert.ok(!final.cancelled)
 })

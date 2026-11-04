@@ -58,7 +58,7 @@ main push 更新最新演示；发布 Release 则从事件对应的准确提交�
 - CI 在每个 PR 上验证普通应用 E2E、快照组装、两个静态版本和跨版本会话隔离；发布工作流只验证此次发布的真实目标版本，不要求伪造历史 Release。
 - 静态浏览器验证失败会阻止保存和部署，并保留 7 天失败证据。
 - 快照保存成功但 Pages 部署失败时，已上线站点保持上一版；修复 Pages 设置后重跑即可，快照保留且重跑幂等。
-- Pages 以构建版本区分部署，重复的构建版本视为同一个已有部署。`actions/deploy-pages` 固定用 `GITHUB_SHA` 作为构建版本，而 Release 的 Tag 指向 main 已经部署过的合并提交；所以 Release 运行改用“Deploy GitHub Pages for the release”步骤，直接调用 Pages 部署 API 部署本次上传的 artifact，构建版本为 `<提交 SHA>-<tag>-<重跑次数>`。main 与手动触发仍使用 `actions/deploy-pages`。见 [#91](https://github.com/braver-braver/react-admin-starter/issues/91)。
-- main 运行重跑时，`actions/deploy-pages` 可能因上一次尝试留下的同名 `github-pages` artifact 报 “Multiple artifacts named github-pages”；删除该运行中旧的 `github-pages` artifact 后再重跑。Release 运行按 artifact ID 部署，不受影响。
+- Pages 以构建版本区分部署，并把构建版本当作本仓库的一个提交来解析：重复的构建版本沿用已有部署，不是提交的字符串（例如 `<sha>-<tag>`）返回 404。`actions/deploy-pages` 固定用 `GITHUB_SHA`，而 Release 的 Tag 指向 main 已经部署过的合并提交，所以工作流不用它，而是直接调用 Pages 部署 API，构建版本取“Persist verified site snapshots”刚推送的 `pages-snapshots` 提交：站点有变化时它一定是新提交，且其文件树就是上传的站点。见 [#91](https://github.com/braver-braver/react-admin-starter/issues/91)。
+- 同一次运行重跑时，若快照没有变化，构建版本仍是上一次的快照提交，Pages 沿用内容相同的已有部署，结果幂等。部署按 artifact ID 进行，不受上一次尝试遗留的同名 `github-pages` artifact 影响。
 - Pages environment 或仓库权限不足时，需要维护者调整上述设置。不要用个人令牌绕过环境保护。
 - 删除 `pages-snapshots` 会失去后续发布时的历史输入，恢复应先恢复该分支的已知提交；不要删除后假定 Actions 的短期 artifact 能永久找回。
