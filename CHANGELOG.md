@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Documentation
+
+- The release steps in [docs/releasing.md](docs/releasing.md) now regenerate the OpenAPI document after the version bump (its `info.version` follows `package.json`), give the commitizen commands for the next release candidate and for the final release, and list the other places that name the current version.
+
 ## v1.0.0-rc.1 (2026-11-04)
 
 This is the first release line of React Admin Starter: a Chinese-first admin template built on shadcn-admin. It has mock-first cookie sessions, server-driven CRUD, and system administration with data access scoped per capability. The API contract is frozen under `/api/v1` and the OpenAPI document is generated from it. A conformance suite and an integration guide help back ends implement it, and releases go through a checked process. If you integrated a back end against an earlier `main`, read the migration notes first.
