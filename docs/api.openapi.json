@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "React Admin Starter API",
-    "version": "1.0.0-rc.3",
+    "version": "1.0.0",
     "description": "Same-origin cookie sessions. Generated from src/contract by `pnpm contract:generate`; do not edit by hand. Every write must send `X-Requested-With: ReactAdminStarter`; authenticated writes also send `X-CSRF-Token`. Development MSW is a demonstration only."
   },
   "servers": [
