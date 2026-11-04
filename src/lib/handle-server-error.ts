@@ -1,4 +1,3 @@
-import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { ApiError } from '@/lib/api'
 import { t } from '@/lib/i18n'
@@ -13,13 +12,6 @@ export function handleServerError(error: unknown) {
     Number(error.status) === 204
   ) {
     errMsg = t('noContent')
-  }
-
-  if (error instanceof AxiosError) {
-    const title = error.response?.data?.title
-    if (typeof title === 'string' && title.length > 0) {
-      errMsg = title
-    }
   }
 
   if (error instanceof ApiError) errMsg = error.message
