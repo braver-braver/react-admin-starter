@@ -4,7 +4,7 @@
 
 React Admin Starter is a lightweight, Chinese-first, backend-agnostic React admin application adapted from [shadcn-admin](https://github.com/satnaing/shadcn-admin), **not** a rewrite of face_system V1. GoFrame, Gin and other REST backends are consumers of its contract, not dependencies of this repository.
 
-The v0.1 and v0.2 *development milestones* have been implemented, but this project has not published a GitHub Release. The package version remains `0.1.0`; v1.0 is a planned stabilization and release milestone. See the [README roadmap](../README.md#roadmap), [changelog](../CHANGELOG.md) and [upstream provenance](upstream.md). Do not treat upstream shadcn-admin version numbers as releases of this starter.
+The v0.1 and v0.2 *development milestones* describe implemented functionality, not GitHub Releases. The package version is `1.0.0-rc.1`, the first release candidate of the v1.0 stabilization milestone; the stable `v1.0.0` follows once the release candidate passes acceptance. See the [README roadmap](../README.md#roadmap), [changelog](../CHANGELOG.md) and [upstream provenance](upstream.md). Do not treat upstream shadcn-admin version numbers as releases of this starter.
 
 ## Runtime architecture
 

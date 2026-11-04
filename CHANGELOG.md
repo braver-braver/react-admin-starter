@@ -2,9 +2,11 @@
 
 This file distinguishes **React Admin Starter** development from the release history of its [shadcn-admin upstream](https://github.com/satnaing/shadcn-admin). The source was imported at a pinned upstream commit; see [upstream provenance](docs/upstream.md).
 
-**Release status:** Unreleased. The package version remains `0.1.0`. Milestones named v0.1 and v0.2 describe implemented functionality, **not** Git tags or GitHub Releases of this repository. No React Admin Starter GitHub Release has been published yet.
+**Release status:** Release candidate. The package version is `1.0.0-rc.1`, the first pre-release of React Admin Starter. The maintainer creates the Git tag `v1.0.0-rc.1` and its GitHub pre-release from the merged release commit; until then this version exists only on `main`. The stable `v1.0.0` follows once the release candidate passes acceptance. The earlier milestone names v0.1 and v0.2 describe implemented functionality, **not** Git tags or GitHub Releases of this repository.
 
 ## Unreleased — React Admin Starter
+
+## v1.0.0-rc.1 (2026-11-04)
 
 This is the first release line of React Admin Starter: a Chinese-first admin template built on shadcn-admin. It has mock-first cookie sessions, server-driven CRUD, and system administration with data access scoped per capability. The API contract is frozen under `/api/v1` and the OpenAPI document is generated from it. A conformance suite and an integration guide help back ends implement it, and releases go through a checked process. If you integrated a back end against an earlier `main`, read the migration notes first.
 
