@@ -8,6 +8,8 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ### Documentation
 
+- [docs/adding-a-module.md](docs/adding-a-module.md) walks through adding a business module contract first: Zod contract and registry, generated OpenAPI, mock handler, page and navigation, conformance scenarios, and which check fails when a step is missed. A test keeps the files and helpers it names in sync with the code ([#99](https://github.com/braver-braver/react-admin-starter/issues/99)).
+
 - The README roadmap and the [Pages demo guide](docs/pages-demo.md) link the real `v1.0.0` and `v1.0.0-rc.3` Release runs and snapshots, and mark the Release snapshot acceptance ([#15](https://github.com/braver-braver/react-admin-starter/issues/15)) as complete.
 
 ## v1.0.0 (2026-11-04)
