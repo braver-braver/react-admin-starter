@@ -41,12 +41,18 @@
    # 正式版按变更类型选 MAJOR / MINOR / PATCH；预发布再加 --prerelease rc --prerelease-offset 1
    cz bump --yes --version-files-only --increment MAJOR --prerelease rc --prerelease-offset 1
    node -p "require('./package.json').version"   # 例如 1.0.0-rc.1
+   # OpenAPI 的 info.version 取自 package.json，不重新生成 contract:check 会失败
+   pnpm contract:generate
    ```
-   `--version-files-only` 只改 `package.json`，不提交、不打 Tag（输出里的 “tag to create” 只是提示）。然后手工改 CHANGELOG：
+   已有 rc 时：下一个 rc 用 `cz bump --yes --version-files-only --prerelease rc`（`1.0.0-rc.1` → `1.0.0-rc.2`）；rc 验收后的正式版用 `cz bump --yes --version-files-only --increment MAJOR`（`1.0.0-rc.2` → `1.0.0`）。
+
+   `--version-files-only` 只改 `package.json`，不提交、不打 Tag（输出里的 “tag to create” 只是提示）。`pnpm contract:generate` 只会改动 `docs/api.openapi.json` 的 `info.version`，一并提交。然后手工改 CHANGELOG：
    - 把 `## Unreleased — React Admin Starter` 改为 `## v1.0.0-rc.1 (YYYY-MM-DD)`，内容不动；
    - 在它上面新建一个空的 `## Unreleased — React Admin Starter`；
    - 更新文件开头的 **Release status** 说明；
    - “Historical upstream changelog” 及以下的上游段落**原样保留**。
+
+   同时检查 README 横幅、路线图和 `docs/architecture.md` 里写到的当前版本号。
 
    按清单跑完检查，开 PR。
 2. **合并**：维护者审阅后合并发布 PR。

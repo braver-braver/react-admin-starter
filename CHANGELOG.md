@@ -10,6 +10,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 - Release demos now go live on GitHub Pages. `actions/deploy-pages` always used the commit SHA as the Pages build version, and a release tags a commit that `main` has already deployed, so Pages kept serving the existing deployment and `releases/<tag>/` never appeared (the `v1.0.0-rc.1` smoke test failed this way). Release runs now deploy the uploaded artifact through the Pages API with a build version unique to the tag and run attempt ([#91](https://github.com/braver-braver/react-admin-starter/issues/91)).
 
+### Documentation
+
+- The release steps in [docs/releasing.md](docs/releasing.md) now regenerate the OpenAPI document after the version bump (its `info.version` follows `package.json`), give the commitizen commands for the next release candidate and for the final release, and list the other places that name the current version.
+
 ## v1.0.0-rc.1 (2026-11-04)
 
 This is the first release line of React Admin Starter: a Chinese-first admin template built on shadcn-admin. It has mock-first cookie sessions, server-driven CRUD, and system administration with data access scoped per capability. The API contract is frozen under `/api/v1` and the OpenAPI document is generated from it. A conformance suite and an integration guide help back ends implement it, and releases go through a checked process. If you integrated a back end against an earlier `main`, read the migration notes first.
