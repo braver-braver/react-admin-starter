@@ -2,9 +2,13 @@
 
 This file distinguishes **React Admin Starter** development from the release history of its [shadcn-admin upstream](https://github.com/satnaing/shadcn-admin). The source was imported at a pinned upstream commit; see [upstream provenance](docs/upstream.md).
 
-**Release status:** Release candidate. The package version is `1.0.0-rc.1`, the first pre-release of React Admin Starter. The maintainer creates the Git tag `v1.0.0-rc.1` and its GitHub pre-release from the merged release commit; until then this version exists only on `main`. The stable `v1.0.0` follows once the release candidate passes acceptance. The earlier milestone names v0.1 and v0.2 describe implemented functionality, **not** Git tags or GitHub Releases of this repository.
+**Release status:** Release candidate. The package version is `1.0.0-rc.2`. `v1.0.0-rc.1` is published as a GitHub pre-release, but its own Release run could not deploy its Pages demo and failed acceptance (see v1.0.0-rc.2 below). The maintainer creates the Git tag `v1.0.0-rc.2` and its GitHub pre-release from the merged release commit; until then this version exists only on `main`. The stable `v1.0.0` follows once a release candidate passes acceptance.
 
 ## Unreleased — React Admin Starter
+
+## v1.0.0-rc.2 (2026-11-04)
+
+This release candidate replaces `v1.0.0-rc.1`: the deployment bug fixed below kept the `v1.0.0-rc.1` Release run from deploying its Pages demo, so it failed its live acceptance check. Its snapshot was published later by a `main` deployment. The application and API are the same as in `v1.0.0-rc.1`.
 
 ### Fixed
 
