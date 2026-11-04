@@ -32,7 +32,7 @@
 | 依赖安全 | `pnpm audit --prod` | 结果原样贴进 PR；有高危漏洞时先修复或说明不受影响的理由 |
 | LICENSE 与上游署名 | `git log --oneline -- LICENSE`；`grep -n "satnaing/shadcn-admin" README.md` | LICENSE 自导入后没有改动；README 的署名段落仍在 |
 | 上游固定提交 | `grep -n "Pinned commit" docs/upstream.md` | 仍是 `e16c87f213a5ba5e45964e9b67c792105ec74d26` |
-| 版本号与 CHANGELOG | `pnpm release:check -- v1.0.0-rc.1 --skip-main` | 输出 `release:check v1.0.0-rc.1: ok`：Tag 格式正确、等于 `v` 加 `package.json` 的版本，CHANGELOG 有该版本的章节且位于上游历史段落之前。发布 PR 的提交还不在 `main` 上，所以这里跳过“属于 main”这一项 |
+| 版本号与 CHANGELOG | `pnpm release:check -- "v$(node -p "require('./package.json').version")" --skip-main` | 输出 `release:check <tag>: ok`：Tag 格式正确、等于 `v` 加 `package.json` 的版本，CHANGELOG 有该版本的章节且位于上游历史段落之前。发布 PR 的提交还不在 `main` 上，所以这里跳过“属于 main”这一项 |
 
 ## 发布步骤
 
@@ -47,7 +47,7 @@
    已有 rc 时：下一个 rc 用 `cz bump --yes --version-files-only --prerelease rc`（`1.0.0-rc.1` → `1.0.0-rc.2`）；rc 验收后的正式版用 `cz bump --yes --version-files-only --increment MAJOR`（`1.0.0-rc.2` → `1.0.0`）。
 
    `--version-files-only` 只改 `package.json`，不提交、不打 Tag（输出里的 “tag to create” 只是提示）。`pnpm contract:generate` 只会改动 `docs/api.openapi.json` 的 `info.version`，一并提交。然后手工改 CHANGELOG：
-   - 把 `## Unreleased — React Admin Starter` 改为 `## v1.0.0-rc.1 (YYYY-MM-DD)`，内容不动；
+   - 把 `## Unreleased — React Admin Starter` 改为 `## <tag> (YYYY-MM-DD)`（例如 `## v1.0.0-rc.1 (2026-11-04)`），内容不动；
    - 在它上面新建一个空的 `## Unreleased — React Admin Starter`；
    - 更新文件开头的 **Release status** 说明；
    - “Historical upstream changelog” 及以下的上游段落**原样保留**。
@@ -64,12 +64,15 @@
    用这个提交再跑一次完整检查，这次包括“属于 main”。`package.json` 和 CHANGELOG 直接从这个提交里读取，与当前工作区无关，所以检查到的就是 Tag 将指向的内容：
    ```bash
    git fetch origin main
-   pnpm release:check -- v1.0.0-rc.1 --commit <上一步得到的 40 位提交 SHA>
-   ```
-   命令行创建（推荐）：
-   ```bash
    SHA=<上一步得到的 40 位提交 SHA>
-   gh release create v1.0.0-rc.1 --target "$SHA" --title v1.0.0-rc.1 --notes-file notes.md --prerelease
+   # Tag 由该提交里的 package.json 决定，不要手抄旧版本号
+   TAG="v$(git show "$SHA:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
+   pnpm release:check -- "$TAG" --commit "$SHA"
+   ```
+   命令行创建（推荐）。说明取 CHANGELOG 中该版本的章节；正式版去掉 `--prerelease`：
+   ```bash
+   git show "$SHA:CHANGELOG.md" | awk -v h="## $TAG " 'index($0, h) == 1 {f = 1; next} f && /^## / {exit} f' > notes.md
+   gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file notes.md --prerelease
    ```
    或在 GitHub 的 Releases 页面点 “Draft a new release”：
    - Tag 填 `v` 加版本号（例如 `v1.0.0-rc.1`）；
@@ -78,7 +81,7 @@
    - rc 勾选 “Set as a pre-release”；
    - 点 Publish。
 
-   发布后核对 Tag 指向的提交：`git fetch --tags && git rev-parse v1.0.0-rc.1^{commit}`，结果应等于 `$SHA`。agent 不创建 Tag 或 Release。
+   发布后核对 Tag 指向的提交：`git fetch --tags && git rev-parse "$TAG^{commit}"`，结果应等于 `$SHA`。agent 不创建 Tag 或 Release。
 4. **自动构建**：Release 发布后，Pages 工作流先对 Tag 对应的提交运行同一个 `release:check`（工作流步骤 “Check the release tag against the tagged code”），任何一项不通过就在构建之前终止，不会写入 `pages-snapshots`。通过后才构建演示，保存到 `pages-snapshots` 的 `releases/<tag>/`，同时保留 `latest` 和其他版本。
 
 ## 发布后验收
@@ -88,8 +91,8 @@
 3. 需要手工复现线上验收时，对该版本运行：
    ```bash
    LIVE_DEMO_SITE_URL=https://braver-braver.github.io/react-admin-starter/ \
-   LIVE_DEMO_VERSION=v1.0.0-rc.1 \
-   LIVE_DEMO_COMMIT=<该版本的 40 位提交 SHA> \
+   LIVE_DEMO_VERSION="$TAG" \
+   LIVE_DEMO_COMMIT="$SHA" \
    pnpm test:live
    ```
    Playwright 不读取 `HTTPS_PROXY`，在只能经代理访问外网的环境里，这一步会因为取不到 `demo.json` 而超时。这种情况下以工作流里的 “Smoke-test the deployed Pages URL in Chromium” 步骤为准：它运行的是同一份配置。
