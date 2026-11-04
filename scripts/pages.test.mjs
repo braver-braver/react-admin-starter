@@ -140,3 +140,42 @@ test('every name a workflow imports from a script is exported', async () => {
     assert.ok(name in assembleModule, `assemble-pages.mjs must export ${name}`)
   }
 })
+
+test('release deploys use a build version that main has not deployed', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/pages.yml', import.meta.url),
+    'utf8'
+  )
+  const step = (name) => {
+    const start = workflow.indexOf(`      - name: ${name}\n`)
+    assert.ok(start >= 0, `pages.yml must have the step "${name}"`)
+    const end = workflow.indexOf('\n      - name: ', start + 1)
+    return workflow.slice(start, end < 0 ? undefined : end)
+  }
+  // actions/deploy-pages always deploys with GITHUB_SHA as the build version,
+  // which main has already used for the tagged commit (#91).
+  assert.match(
+    step('Deploy GitHub Pages'),
+    /if: github\.event_name != 'release'\n\s+uses: actions\/deploy-pages@/
+  )
+  const release = step('Deploy GitHub Pages for the release')
+  assert.match(release, /if: github\.event_name == 'release'/)
+  assert.match(
+    release,
+    /BUILD_VERSION: \$\{\{ github\.sha \}\}-\$\{\{ env\.DEMO_VERSION \}\}-\$\{\{ github\.run_attempt \}\}/
+  )
+  assert.match(
+    release,
+    /ARTIFACT_ID: \$\{\{ steps\.upload\.outputs\.artifact_id \}\}/
+  )
+  assert.match(release, /core\.setOutput\('page_url'/)
+  for (const use of ['url:', 'LIVE_DEMO_SITE_URL:', 'PAGE_URL:']) {
+    assert.match(
+      workflow,
+      new RegExp(
+        `${use} \\$\\{\\{ steps\\.deployment\\.outputs\\.page_url \\|\\| steps\\.release-deployment\\.outputs\\.page_url \\}\\}`
+      ),
+      `${use} must fall back to the release deployment URL`
+    )
+  }
+})
