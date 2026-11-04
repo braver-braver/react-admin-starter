@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "version": "v1.0.0-rc.1",
+    "commit": "9e8d326c88fdbbbe49a3727a0e47afd141b25703",
+    "base": "/react-admin-starter/releases/v1.0.0-rc.1/"
+  }
+]

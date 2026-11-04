@@ -1,0 +1,1 @@
+import{p as e}from"./createLucideIcon-DbtPHEdG.js";import{n as t}from"./users-Cppg6X06.js";function n({permission:n,children:r}){let i=e(e=>e.auth.user);return t(i,n)?r:null}export{n as t};

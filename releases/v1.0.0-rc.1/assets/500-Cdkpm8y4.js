@@ -1,0 +1,1 @@
+import{o as e}from"./index-UcLKxtC3.js";var t=e;export{t as component};
