@@ -1,0 +1,1 @@
+import{o as e}from"./index-DInufsjm.js";var t=e;export{t as component};

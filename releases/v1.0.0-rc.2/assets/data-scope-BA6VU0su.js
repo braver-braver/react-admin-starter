@@ -1,0 +1,1 @@
+function e(e,t,n=`users:read`){let r=e?.dataScopes?.[n];return!!(e&&r&&(r.all||t.departmentId&&r.departments.includes(t.departmentId)||r.self&&(t.createdBy===e.id||t.id===e.id)))}export{e as t};

@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.0.0-rc.2",
+    "commit": "0256d0bf5dd566f74d68c8b7bf15ec57480aac2e",
+    "base": "/react-admin-starter/releases/v1.0.0-rc.2/"
+  },
+  {
     "version": "v1.0.0-rc.1",
     "commit": "9e8d326c88fdbbbe49a3727a0e47afd141b25703",
     "base": "/react-admin-starter/releases/v1.0.0-rc.1/"

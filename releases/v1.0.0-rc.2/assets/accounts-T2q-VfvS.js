@@ -1,0 +1,1 @@
+import{t as e}from"./system-CPHii6Dv.js";import{t}from"./jsx-runtime-BX5dh3L7.js";var n=t(),r=()=>(0,n.jsx)(e,{resource:`accounts`});export{r as component};
