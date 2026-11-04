@@ -40,7 +40,7 @@ DEMO_SERVE_DIR=.pages-upload node scripts/serve-demo.mjs
 
 ## 上线后的真实站点验收
 
-发布工作流在 `actions/deploy-pages` 成功后，自动执行 `pnpm test:live`：等待已发布 `demo.json` 中的版本号、Git 提交与目标路径匹配，随后直接通过公开 Pages URL 运行桌面和移动端 Playwright 验证，覆盖登录、刷新、权限差异、退出和接口是否由预期的 Service Worker 响应。此验证检查的是公开站点，不是本地临时服务器，也不会提高全局重试次数；部署 CDN 尚未传播时会进行有上限的轮询，而不是固定睡眠。
+发布工作流在 Pages 部署成功后，自动执行 `pnpm test:live`：等待已发布 `demo.json` 中的版本号、Git 提交与目标路径匹配，随后直接通过公开 Pages URL 运行桌面和移动端 Playwright 验证，覆盖登录、刷新、权限差异、退出和接口是否由预期的 Service Worker 响应。此验证检查的是公开站点，不是本地临时服务器，也不会提高全局重试次数；部署 CDN 尚未传播时会进行有上限的轮询，而不是固定睡眠。
 
 若部署成功但线上验收失败，Actions 会保持失败并上传浏览器 trace；此时网站可能已可访问，不能将整次发布标记为完全通过。为手动复现，设置 `LIVE_DEMO_SITE_URL` 为根站点 URL，设置 `LIVE_DEMO_VERSION` 为 `latest` 或发布标签，设置 `LIVE_DEMO_COMMIT` 为该版本对应的 40 位提交 SHA，然后运行 `pnpm test:live`。
 
@@ -58,5 +58,7 @@ main push 更新最新演示；发布 Release 则从事件对应的准确提交�
 - CI 在每个 PR 上验证普通应用 E2E、快照组装、两个静态版本和跨版本会话隔离；发布工作流只验证此次发布的真实目标版本，不要求伪造历史 Release。
 - 静态浏览器验证失败会阻止保存和部署，并保留 7 天失败证据。
 - 快照保存成功但 Pages 部署失败时，已上线站点保持上一版；修复 Pages 设置后重跑即可，快照保留且重跑幂等。
+- Pages 以构建版本区分部署，重复的构建版本视为同一个已有部署。`actions/deploy-pages` 固定用 `GITHUB_SHA` 作为构建版本，而 Release 的 Tag 指向 main 已经部署过的合并提交；所以 Release 运行改用“Deploy GitHub Pages for the release”步骤，直接调用 Pages 部署 API 部署本次上传的 artifact，构建版本为 `<提交 SHA>-<tag>-<重跑次数>`。main 与手动触发仍使用 `actions/deploy-pages`。见 [#91](https://github.com/braver-braver/react-admin-starter/issues/91)。
+- main 运行重跑时，`actions/deploy-pages` 可能因上一次尝试留下的同名 `github-pages` artifact 报 “Multiple artifacts named github-pages”；删除该运行中旧的 `github-pages` artifact 后再重跑。Release 运行按 artifact ID 部署，不受影响。
 - Pages environment 或仓库权限不足时，需要维护者调整上述设置。不要用个人令牌绕过环境保护。
 - 删除 `pages-snapshots` 会失去后续发布时的历史输入，恢复应先恢复该分支的已知提交；不要删除后假定 Actions 的短期 artifact 能永久找回。
