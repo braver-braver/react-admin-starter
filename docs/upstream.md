@@ -35,9 +35,15 @@ Of the 272 upstream files at the pinned commit, 71 are unchanged here, 90 are mo
    git diff --name-only "$PIN" refs/upstream/main \
      | while read -r file; do git ls-files --error-unmatch "$file" >/dev/null 2>&1 && echo "$file"; done \
      > /tmp/upstream-paths
-   git diff "$PIN" refs/upstream/main -- $(cat /tmp/upstream-paths) | git apply -3 --index
+   if [ -s /tmp/upstream-paths ]; then
+     tr '\n' '\0' < /tmp/upstream-paths \
+       | xargs -0 git diff "$PIN" refs/upstream/main -- \
+       | git apply -3 --index
+   else
+     echo 'No upstream change touches a file this starter still has; nothing to apply.'
+   fi
    ```
 
-   (The loop variable is `file`, not `path`: in zsh, `path` is tied to `PATH`.) Unchanged files apply cleanly. Modified files either merge or are left with conflict markers to resolve by hand (`git status` lists them as unmerged). New upstream files are not on the list: add them deliberately if you want them.
+   The `if` matters: with an empty list, `git diff A B --` has no paths and would diff **everything**, including the files this step excludes. Paths are passed NUL-separated so names with spaces survive. (The loop variable is `file`, not `path`: in zsh, `path` is tied to `PATH`.) Unchanged files apply cleanly. Modified files either merge or are left with conflict markers to resolve by hand (`git status` lists them as unmerged). New upstream files are not on the list: add them deliberately if you want them.
 
 4. **Record the sync:** update the pinned commit above to the upstream commit you synced to, add a CHANGELOG entry that lists what was ported, keep `LICENSE` and the upstream attribution unchanged, run the full check list from [releasing.md](releasing.md), then remove the temporary ref with `git update-ref -d refs/upstream/main`.
