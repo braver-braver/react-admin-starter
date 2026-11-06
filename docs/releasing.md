@@ -6,7 +6,7 @@
 
 | 变更 | 版本 | 例子 |
 | --- | --- | --- |
-| 破坏性变更：删除或改名接口、路径、字段、错误码，改变类型、状态码或字段含义，可选字段变必填，收紧校验 | 主版本（MAJOR） | `1.4.2` → `2.0.0` |
+| 破坏性变更：删除或改名接口、路径、字段、错误码，改变类型、状态码或字段含义，可选字段变必填，收紧校验，改变已有操作所需的能力 | 主版本（MAJOR） | `1.4.2` → `2.0.0` |
 | 向后兼容的新能力：新接口、新的可选请求字段、新的响应字段、新的错误码、放宽校验、新页面或新组件 | 次版本（MINOR） | `1.4.2` → `1.5.0` |
 | 只修复缺陷、文档、内部重构，不改变对接方可见的行为 | 修订版本（PATCH） | `1.4.2` → `1.4.3` |
 
@@ -70,15 +70,17 @@
    TAG="v$(git show "$SHA:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
    pnpm release:check -- "$TAG" --commit "$SHA"
    ```
-   命令行创建（推荐）。说明取 CHANGELOG 中该版本的章节；正式版去掉 `--prerelease`：
+   命令行创建（推荐）。说明取 CHANGELOG 中该版本的章节，并附上该提交的 `api.openapi.json`，让后端可以按版本下载契约（见[用 OpenAPI 生成代码](openapi-codegen.md)）；正式版去掉 `--prerelease`：
    ```bash
    git show "$SHA:CHANGELOG.md" | awk -v h="## $TAG " 'index($0, h) == 1 {f = 1; next} f && /^## / {exit} f' > notes.md
-   gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file notes.md --prerelease
+   git show "$SHA:docs/api.openapi.json" > api.openapi.json
+   gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file notes.md --prerelease api.openapi.json
    ```
    或在 GitHub 的 Releases 页面点 “Draft a new release”：
    - Tag 填 `v` 加版本号（例如 `v1.0.0-rc.1`）；
    - Target 不要选 `main`，在 “Recent commits” 里选上面那个合并提交，并核对 SHA；
    - 标题同 Tag，说明粘贴 CHANGELOG 中该版本的章节；
+   - 附件上传该提交的 `docs/api.openapi.json`（上面 `git show` 得到的文件）；
    - rc 勾选 “Set as a pre-release”；
    - 点 Publish。
 

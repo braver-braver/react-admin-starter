@@ -2,7 +2,7 @@
 
 本指南面向要为 React Admin Starter 实现后端的开发者。它只描述协议和检查清单，与语言和框架无关，不需要阅读前端源码。
 
-接口的权威定义是 [OpenAPI 文档](api.openapi.json)，由 `src/contract/` 的 Zod 契约生成，其中每个操作的路径、方法、请求体、成功响应和可能返回的错误码都按状态码列出。本指南解释 OpenAPI 表达不了的部分：会话、检查顺序、授权语义、部署方式，以及怎样用一致性套件验收。另见 [API、会话与权限](auth-and-api.md)（操作总表）、[系统管理与统一授权](system-management.md)（授权模型细节）和 [一致性套件夹具清单](conformance-fixtures.md)。
+接口的权威定义是 [OpenAPI 文档](api.openapi.json)，由 `src/contract/` 的 Zod 契约生成，其中每个操作的路径、方法、请求体、成功响应和可能返回的错误码都按状态码列出。本指南解释 OpenAPI 表达不了的部分：会话、检查顺序、授权语义、部署方式，以及怎样用一致性套件验收。另见 [API、会话与权限](auth-and-api.md)（操作总表）、[系统管理与统一授权](system-management.md)（授权模型细节）和 [一致性套件夹具清单](conformance-fixtures.md)。要从 OpenAPI 生成服务端骨架或客户端，见 [用 OpenAPI 生成代码](openapi-codegen.md)，其中列出了生成代码做不到、仍要按本指南实现的部分。
 
 > 仓库里的 Mock（MSW）和一致性套件的替身服务器（`src/contract/conformance/stand-in.node.ts`）都**不是**参考后端实现，只用于演示和测试，请不要照着它们写后端。
 
