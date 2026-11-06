@@ -25,7 +25,7 @@ curl -fsSLO https://raw.githubusercontent.com/braver-braver/react-admin-starter/
 - `servers` 是相对地址 `/api/v1`。前端按同源部署（见后端接入指南第 9 节），生成客户端时把基础地址设成你的源加 `/api/v1`。
 - 认证是同源 Cookie 会话：`components.securitySchemes.sessionCookie`（`apiKey`，`in: cookie`）。浏览器里的客户端要带凭据（`fetch` 的 `credentials: 'same-origin'` 或 `'include'`）。
 - 写请求的两个请求头在 `components.parameters` 里：`RequestedWith`（`X-Requested-With: ReactAdminStarter`，所有写操作）和 `CsrfToken`（`X-CSRF-Token`，除登录外的写操作）。
-- 每个响应都有组件名（`User`、`AuditList`、`SystemAccount` 等）。`ErrorCode` 是完整的错误码目录，没有被任何操作直接引用，所以 `openapi-generator validate` 会提示 “Unused model: ErrorCode”，这是正常的。
+- 有组件名的是**负载**，不是响应：请求体和成功响应里 `data` 的内容引用命名组件（`User`、`AuditList`、`SystemAccount` 等）。响应本身的外层信封都是内联对象：成功是 `{ data: <组件> }`，错误是 `{ error: { code, message } }`，其中 `code` 是该状态码允许的错误码枚举。所以生成器会按操作和状态码给信封起名，例如 oapi-codegen 的 `ListAuditLogs403JSONResponse`、openapi-generator 的 `CreateUser403Response`，不会有一个跨操作复用的错误类型；需要统一的错误类型时，在自己的代码里按 `{ error: { code, message } }` 定义一个。`ErrorCode` 是完整的错误码目录，没有被任何操作直接引用，所以 `openapi-generator validate` 会提示 “Unused model: ErrorCode”，这是正常的。
 
 ## 2. 实测过的生成器
 

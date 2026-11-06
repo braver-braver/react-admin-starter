@@ -58,6 +58,43 @@ describe('docs/openapi-codegen.md', () => {
       expect(guide).toContain(text)
   })
 
+  it('describes responses as inline envelopes around named payloads', () => {
+    type Schema = {
+      $ref?: string
+      properties?: Record<string, Schema>
+    }
+    const responses = Object.values(spec.paths).flatMap((methods) =>
+      Object.values(methods).flatMap((op) =>
+        Object.entries(
+          (
+            op as {
+              responses: Record<
+                string,
+                { content?: Record<string, { schema: Schema }> }
+              >
+            }
+          ).responses
+        ).flatMap(([status, response]) => {
+          const schema = response.content?.['application/json']?.schema
+          return schema ? [{ status: Number(status), schema }] : []
+        })
+      )
+    )
+    expect(responses.length).toBeGreaterThan(100)
+    expect(responses.filter(({ schema }) => schema.$ref)).toEqual([])
+    for (const { status, schema } of responses)
+      if (status >= 400)
+        expect(schema.properties?.error, String(status)).toBeDefined()
+    expect(
+      responses.some(
+        ({ status, schema }) =>
+          status < 300 &&
+          schema.properties?.data?.$ref?.startsWith('#/components/schemas/')
+      )
+    ).toBe(true)
+    expect(guide).toContain('响应本身的外层信封都是内联对象')
+  })
+
   it('explains the ErrorCode catalog, which no operation references', () => {
     expect(spec.components.schemas.ErrorCode).toBeDefined()
     const operations = JSON.stringify(spec.paths)
