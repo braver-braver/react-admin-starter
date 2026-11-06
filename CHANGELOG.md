@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Fixed
+
+- The Pages version index (`versions.html`, `versions.json`) now orders releases by SemVer precedence. It used a string sort, which listed `v1.0.0` below `v1.0.0-rc.1`–`rc.3`; the next deployment regenerates the index without touching any snapshot ([#107](https://github.com/braver-braver/react-admin-starter/issues/107)).
+
 ### Added
 
 - `pnpm build` now ends with a gzip bundle-size budget for the production build (`scripts/check-bundle-size.mjs`): initial JS 170 KiB, initial CSS 18 KiB, all JS 315 KiB and the largest lazy chunk 40 KiB, set from the v1.0 measurement plus about 10% headroom. The build fails when one is exceeded; `pnpm test:bundle` tests the checker and runs in CI ([#101](https://github.com/braver-braver/react-admin-starter/issues/101)).

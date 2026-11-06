@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import * as assembleModule from './assemble-pages.mjs'
-import { assemblePages } from './assemble-pages.mjs'
+import { assemblePages, compareVersions } from './assemble-pages.mjs'
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'admin-pages-'))
@@ -263,4 +263,60 @@ test('the Pages deploy step retries transient status errors and cancels when it 
   const final = await run(['deployment_queued', 'deployment_failed'])
   assert.match(final.error.message, /ended with deployment_failed/)
   assert.ok(!final.cancelled)
+})
+
+test('orders versions by SemVer precedence, as in the semver.org example (#107)', () => {
+  const ascending = [
+    'v1.0.0-alpha',
+    'v1.0.0-alpha.1',
+    'v1.0.0-alpha.beta',
+    'v1.0.0-beta',
+    'v1.0.0-beta.2',
+    'v1.0.0-beta.11',
+    'v1.0.0-rc.1',
+    'v1.0.0-rc.9',
+    'v1.0.0-rc.10',
+    'v1.0.0',
+    'v1.9.0',
+    'v1.10.0',
+    'v2.0.0-rc.1',
+  ]
+  assert.deepEqual([...ascending].reverse().sort(compareVersions), ascending)
+  assert.equal(compareVersions('v1.0.0', 'v1.0.0'), 0)
+  // Beyond Number.MAX_SAFE_INTEGER, numeric coercion would make these equal.
+  assert.ok(
+    compareVersions('v9007199254740992.0.0', 'v9007199254740993.0.0') < 0
+  )
+  assert.ok(
+    compareVersions(
+      'v1.0.0-rc.9007199254740993',
+      'v1.0.0-rc.9007199254740992'
+    ) > 0
+  )
+})
+
+test('lists a stable release above its release candidates in the index (#107)', (t) => {
+  const f = fixture(t)
+  assemblePages(f.build('latest'))
+  for (const [version, commit] of [
+    ['v1.0.0-rc.1', 'a'],
+    ['v1.0.0-rc.3', 'b'],
+    ['v1.0.0', 'c'],
+    ['v1.0.0-rc.2', 'd'],
+  ])
+    assemblePages(f.build(version, commit.repeat(40)))
+  const expected = ['v1.0.0', 'v1.0.0-rc.3', 'v1.0.0-rc.2', 'v1.0.0-rc.1']
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(f.outputDir, 'versions.json'), 'utf8')).map(
+      (entry) => entry.version
+    ),
+    expected
+  )
+  const html = readFileSync(join(f.outputDir, 'versions.html'), 'utf8')
+  const positions = expected.map((version) => html.indexOf(`>${version}<`))
+  assert.ok(positions.every((at) => at >= 0))
+  assert.deepEqual(
+    [...positions].sort((a, b) => a - b),
+    positions
+  )
 })
