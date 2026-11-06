@@ -70,15 +70,17 @@
    TAG="v$(git show "$SHA:package.json" | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
    pnpm release:check -- "$TAG" --commit "$SHA"
    ```
-   命令行创建（推荐）。说明取 CHANGELOG 中该版本的章节；正式版去掉 `--prerelease`：
+   命令行创建（推荐）。说明取 CHANGELOG 中该版本的章节，并附上该提交的 `api.openapi.json`，让后端可以按版本下载契约（见[用 OpenAPI 生成代码](openapi-codegen.md)）；正式版去掉 `--prerelease`：
    ```bash
    git show "$SHA:CHANGELOG.md" | awk -v h="## $TAG " 'index($0, h) == 1 {f = 1; next} f && /^## / {exit} f' > notes.md
-   gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file notes.md --prerelease
+   git show "$SHA:docs/api.openapi.json" > api.openapi.json
+   gh release create "$TAG" --target "$SHA" --title "$TAG" --notes-file notes.md --prerelease api.openapi.json
    ```
    或在 GitHub 的 Releases 页面点 “Draft a new release”：
    - Tag 填 `v` 加版本号（例如 `v1.0.0-rc.1`）；
    - Target 不要选 `main`，在 “Recent commits” 里选上面那个合并提交，并核对 SHA；
    - 标题同 Tag，说明粘贴 CHANGELOG 中该版本的章节；
+   - 附件上传该提交的 `docs/api.openapi.json`（上面 `git show` 得到的文件）；
    - rc 勾选 “Set as a pre-release”；
    - 点 Publish。
 

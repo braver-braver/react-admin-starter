@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
  * changes one of them, the guide must change with it.
  */
 const raw = import.meta.glob(
-  ['/docs/openapi-codegen.md', '/docs/api.openapi.json'],
+  ['/docs/openapi-codegen.md', '/docs/api.openapi.json', '/docs/releasing.md'],
   {
     query: '?raw',
     import: 'default',
@@ -14,6 +14,7 @@ const raw = import.meta.glob(
   }
 ) as Record<string, string>
 const guide = raw['/docs/openapi-codegen.md']
+const releasing = raw['/docs/releasing.md']
 const spec = JSON.parse(raw['/docs/api.openapi.json']) as {
   openapi: string
   servers: { url: string }[]
@@ -70,6 +71,25 @@ describe('docs/openapi-codegen.md', () => {
     )
     expect(descriptions).toContain('Requires `audit:read`.')
     expect(guide).toContain('“Requires `audit:read`”')
+  })
+
+  it('pins exact generator versions and a tag-pinned way to fetch the contract', () => {
+    for (const command of [
+      'openapi-typescript@7.13.0',
+      'oapi-codegen@v2.8.2',
+      'openapi-generator-cli-7.27.0.jar',
+      'datamodel-code-generator==0.89.0',
+    ])
+      expect(guide).toContain(command)
+    const commands = [...guide.matchAll(/```\w*\n([\s\S]*?)```/g)]
+      .map(([, block]) => block)
+      .join('\n')
+    expect(commands).not.toMatch(/@latest|@\d+\s|@v\d+\s/)
+    expect(guide).toContain(
+      'https://raw.githubusercontent.com/braver-braver/react-admin-starter/v1.0.0/docs/api.openapi.json'
+    )
+    // The release steps upload the asset the guide tells readers to download.
+    expect(releasing).toMatch(/gh release create .* api\.openapi\.json\n/)
   })
 
   it('links only to documents that exist', () => {

@@ -6,11 +6,17 @@
 
 ## 1. 取得锁定版本的契约
 
-后端应锁定一个已发布版本，而不是跟着 `main` 走。每个 Release 都附带当时的 `api.openapi.json`：
+后端应锁定一个已发布版本，而不是跟着 `main` 走。从 `v1.0.0` 起，发布流程（[releasing.md](releasing.md) 第 3 步）把当时的 `api.openapi.json` 作为 Release 附件上传：
 
 ```bash
 gh release download v1.0.0 --repo braver-braver/react-admin-starter --pattern api.openapi.json
 # 或：https://github.com/braver-braver/react-admin-starter/releases/download/v1.0.0/api.openapi.json
+```
+
+任何 Tag 都可以直接取仓库里的文件，与附件内容相同；`v1.0.0-rc.*` 没有附件，只能用这种方式：
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/braver-braver/react-admin-starter/v1.0.0/docs/api.openapi.json
 ```
 
 文档的基本事实：
@@ -23,7 +29,7 @@ gh release download v1.0.0 --repo braver-braver/react-admin-starter --pattern ap
 
 ## 2. 实测过的生成器
 
-下面的命令都在 2026-11-06 对 `v1.0.0` 的文档实际运行过。版本号是当时用的版本；在自己的项目里也要锁定生成器版本，升级时重新生成并检查差异。
+下面的命令都在 2026-11-06 对 `v1.0.0` 的文档实际运行过，命令里写的就是当时的确切版本。在自己的项目里也要这样锁定生成器版本，升级时重新生成并检查差异，不要用 `@latest` 或只写主版本。
 
 | 工具（版本） | 生成内容 | 实测结果 |
 | --- | --- | --- |
@@ -35,7 +41,7 @@ gh release download v1.0.0 --repo braver-braver/react-admin-starter --pattern ap
 ### TypeScript 类型
 
 ```bash
-npx openapi-typescript@7 api.openapi.json -o src/api.d.ts
+npx openapi-typescript@7.13.0 api.openapi.json -o src/api.d.ts
 ```
 
 ### Go 服务端（oapi-codegen）
@@ -71,7 +77,7 @@ java -jar openapi-generator-cli-7.27.0.jar generate -i api.openapi.json -g types
 ### Python 模型
 
 ```bash
-uvx --from datamodel-code-generator datamodel-codegen \
+uvx --from datamodel-code-generator==0.89.0 datamodel-codegen \
   --input api.openapi.json --input-file-type openapi \
   --output-model-type pydantic_v2.BaseModel --output models.py
 ```
