@@ -283,6 +283,16 @@ test('orders versions by SemVer precedence, as in the semver.org example (#107)'
   ]
   assert.deepEqual([...ascending].reverse().sort(compareVersions), ascending)
   assert.equal(compareVersions('v1.0.0', 'v1.0.0'), 0)
+  // Beyond Number.MAX_SAFE_INTEGER, numeric coercion would make these equal.
+  assert.ok(
+    compareVersions('v9007199254740992.0.0', 'v9007199254740993.0.0') < 0
+  )
+  assert.ok(
+    compareVersions(
+      'v1.0.0-rc.9007199254740993',
+      'v1.0.0-rc.9007199254740992'
+    ) > 0
+  )
 })
 
 test('lists a stable release above its release candidates in the index (#107)', (t) => {
