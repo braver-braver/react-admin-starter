@@ -6,6 +6,10 @@ This file distinguishes **React Admin Starter** development from the release his
 
 ## Unreleased — React Admin Starter
 
+### Added
+
+- `pnpm build` now ends with a gzip bundle-size budget for the production build (`scripts/check-bundle-size.mjs`): initial JS 170 KiB, initial CSS 18 KiB, all JS 315 KiB and the largest lazy chunk 40 KiB, set from the v1.0 measurement plus about 10% headroom. The build fails when one is exceeded; `pnpm test:bundle` tests the checker and runs in CI ([#101](https://github.com/braver-braver/react-admin-starter/issues/101)).
+
 ### Documentation
 
 - [docs/adding-a-module.md](docs/adding-a-module.md) walks through adding a business module contract first: Zod contract and registry, generated OpenAPI, mock handler, page and navigation, conformance scenarios, and which check fails when a step is missed. A test keeps the files and helpers it names in sync with the code ([#99](https://github.com/braver-braver/react-admin-starter/issues/99)).

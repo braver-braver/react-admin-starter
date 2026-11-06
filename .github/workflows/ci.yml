@@ -46,6 +46,8 @@ jobs:
         run: pnpm test:pages
       - name: Release check tests
         run: pnpm test:release
+      - name: Bundle size budget tests
+        run: pnpm test:bundle
       - name: Static demo and cross-version browser smoke
         run: pnpm test:demo
       - name: Upload E2E failure evidence

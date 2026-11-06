@@ -39,9 +39,9 @@ The real backend is responsible for strong password handling, `HttpOnly; Secure;
 
 ## Verification and delivery
 
-The CI pipeline runs Lint, Prettier, Vitest, production build/type checking, production mock-isolation checks, desktop/mobile Playwright E2E, Pages assembly and version-isolation tests. A merge to `main` updates the separate **latest mock demo** after the deployment and public-browser verification workflow succeeds; this is not the same as publishing a GitHub Release.
+The CI pipeline runs Lint, Prettier, Vitest, production build/type checking, production mock-isolation checks, a gzip bundle-size budget for the production build (`scripts/check-bundle-size.mjs`), desktop/mobile Playwright E2E, Pages assembly and version-isolation tests. A merge to `main` updates the separate **latest mock demo** after the deployment and public-browser verification workflow succeeds; this is not the same as publishing a GitHub Release.
 
-Release-tag snapshots under `releases/<tag>/` are designed to preserve history, but their end-to-end behavior with actual releases remains tracked by [Issue #15](https://github.com/braver-braver/react-admin-starter/issues/15). Before v1.0, stabilize the OpenAPI/Zod/API behavior, backend integration guide, version metadata and release checks.
+Release-tag snapshots under `releases/<tag>/` preserve history: each Release deploys `releases/<tag>/` without changing `latest` or earlier versions, which was verified with the real `v1.0.0-rc.*` and `v1.0.0` releases ([Issue #15](https://github.com/braver-braver/react-admin-starter/issues/15)). Release steps and checks are in [releasing](releasing.md).
 
 ## Scope exclusions
 
