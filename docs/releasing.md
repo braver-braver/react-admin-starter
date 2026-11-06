@@ -27,8 +27,9 @@
 
 | 检查 | 命令或方法 | 通过标准 |
 | --- | --- | --- |
-| CI 全部步骤 | `pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm contract:check`、`pnpm format:check`、`pnpm test`、`pnpm test:conformance`、`pnpm build`、`pnpm knip`、`pnpm test:e2e`、`pnpm test:pages`、`pnpm test:demo` | 本地全部退出码为 0，PR 上的 CI 为绿 |
+| CI 全部步骤 | `pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm contract:check`、`pnpm format:check`、`pnpm test`、`pnpm test:conformance`、`pnpm build`、`pnpm knip`、`pnpm test:e2e`、`pnpm test:pages`、`pnpm test:bundle`、`pnpm test:demo` | 本地全部退出码为 0，PR 上的 CI 为绿 |
 | 生产产物检查 | `pnpm build` 末尾的 `check-production.mjs` | 输出 `Production boundary verified`，产物里没有 Mock Worker、处理器或演示凭证 |
+| 包体积预算 | `pnpm build` 末尾的 `check-bundle-size.mjs` | 输出 `Bundle size within budget.`：首屏 JS、首屏 CSS、全部 JS 和最大懒加载 chunk 的 gzip 体积都在预算内。超出时先查原因；确需放宽，在 PR 里说明并改脚本里的 `budgets` |
 | 依赖安全 | `pnpm audit --prod` | 结果原样贴进 PR；有高危漏洞时先修复或说明不受影响的理由 |
 | LICENSE 与上游署名 | `git log --oneline -- LICENSE`；`grep -n "satnaing/shadcn-admin" README.md` | LICENSE 自导入后没有改动；README 的署名段落仍在 |
 | 上游固定提交 | `grep -n "Pinned commit" docs/upstream.md` | 仍是 `e16c87f213a5ba5e45964e9b67c792105ec74d26` |

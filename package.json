@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc -b && node scripts/check-production.mjs",
+    "build": "vite build && tsc -b && node scripts/check-production.mjs && node scripts/check-bundle-size.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "format:check": "prettier --check .",
@@ -26,6 +26,7 @@
     "build:demo": "vite build --mode demo && tsc -b && node scripts/check-demo.mjs",
     "test:pages": "node --test scripts/pages.test.mjs",
     "test:release": "node --test scripts/release.test.mjs",
+    "test:bundle": "node --test scripts/bundle-size.test.mjs",
     "release:check": "node scripts/check-release.mjs",
     "test:demo": "node scripts/prepare-demo-test.mjs && playwright test --config playwright.demo.config.ts",
     "test:live": "playwright test --config playwright.live.config.ts"
