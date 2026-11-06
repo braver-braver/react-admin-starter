@@ -17,6 +17,35 @@ import { pathToFileURL } from 'node:url'
  * @public
  */
 export const releasePattern = /^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/
+
+/**
+ * SemVer precedence (https://semver.org/#spec-item-11) for `v`-prefixed tags:
+ * numeric major.minor.patch; a pre-release ranks below the same version
+ * without one; pre-release identifiers compare numerically when both are
+ * numbers, numbers rank below letters, and a shorter identifier list ranks
+ * lower when all shared identifiers are equal. Returns <0, 0 or >0.
+ */
+export function compareVersions(a, b) {
+  const parse = (tag) => {
+    const [core, pre] = tag.replace(/^v/, '').split(/-(.*)/s)
+    return { core: core.split('.').map(Number), pre: pre ? pre.split('.') : [] }
+  }
+  const x = parse(a)
+  const y = parse(b)
+  for (let i = 0; i < 3; i++)
+    if (x.core[i] !== y.core[i]) return x.core[i] - y.core[i]
+  if (!x.pre.length || !y.pre.length) return y.pre.length - x.pre.length
+  const numeric = /^\d+$/
+  for (let i = 0; i < Math.min(x.pre.length, y.pre.length); i++) {
+    const [p, q] = [x.pre[i], y.pre[i]]
+    if (p === q) continue
+    const [pn, qn] = [numeric.test(p), numeric.test(q)]
+    if (pn && qn) return Number(p) - Number(q)
+    if (pn !== qn) return pn ? -1 : 1
+    return p < q ? -1 : 1
+  }
+  return x.pre.length - y.pre.length
+}
 function validateMetadata(metadata) {
   if (
     !metadata ||
@@ -121,9 +150,8 @@ export function assemblePages({ buildDir, siteDir, outputDir }) {
   }
   if (!existing) cpSync(buildDir, destination, { recursive: true })
   if (!latest && !existing) versions.push(metadata)
-  versions.sort((a, b) =>
-    b.version.localeCompare(a.version, 'en', { numeric: true })
-  )
+  // Newest first by SemVer precedence, so a release lists above its candidates.
+  versions.sort((a, b) => compareVersions(b.version, a.version))
   const hasLatest = existsSync(join(siteDir, 'demo.json'))
   if (hasLatest) {
     const current = validateMetadata(
