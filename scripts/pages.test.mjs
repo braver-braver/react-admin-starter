@@ -264,3 +264,33 @@ test('the Pages deploy step retries transient status errors and cancels when it 
   assert.match(final.error.message, /ended with deployment_failed/)
   assert.ok(!final.cancelled)
 })
+
+test('retiring a release directory drops it from the index and keeps the others byte for byte (B10)', (t) => {
+  const f = fixture(t)
+  assemblePages(f.build('latest'))
+  assemblePages(f.build('v1.0.0-rc.1', 'a'.repeat(40)))
+  assemblePages(f.build('v1.0.0-rc.2', 'b'.repeat(40)))
+  assemblePages(f.build('v1.0.0', 'c'.repeat(40)))
+  const kept = readFileSync(
+    join(f.siteDir, 'releases/v1.0.0/index.html'),
+    'utf8'
+  )
+  // The documented retirement: delete the directory on pages-snapshots, then
+  // let the next main deployment rebuild the site from what is left.
+  rmSync(join(f.siteDir, 'releases/v1.0.0-rc.1'), { recursive: true })
+  assemblePages(f.build('latest', 'd'.repeat(40)))
+  const versions = JSON.parse(
+    readFileSync(join(f.outputDir, 'versions.json'), 'utf8')
+  ).map((entry) => entry.version)
+  // Order is covered separately; here only membership matters.
+  assert.deepEqual(versions.sort(), ['v1.0.0', 'v1.0.0-rc.2'])
+  assert.doesNotMatch(
+    readFileSync(join(f.outputDir, 'versions.html'), 'utf8'),
+    /v1\.0\.0-rc\.1/
+  )
+  assert.equal(existsSync(join(f.outputDir, 'releases/v1.0.0-rc.1')), false)
+  assert.equal(
+    readFileSync(join(f.outputDir, 'releases/v1.0.0/index.html'), 'utf8'),
+    kept
+  )
+})

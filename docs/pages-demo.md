@@ -56,7 +56,34 @@ main push 更新最新演示；发布 Release 则从事件对应的准确提交�
 
 工作流先验证源码、普通生产边界和演示产物，再恢复 `pages-snapshots` 分支，组装整站，启动最终静态文件进行浏览器验证，通过后才保存快照、上传和部署 Pages。站点更新串行执行，不使用 force push。更新 latest 保留全部 Release 目录；Release 发布保留 latest 和其他版本。同一版本同一提交重跑会保留已有字节，不同提交试图覆盖同一标签会失败。版本索引由快照元数据生成，不手写。
 
-`pages-snapshots` 是持久存储，不依赖有保留期限的 Actions artifact。该分支只存放生成的静态演示站点，不能作为源代码分支，也不能手工混入私人文件。上传目录会排除 Git 元数据。历史版本会占用仓库及 Pages 空间，版本数量增长后应另行制定保留策略，当前不会自动删除历史。
+`pages-snapshots` 是持久存储，不依赖有保留期限的 Actions artifact。该分支只存放生成的静态演示站点，不能作为源代码分支，也不能手工混入私人文件。上传目录会排除 Git 元数据。历史版本会占用仓库及 Pages 空间，保留策略见下一节；工作流不会自动删除任何历史版本。
+
+## 快照保留策略
+
+**默认全部保留。** 工作流从不删除版本目录，Release 和 Tag 也不删除。
+
+当前体积（2026-11-06）：每个版本目录约 1.95 MB、53 个文件，整站约 9.7 MB，仓库约 12.5 MB。各版本相同的文件在 Git 里只存一份。GitHub Pages 的限制见[官方说明](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)：发布站点不超过 1 GB，源仓库建议不超过 1 GB，单次部署 10 分钟超时，带宽软限制每月 100 GB；“每小时 10 次构建”的软限制不适用于本仓库使用的自定义 Actions 工作流。按现在的大小，还能容纳几百个版本。
+
+查看体积：
+
+```bash
+git fetch origin pages-snapshots
+git ls-tree -r -l origin/pages-snapshots | awk '{s += $4} END {printf "site: %.1f MB\n", s / 1e6}'
+git ls-tree origin/pages-snapshots releases/ | wc -l   # 版本目录数
+```
+
+**何时评估：** 整站超过 500 MB（上限的一半）或版本目录超过 100 个时，由维护者决定是否下线一部分。
+
+**可以下线什么：** 只有预发布版（`-rc.N`），并且对应的正式版已经发布。正式版的快照永远保留，因为使用者可能按版本锁定了演示链接。
+
+**怎样下线（维护者手动操作，不改写历史）：**
+
+1. 在 `pages-snapshots` 上提交删除，例如 `git rm -r releases/v1.0.0-rc.1`，提交信息写明 `Retire demo v1.0.0-rc.1` 和原因，普通 `git push`，不要 force push。
+2. 在 Actions 里手动运行 `Publish mock demo to GitHub Pages`（选 `main`）。组装脚本会根据剩下的 `releases/*` 重新生成 `versions.json` 与 `versions.html`，被删除的版本从索引和站点上消失，其他版本的文件逐字节不变（`scripts/pages.test.mjs` 覆盖了这一点）。
+3. **不要**再重跑这个版本的 Release 工作流，否则快照会被重新生成。
+4. 在 CHANGELOG 里记一笔。Release 和 Tag 保留不动。
+
+下线只缩小发布出去的站点。`pages-snapshots` 的 Git 历史仍然保留旧文件，仓库体积不会变小；要缩小仓库就得改写历史，这是禁止的。真到需要时，先开 Issue 讨论。
 
 ## 故障与恢复
 
