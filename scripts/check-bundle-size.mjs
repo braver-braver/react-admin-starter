@@ -55,7 +55,8 @@ export function initialAssets(html) {
     const isScript = tag.startsWith('<script')
     const rel = /\brel="([^"]+)"/.exec(tag)?.[1]
     const href = isScript ? url(tag, 'src') : url(tag, 'href')
-    if (!href || /^[a-z]+:\/\//i.test(href)) continue
+    // External: any URL scheme (https:, data:, …) or protocol-relative //host.
+    if (!href || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href)) continue
     if (isScript && /\btype="module"/.test(tag)) assets.push(href)
     else if (rel === 'modulepreload' || rel === 'stylesheet') assets.push(href)
   }

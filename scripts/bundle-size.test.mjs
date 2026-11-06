@@ -45,7 +45,10 @@ test('picks the module entry, module preloads and stylesheets from index.html', 
   assert.deepEqual(
     initialAssets(`<script type="module" src="/a.js"></script>
 <link rel="modulepreload" href="/b.js"><link rel="stylesheet" href="/c.css">
-<link rel="icon" href="/i.svg"><script src="https://cdn.test/x.js"></script>`),
+<link rel="icon" href="/i.svg"><script src="https://cdn.test/x.js"></script>
+<script type="module" src="//cdn.test/y.js"></script>
+<link rel="stylesheet" href="//cdn.test/z.css">
+<link rel="modulepreload" href="data:text/javascript,0">`),
     ['/a.js', '/b.js', '/c.css']
   )
 })
